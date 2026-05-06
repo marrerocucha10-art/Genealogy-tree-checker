@@ -1,0 +1,4 @@
+# Setting up Linguist overrides
+*.md linguist-documentation
+*.yml linguist-vendored
+*.json linguist-generated
