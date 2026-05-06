@@ -1,0 +1,12 @@
+{
+  "name": "genealogy-tree-checker",
+  "version": "1.0.0",
+  "description": "A tool to check genealogy trees",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {}
+}
