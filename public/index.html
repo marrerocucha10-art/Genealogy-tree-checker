@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Genealogy Tree Checker</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🌳 Genealogy Tree Checker</h1>
+      <p>Review and manage your family tree</p>
+    </header>
+
+    <main>
+      <section class="form-section">
+        <h2>Add Family Member</h2>
+        <form id="familyForm">
+          <div class="form-group">
+            <label for="name">Name:</label>
+            <input type="text" id="name" placeholder="Enter name" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="relation">Relation:</label>
+            <select id="relation" required>
+              <option value="">Select relation</option>
+              <option value="Parent">Parent</option>
+              <option value="Sibling">Sibling</option>
+              <option value="Child">Child</option>
+              <option value="Grandparent">Grandparent</option>
+              <option value="Grandchild">Grandchild</option>
+              <option value="Spouse">Spouse</option>
+              <option value="Cousin">Cousin</option>
+              <option value="Aunt/Uncle">Aunt/Uncle</option>
+              <option value="Niece/Nephew">Niece/Nephew</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="birthYear">Birth Year:</label>
+            <input type="number" id="birthYear" placeholder="e.g., 1980" min="1900" max="2026">
+          </div>
+          
+          <button type="submit" class="btn-add">Add Member</button>
+        </form>
+      </section>
+
+      <section class="tree-section">
+        <h2>Family Tree</h2>
+        <div id="familyTree" class="family-tree">
+          <p class="empty-message">No family members added yet. Start by adding someone!</p>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>© 2026 Genealogy Tree Checker | Built with ❤️</p>
+    </footer>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
