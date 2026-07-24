@@ -79,6 +79,21 @@ Genealogy-tree-checker/
   - Birth year
   - Remove button
 
+## GEDCOM Parser API
+
+Bubble can send GEDCOM text to the Vercel app and receive structured JSON.
+
+```http
+POST /api/parse
+Content-Type: application/json
+
+{
+  "gedcom": "0 @I1@ INDI\n1 NAME Jane /Doe/\n1 BIRT\n2 DATE 1 JAN 1900"
+}
+```
+
+The same parser is also available at `POST /api/parse-gedcom`. It accepts raw text or JSON fields named `gedcom`, `text`, or `file`.
+
 ## 💾 Data Storage
 
 Your family tree data is automatically saved to your browser's **LocalStorage**. This means:
