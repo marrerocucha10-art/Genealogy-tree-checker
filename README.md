@@ -94,6 +94,19 @@ Content-Type: application/json
 
 The same parser is also available at `POST /api/parse-gedcom`. It accepts raw text or JSON fields named `gedcom`, `text`, or `file`.
 
+Bubble file uploads can be sent directly by URL:
+
+```http
+POST /api/parse-url
+Content-Type: application/json
+
+{
+  "url": "https://example.com/uploaded-family-tree.ged"
+}
+```
+
+The same URL parser is also available at `POST /api/parse-gedcom-url`. It accepts JSON fields named `url`, `fileUrl`, or `gedcomUrl`, downloads up to 10 MB, then returns the same structured JSON response.
+
 ## 💾 Data Storage
 
 Your family tree data is automatically saved to your browser's **LocalStorage**. This means:
