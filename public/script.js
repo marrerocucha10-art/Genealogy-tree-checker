@@ -202,17 +202,21 @@ function renderFamilyTree() {
   }
 
   const peopleById = new Map(treeData.people.map((person) => [person.id, person]));
-  const familyCards = treeData.families.map((family) => renderFamilyCard(family, peopleById)).join('');
-  const ungroupedPeople = treeData.families.length
-    ? treeData.people.filter((person) => !isPersonInFamily(person.id))
+  const connectedIds = new Set();
+  const treeCharts = treeData.families.map((family, index) => {
+    [family.husbandId, family.wifeId, ...(family.childrenIds || [])].filter(Boolean).forEach((id) => connectedIds.add(id));
+    return renderFamilyTreeChart(family, peopleById, index + 1);
+  }).join('');
+  const unconnectedPeople = treeData.families.length
+    ? treeData.people.filter((person) => !connectedIds.has(person.id))
     : treeData.people;
 
   familyTreeDiv.innerHTML = `
     ${renderSummary()}
     ${renderGedcomInfo()}
     ${treeData.warnings.length ? renderWarnings() : ''}
-    ${familyCards}
-    ${ungroupedPeople.length ? `<h3 class="group-title">People</h3>${ungroupedPeople.map(renderPersonCard).join('')}` : ''}
+    ${treeCharts || `<section class="tree-chart standalone-people"><h3>People</h3><div class="children-row">${unconnectedPeople.map(renderPersonNode).join('')}</div></section>`}
+    ${treeCharts && unconnectedPeople.length ? `<section class="tree-chart standalone-people"><h3>Unconnected People</h3><div class="children-row">${unconnectedPeople.map(renderPersonNode).join('')}</div></section>` : ''}
   `;
 }
 
@@ -273,7 +277,7 @@ function renderWarnings() {
   return `<div class="warnings"><strong>Import warnings</strong><ul>${warningItems}${remaining}</ul></div>`;
 }
 
-function renderFamilyCard(family, peopleById) {
+function renderFamilyTreeChart(family, peopleById, familyNumber) {
   const parents = [family.husbandId, family.wifeId]
     .filter(Boolean)
     .map((id) => peopleById.get(id))
@@ -283,42 +287,56 @@ function renderFamilyCard(family, peopleById) {
     .filter(Boolean);
 
   return `
-    <article class="family-group">
-      <h3>Family ${escapeHtml(family.id)}</h3>
-      ${family.marriage?.date || family.marriage?.place ? `<p class="muted"><strong>Married:</strong> ${escapeHtml([family.marriage.date, family.marriage.place].filter(Boolean).join(' · '))}</p>` : ''}
-      ${family.divorce?.date || family.divorce?.place ? `<p class="muted"><strong>Divorced:</strong> ${escapeHtml([family.divorce.date, family.divorce.place].filter(Boolean).join(' · '))}</p>` : ''}
-      ${family.notes?.length ? `<p class="muted"><strong>Notes:</strong> ${escapeHtml(family.notes.join(' | '))}</p>` : ''}
-      <div class="relationship-grid">
-        <div>
-          <h4>Parents / Spouses</h4>
-          ${parents.length ? parents.map(renderPersonCard).join('') : '<p class="muted">No parents or spouses listed.</p>'}
-        </div>
-        <div>
-          <h4>Children</h4>
-          ${children.length ? children.map(renderPersonCard).join('') : '<p class="muted">No children listed.</p>'}
-        </div>
+    <section class="tree-chart">
+      <div class="family-heading">
+        <h3>Family ${familyNumber}</h3>
+        <span>${escapeHtml(family.id)}</span>
       </div>
-    </article>
+      ${renderFamilyFacts(family)}
+      <div class="parents-row ${parents.length === 1 ? 'single-parent' : ''}">
+        ${parents.length ? parents.map((person) => renderPersonNode(person, 'parent')).join('') : '<p class="muted">No parents or spouses listed.</p>'}
+      </div>
+      ${children.length ? `
+        <div class="tree-connector" aria-hidden="true"><span></span></div>
+        <div class="children-row">
+          ${children.map((person) => renderPersonNode(person, 'child')).join('')}
+        </div>
+      ` : '<p class="muted centered">No children listed for this family.</p>'}
+    </section>
   `;
 }
 
-function renderPersonCard(person) {
+function renderFamilyFacts(family) {
+  const marriage = [family.marriage?.date, family.marriage?.place].filter(Boolean).join(' · ');
+  const divorce = [family.divorce?.date, family.divorce?.place].filter(Boolean).join(' · ');
+  const notes = family.notes?.length ? family.notes.join(' | ') : '';
+
+  if (!marriage && !divorce && !notes) return '';
+
+  return `
+    <div class="family-facts">
+      ${marriage ? `<p><strong>Married:</strong> ${escapeHtml(marriage)}</p>` : ''}
+      ${divorce ? `<p><strong>Divorced:</strong> ${escapeHtml(divorce)}</p>` : ''}
+      ${notes ? `<p><strong>Notes:</strong> ${escapeHtml(notes)}</p>` : ''}
+    </div>
+  `;
+}
+
+function renderPersonNode(person, role = '') {
   const birth = [person.birthDate || person.birthYear, person.birthPlace].filter(Boolean).join(' · ') || 'Unknown';
   const death = [person.deathDate, person.deathPlace].filter(Boolean).join(' · ');
   const label = person.source === 'manual' ? person.relation : person.sex;
 
   return `
-    <div class="family-member">
-      <div class="member-info">
-        <h3>${escapeHtml(person.name)}</h3>
-        <p class="muted"><strong>GEDCOM ID:</strong> ${escapeHtml(person.id)}</p>
-        <p><span class="relation-badge">${escapeHtml(label || 'Unknown')}</span></p>
-        <p><strong>Born:</strong> ${escapeHtml(birth)}</p>
-        ${death ? `<p><strong>Died:</strong> ${escapeHtml(death)}</p>` : ''}
-        ${person.notes?.length ? `<p><strong>Notes:</strong> ${escapeHtml(person.notes.join(' | '))}</p>` : ''}
-      </div>
-      <button class="btn-remove" type="button" data-remove-person-id="${escapeHtml(person.id)}">Remove</button>
-    </div>
+    <article class="person-node ${escapeHtml(role)}">
+      <button class="btn-remove node-remove" type="button" data-remove-person-id="${escapeHtml(person.id)}" aria-label="Remove ${escapeHtml(person.name)}">×</button>
+      <h4>${escapeHtml(person.name)}</h4>
+      <p class="person-id">${escapeHtml(person.id)}</p>
+      <p><span class="relation-badge">${escapeHtml(label || 'Unknown')}</span></p>
+      <p><strong>Born:</strong> ${escapeHtml(birth)}</p>
+      ${death ? `<p><strong>Died:</strong> ${escapeHtml(death)}</p>` : ''}
+      ${person.notes?.length ? `<p><strong>Notes:</strong> ${escapeHtml(person.notes.join(' | '))}</p>` : ''}
+    </article>
   `;
 }
 
