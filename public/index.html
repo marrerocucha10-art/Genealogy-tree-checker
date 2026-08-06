@@ -9,13 +9,25 @@
 <body>
   <div class="container">
     <header>
-      <h1>🌳 Genealogy Tree Checker</h1>
-      <p>Review and manage your family tree</p>
+      <h1>Genealogy Tree Checker</h1>
+      <p>Upload a GEDCOM file and build a family tree</p>
     </header>
 
     <main>
       <section class="form-section">
-        <h2>Add Family Member</h2>
+        <h2>Upload GEDCOM</h2>
+        <form id="gedcomForm">
+          <div class="form-group">
+            <label for="gedcomFile">GEDCOM file:</label>
+            <input type="file" id="gedcomFile" accept=".ged,.gedcom,.txt,text/plain,application/x-gedcom" required>
+          </div>
+          <button type="submit" class="btn-add">Parse GEDCOM</button>
+        </form>
+        <p id="uploadStatus" class="status-message" aria-live="polite"></p>
+      </section>
+
+      <section class="form-section">
+        <h2>Add Family Member Manually</h2>
         <form id="familyForm">
           <div class="form-group">
             <label for="name">Name:</label>
@@ -40,7 +52,7 @@
           
           <div class="form-group">
             <label for="birthYear">Birth Year:</label>
-            <input type="number" id="birthYear" placeholder="e.g., 1980" min="1900" max="2026">
+            <input type="number" id="birthYear" placeholder="e.g., 1980" min="1" max="2026">
           </div>
           
           <button type="submit" class="btn-add">Add Member</button>
@@ -48,15 +60,18 @@
       </section>
 
       <section class="tree-section">
-        <h2>Family Tree</h2>
+        <div class="section-header">
+          <h2>Family Tree</h2>
+          <button id="clearTree" type="button" class="btn-secondary">Clear Tree</button>
+        </div>
         <div id="familyTree" class="family-tree">
-          <p class="empty-message">No family members added yet. Start by adding someone!</p>
+          <p class="empty-message">No family members added yet. Upload a GEDCOM file or add someone manually.</p>
         </div>
       </section>
     </main>
 
     <footer>
-      <p>© 2026 Genealogy Tree Checker | Built with ❤️</p>
+      <p>© 2026 Genealogy Tree Checker</p>
     </footer>
   </div>
 
