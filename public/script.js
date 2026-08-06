@@ -1,4 +1,5 @@
 const STORAGE_KEY = 'familyTreeData';
+const MAX_GEDCOM_FILE_BYTES = 10 * 1024 * 1024;
 
 let treeData = loadTreeData();
 
@@ -28,7 +29,7 @@ gedcomForm.addEventListener('submit', async (event) => {
   setStatus('Reading GEDCOM file...', 'info');
 
   try {
-    const gedcom = await file.text();
+    const gedcom = await readGedcomFile(file);
     const response = await fetch('/api/parse-gedcom', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -83,6 +84,61 @@ clearTreeButton.addEventListener('click', () => {
     setStatus('', 'info');
   }
 });
+
+
+async function readGedcomFile(file) {
+  if (file.size > MAX_GEDCOM_FILE_BYTES) {
+    throw new Error('GEDCOM file is too large. Maximum size is 10 MB.');
+  }
+
+  const fileName = file.name.toLowerCase();
+  if (fileName.endsWith('.zip') || fileName.endsWith('.gz')) {
+    throw new Error('This looks like a compressed download. Extract it first, then upload the .ged or .gedcom file inside.');
+  }
+
+  const buffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(buffer.slice(0, 4));
+
+  if (bytes[0] === 0x50 && bytes[1] === 0x4b) {
+    throw new Error('This looks like a ZIP download. Extract it first, then upload the .ged or .gedcom file inside.');
+  }
+
+  if (bytes[0] === 0x1f && bytes[1] === 0x8b) {
+    throw new Error('This looks like a compressed GZIP download. Extract it first, then upload the .ged or .gedcom file inside.');
+  }
+
+  const decoders = getGedcomDecoders(bytes);
+  let fallbackText = '';
+
+  for (const decoder of decoders) {
+    try {
+      const text = new TextDecoder(decoder, { fatal: decoder !== 'windows-1252' }).decode(buffer);
+      const normalized = text.replace(/^\uFEFF/, '').replace(/\u0000/g, '');
+
+      if (looksLikeGedcom(normalized)) return normalized;
+      if (!fallbackText) fallbackText = normalized;
+    } catch (error) {
+      // Try the next common GEDCOM encoding.
+    }
+  }
+
+  if (fallbackText.trim()) return fallbackText;
+
+  throw new Error('Could not read this GEDCOM file. Try exporting it as GEDCOM 5.5/5.5.1 plain text, then upload the .ged file.');
+}
+
+function getGedcomDecoders(bytes) {
+  if (bytes[0] === 0xff && bytes[1] === 0xfe) return ['utf-16le'];
+  if (bytes[0] === 0xfe && bytes[1] === 0xff) return ['utf-16be'];
+  if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) return ['utf-8'];
+
+  return ['utf-8', 'utf-16le', 'utf-16be', 'windows-1252'];
+}
+
+function looksLikeGedcom(text) {
+  const start = text.replace(/^\uFEFF/, '').trimStart().slice(0, 200).toUpperCase();
+  return start.startsWith('0 HEAD') || /^0\s+@[^@]+@\s+(INDI|FAM|SUBM)/.test(start);
+}
 
 function createEmptyTreeData() {
   return {

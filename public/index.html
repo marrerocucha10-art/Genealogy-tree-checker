@@ -19,10 +19,11 @@
         <form id="gedcomForm">
           <div class="form-group">
             <label for="gedcomFile">GEDCOM file:</label>
-            <input type="file" id="gedcomFile" accept=".ged,.gedcom,.txt,text/plain,application/x-gedcom" required>
+            <input type="file" id="gedcomFile" accept=".ged,.gedcom,.ged.txt,.txt,.gedzip,application/x-gedcom,text/plain,application/octet-stream" required>
           </div>
           <button type="submit" class="btn-add">Parse GEDCOM</button>
         </form>
+        <p class="help-text">Supports .ged, .gedcom, and text GEDCOM downloads. If your download is a .zip, extract it first and upload the .ged file inside.</p>
         <p id="uploadStatus" class="status-message" aria-live="polite"></p>
       </section>
 
