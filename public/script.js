@@ -85,7 +85,13 @@ clearTreeButton.addEventListener('click', () => {
 });
 
 function createEmptyTreeData() {
-  return { people: [], families: [], relationships: [], warnings: [] };
+  return {
+    metadata: { header: { source: {}, gedcom: {} }, submitters: [] },
+    people: [],
+    families: [],
+    relationships: [],
+    warnings: [],
+  };
 }
 
 function loadTreeData() {
@@ -93,6 +99,7 @@ function loadTreeData() {
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (stored && Array.isArray(stored.people)) {
       return {
+        metadata: stored.metadata || { header: { source: {}, gedcom: {} }, submitters: [] },
         people: stored.people || [],
         families: stored.families || [],
         relationships: stored.relationships || [],
@@ -112,6 +119,7 @@ function saveTreeData() {
 
 function normalizeParsedGedcom(parsed) {
   return {
+    metadata: parsed.metadata || { header: { source: {}, gedcom: {} }, submitters: [] },
     people: parsed.people.map((person) => ({
       id: person.id,
       name: person.name?.display || person.id,
@@ -145,6 +153,7 @@ function renderFamilyTree() {
 
   familyTreeDiv.innerHTML = `
     ${renderSummary()}
+    ${renderGedcomInfo()}
     ${treeData.warnings.length ? renderWarnings() : ''}
     ${familyCards}
     ${ungroupedPeople.length ? `<h3 class="group-title">People</h3>${ungroupedPeople.map(renderPersonCard).join('')}` : ''}
@@ -158,6 +167,44 @@ function renderSummary() {
       <span><strong>${treeData.families.length}</strong> families</span>
       <span><strong>${treeData.relationships.length}</strong> relationships</span>
     </div>
+  `;
+}
+
+function renderGedcomInfo() {
+  const header = treeData.metadata?.header || {};
+  const source = header.source || {};
+  const gedcom = header.gedcom || {};
+  const submitters = treeData.metadata?.submitters || [];
+  const rows = [
+    ['GEDCOM version', [gedcom.version, gedcom.form].filter(Boolean).join(' · ')],
+    ['Source', [source.name, source.version, source.productName, source.corporation].filter(Boolean).join(' · ')],
+    ['File', header.file],
+    ['Character set', header.characterSet],
+    ['Destination', header.destination],
+    ['Created', header.date],
+    ['Submitter ID', header.submitterId],
+  ].filter(([, value]) => value);
+
+  if (!rows.length && !submitters.length) return '';
+
+  return `
+    <section class="gedcom-info">
+      <h3>GEDCOM Information</h3>
+      <dl>
+        ${rows.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join('')}
+      </dl>
+      ${submitters.length ? `
+        <h4>Submitters</h4>
+        ${submitters.map((submitter) => `
+          <div class="submitter-card">
+            <p><strong>${escapeHtml(submitter.name || submitter.id)}</strong></p>
+            ${submitter.address ? `<p>${escapeHtml(submitter.address).replace(/\n/g, '<br>')}</p>` : ''}
+            ${submitter.phone ? `<p><strong>Phone:</strong> ${escapeHtml(submitter.phone)}</p>` : ''}
+            ${submitter.email ? `<p><strong>Email:</strong> ${escapeHtml(submitter.email)}</p>` : ''}
+          </div>
+        `).join('')}
+      ` : ''}
+    </section>
   `;
 }
 
@@ -183,6 +230,8 @@ function renderFamilyCard(family, peopleById) {
     <article class="family-group">
       <h3>Family ${escapeHtml(family.id)}</h3>
       ${family.marriage?.date || family.marriage?.place ? `<p class="muted"><strong>Married:</strong> ${escapeHtml([family.marriage.date, family.marriage.place].filter(Boolean).join(' · '))}</p>` : ''}
+      ${family.divorce?.date || family.divorce?.place ? `<p class="muted"><strong>Divorced:</strong> ${escapeHtml([family.divorce.date, family.divorce.place].filter(Boolean).join(' · '))}</p>` : ''}
+      ${family.notes?.length ? `<p class="muted"><strong>Notes:</strong> ${escapeHtml(family.notes.join(' | '))}</p>` : ''}
       <div class="relationship-grid">
         <div>
           <h4>Parents / Spouses</h4>
@@ -206,9 +255,11 @@ function renderPersonCard(person) {
     <div class="family-member">
       <div class="member-info">
         <h3>${escapeHtml(person.name)}</h3>
+        <p class="muted"><strong>GEDCOM ID:</strong> ${escapeHtml(person.id)}</p>
         <p><span class="relation-badge">${escapeHtml(label || 'Unknown')}</span></p>
         <p><strong>Born:</strong> ${escapeHtml(birth)}</p>
         ${death ? `<p><strong>Died:</strong> ${escapeHtml(death)}</p>` : ''}
+        ${person.notes?.length ? `<p><strong>Notes:</strong> ${escapeHtml(person.notes.join(' | '))}</p>` : ''}
       </div>
       <button class="btn-remove" type="button" data-remove-person-id="${escapeHtml(person.id)}">Remove</button>
     </div>

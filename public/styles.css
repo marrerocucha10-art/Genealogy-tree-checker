@@ -334,3 +334,48 @@ input[type="file"] {
     margin-top: 12px;
   }
 }
+
+.gedcom-info {
+  background: #ffffff;
+  border: 1px solid #c3dafe;
+  border-radius: 10px;
+  margin-bottom: 18px;
+  padding: 18px;
+}
+
+.gedcom-info h3,
+.gedcom-info h4 {
+  color: #333;
+  margin-bottom: 12px;
+}
+
+.gedcom-info dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 18px;
+  margin-bottom: 12px;
+}
+
+.gedcom-info dt {
+  color: #4a5568;
+  font-weight: 700;
+}
+
+.gedcom-info dd {
+  color: #2d3748;
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.submitter-card {
+  background: #f8f9ff;
+  border-radius: 8px;
+  margin-top: 10px;
+  padding: 12px;
+}
+
+@media (max-width: 700px) {
+  .gedcom-info dl {
+    grid-template-columns: 1fr;
+  }
+}
