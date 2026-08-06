@@ -182,7 +182,12 @@ app.post(['/api/parse-url', '/api/parse-gedcom-url'], async (req, res) => {
   }
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Genealogy Tree Checker running at http://localhost:${PORT}`);
-});
+// Export the Express app so Vercel can detect and run it as the project entrypoint.
+module.exports = app;
+
+// Start a local server only when running `node server.js` directly.
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Genealogy Tree Checker running at http://localhost:${PORT}`);
+  });
+}
