@@ -44,6 +44,21 @@ function ensurePerson(peopleById, id) {
   return peopleById.get(id);
 }
 
+function ensureSubmitter(submittersById, id) {
+  if (!submittersById.has(id)) {
+    submittersById.set(id, {
+      id,
+      name: '',
+      address: '',
+      phone: '',
+      email: '',
+      notes: [],
+    });
+  }
+
+  return submittersById.get(id);
+}
+
 function ensureFamily(familiesById, id) {
   if (!familiesById.has(id)) {
     familiesById.set(id, {
@@ -84,11 +99,25 @@ function parseGedcom(gedcomText) {
 
   const peopleById = new Map();
   const familiesById = new Map();
+  const submittersById = new Map();
+  const metadata = {
+    header: {
+      source: {},
+      gedcom: {},
+      destination: '',
+      date: '',
+      file: '',
+      characterSet: '',
+      submitterId: '',
+    },
+    submitters: [],
+  };
   const warnings = [];
   const lines = gedcomText.replace(/^\uFEFF/, '').split(/\r?\n/);
 
   let currentRecord = null;
   let currentEventTag = null;
+  let currentHeaderSection = null;
   let currentTextTarget = null;
 
   for (let lineNumber = 0; lineNumber < lines.length; lineNumber += 1) {
@@ -104,9 +133,14 @@ function parseGedcom(gedcomText) {
 
     if (level === 0) {
       currentEventTag = null;
+      currentHeaderSection = null;
       currentTextTarget = null;
 
-      if (xref && tag === 'INDI') {
+      if (tag === 'HEAD') {
+        currentRecord = { type: 'HEAD', data: metadata.header };
+      } else if (xref && tag === 'SUBM') {
+        currentRecord = { type: 'SUBM', data: ensureSubmitter(submittersById, xref) };
+      } else if (xref && tag === 'INDI') {
         currentRecord = { type: 'INDI', data: ensurePerson(peopleById, xref) };
       } else if (xref && tag === 'FAM') {
         currentRecord = { type: 'FAM', data: ensureFamily(familiesById, xref) };
@@ -129,7 +163,39 @@ function parseGedcom(gedcomText) {
 
     if (level === 1) {
       currentEventTag = null;
+      currentHeaderSection = null;
       currentTextTarget = null;
+
+      if (currentRecord.type === 'HEAD') {
+        const header = currentRecord.data;
+
+        if (tag === 'SOUR') {
+          header.source.name = value;
+          currentHeaderSection = 'SOUR';
+        }
+        if (tag === 'GEDC') currentHeaderSection = 'GEDC';
+        if (tag === 'DEST') header.destination = value;
+        if (tag === 'DATE') header.date = value;
+        if (tag === 'FILE') header.file = value;
+        if (tag === 'CHAR') header.characterSet = value;
+        if (tag === 'SUBM') header.submitterId = value;
+      }
+
+      if (currentRecord.type === 'SUBM') {
+        const submitter = currentRecord.data;
+
+        if (tag === 'NAME') submitter.name = value;
+        if (tag === 'ADDR') {
+          submitter.address = value;
+          currentTextTarget = { object: submitter, key: 'address' };
+        }
+        if (tag === 'PHON') submitter.phone = value;
+        if (tag === 'EMAIL') submitter.email = value;
+        if (tag === 'NOTE') {
+          submitter.notes.push(value);
+          currentTextTarget = { object: submitter.notes, key: submitter.notes.length - 1 };
+        }
+      }
 
       if (currentRecord.type === 'INDI') {
         const person = currentRecord.data;
@@ -161,6 +227,19 @@ function parseGedcom(gedcomText) {
       continue;
     }
 
+    if (level === 2 && currentRecord.type === 'HEAD' && currentHeaderSection === 'GEDC') {
+      if (tag === 'VERS') currentRecord.data.gedcom.version = value;
+      if (tag === 'FORM') currentRecord.data.gedcom.form = value;
+      continue;
+    }
+
+    if (level === 2 && currentRecord.type === 'HEAD' && currentHeaderSection === 'SOUR') {
+      if (tag === 'VERS') currentRecord.data.source.version = value;
+      if (tag === 'NAME') currentRecord.data.source.productName = value;
+      if (tag === 'CORP') currentRecord.data.source.corporation = value;
+      continue;
+    }
+
     if (level === 2 && currentEventTag && (tag === 'DATE' || tag === 'PLAC')) {
       setEventValue(currentRecord.data, currentEventTag, tag, value);
     }
@@ -168,6 +247,7 @@ function parseGedcom(gedcomText) {
 
   const people = Array.from(peopleById.values());
   const families = Array.from(familiesById.values());
+  metadata.submitters = Array.from(submittersById.values());
   const relationships = [];
 
   for (const family of families) {
@@ -185,6 +265,7 @@ function parseGedcom(gedcomText) {
   }
 
   return {
+    metadata,
     people,
     families,
     relationships,
