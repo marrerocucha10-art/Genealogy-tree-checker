@@ -198,22 +198,118 @@ async function readGedcomFile(file) {
     throw new Error('GEDCOM file is too large. Maximum size is 10 MB.');
   }
 
-  const fileName = file.name.toLowerCase();
-  if (fileName.endsWith('.zip') || fileName.endsWith('.gz')) {
-    throw new Error('This looks like a compressed download. Extract it first, then upload the .ged or .gedcom file inside.');
-  }
-
   const buffer = await file.arrayBuffer();
   const bytes = new Uint8Array(buffer.slice(0, 4));
+  const fileName = file.name.toLowerCase();
 
-  if (bytes[0] === 0x50 && bytes[1] === 0x4b) {
-    throw new Error('This looks like a ZIP download. Extract it first, then upload the .ged or .gedcom file inside.');
+  if (fileName.endsWith('.zip') || (bytes[0] === 0x50 && bytes[1] === 0x4b)) {
+    const zippedGedcom = await readGedcomFromZip(buffer);
+    assertValidGedcomText(zippedGedcom);
+    return zippedGedcom;
   }
 
-  if (bytes[0] === 0x1f && bytes[1] === 0x8b) {
-    throw new Error('This looks like a compressed GZIP download. Extract it first, then upload the .ged or .gedcom file inside.');
+  if (fileName.endsWith('.gz') || (bytes[0] === 0x1f && bytes[1] === 0x8b)) {
+    throw new Error('GZIP GEDCOM downloads are not supported yet. Extract the .ged or .gedcom file first, then upload it.');
   }
 
+  const gedcom = decodeGedcomBuffer(buffer, bytes);
+  assertValidGedcomText(gedcom);
+  return gedcom;
+}
+
+async function readGedcomFromZip(buffer) {
+  const zipBytes = new Uint8Array(buffer);
+  const entries = readZipEntries(zipBytes);
+  const gedcomEntry = entries.find((entry) => /\.(ged|gedcom|ged\.txt|txt)$/i.test(entry.name));
+
+  if (!gedcomEntry) {
+    throw new Error('No .ged or .gedcom file was found inside this ZIP file.');
+  }
+
+  if (gedcomEntry.uncompressedSize > MAX_GEDCOM_FILE_BYTES) {
+    throw new Error('The GEDCOM file inside this ZIP is too large. Maximum size is 10 MB.');
+  }
+
+  const data = await extractZipEntry(zipBytes, gedcomEntry);
+  const bytes = new Uint8Array(data.slice(0, 4));
+  return decodeGedcomBuffer(data, bytes);
+}
+
+function readZipEntries(zipBytes) {
+  const eocdOffset = findEndOfCentralDirectory(zipBytes);
+  if (eocdOffset === -1) {
+    throw new Error('Could not read this ZIP file. Try extracting the .ged file and uploading it directly.');
+  }
+
+  const view = new DataView(zipBytes.buffer, zipBytes.byteOffset, zipBytes.byteLength);
+  const totalEntries = view.getUint16(eocdOffset + 10, true);
+  let offset = view.getUint32(eocdOffset + 16, true);
+  const entries = [];
+
+  for (let index = 0; index < totalEntries; index += 1) {
+    if (view.getUint32(offset, true) !== 0x02014b50) break;
+
+    const compressionMethod = view.getUint16(offset + 10, true);
+    const compressedSize = view.getUint32(offset + 20, true);
+    const uncompressedSize = view.getUint32(offset + 24, true);
+    const nameLength = view.getUint16(offset + 28, true);
+    const extraLength = view.getUint16(offset + 30, true);
+    const commentLength = view.getUint16(offset + 32, true);
+    const localHeaderOffset = view.getUint32(offset + 42, true);
+    const nameBytes = zipBytes.slice(offset + 46, offset + 46 + nameLength);
+    const name = new TextDecoder('utf-8').decode(nameBytes);
+
+    if (!name.endsWith('/')) {
+      entries.push({ name, compressionMethod, compressedSize, uncompressedSize, localHeaderOffset });
+    }
+
+    offset += 46 + nameLength + extraLength + commentLength;
+  }
+
+  return entries;
+}
+
+function findEndOfCentralDirectory(zipBytes) {
+  for (let index = zipBytes.length - 22; index >= Math.max(0, zipBytes.length - 65557); index -= 1) {
+    if (
+      zipBytes[index] === 0x50 &&
+      zipBytes[index + 1] === 0x4b &&
+      zipBytes[index + 2] === 0x05 &&
+      zipBytes[index + 3] === 0x06
+    ) {
+      return index;
+    }
+  }
+
+  return -1;
+}
+
+async function extractZipEntry(zipBytes, entry) {
+  const view = new DataView(zipBytes.buffer, zipBytes.byteOffset, zipBytes.byteLength);
+  const offset = entry.localHeaderOffset;
+
+  if (view.getUint32(offset, true) !== 0x04034b50) {
+    throw new Error('Could not read the GEDCOM file inside this ZIP.');
+  }
+
+  const nameLength = view.getUint16(offset + 26, true);
+  const extraLength = view.getUint16(offset + 28, true);
+  const dataStart = offset + 30 + nameLength + extraLength;
+  const compressedData = zipBytes.slice(dataStart, dataStart + entry.compressedSize);
+
+  if (entry.compressionMethod === 0) {
+    return compressedData.buffer.slice(compressedData.byteOffset, compressedData.byteOffset + compressedData.byteLength);
+  }
+
+  if (entry.compressionMethod === 8 && 'DecompressionStream' in window) {
+    const stream = new Response(compressedData).body.pipeThrough(new DecompressionStream('deflate-raw'));
+    return await new Response(stream).arrayBuffer();
+  }
+
+  throw new Error('This ZIP uses a compression method this browser cannot read. Extract the .ged file and upload it directly.');
+}
+
+function decodeGedcomBuffer(buffer, bytes) {
   const decoders = getGedcomDecoders(bytes);
   let fallbackText = '';
 
@@ -245,6 +341,40 @@ function getGedcomDecoders(bytes) {
 function looksLikeGedcom(text) {
   const start = text.replace(/^\uFEFF/, '').trimStart().slice(0, 200).toUpperCase();
   return start.startsWith('0 HEAD') || /^0\s+@[^@]+@\s+(INDI|FAM|SUBM)/.test(start);
+}
+
+function validateGedcomText(text) {
+  const lines = String(text || '').replace(/^\uFEFF/, '').split(/\r?\n/);
+  const parsedLines = lines.map(parseGedcomLine).filter(Boolean);
+  const hasHeader = parsedLines.some((line) => line.level === 0 && line.tag === 'HEAD');
+  const hasTrailer = parsedLines.some((line) => line.level === 0 && line.tag === 'TRLR');
+  const hasRecords = parsedLines.some((line) => line.level === 0 && (line.tag === 'INDI' || line.tag === 'FAM'));
+  const errors = [];
+
+  if (!hasHeader) errors.push('Missing required GEDCOM header: 0 HEAD.');
+  if (!hasTrailer) errors.push('Missing required GEDCOM trailer: 0 TRLR.');
+  if (!hasRecords) errors.push('No individual or family records were found.');
+  if (parsedLines.length < 3) errors.push('File does not contain enough GEDCOM records to parse.');
+
+  return { valid: errors.length === 0, errors };
+}
+
+function assertValidGedcomText(text) {
+  const validation = validateGedcomText(text);
+
+  if (!validation.valid) {
+    throw new Error(`This does not look like a valid GEDCOM file. ${validation.errors.join(' ')}`);
+  }
+}
+
+function parseGedcomLine(line) {
+  const match = String(line).match(/^(\d+)\s+(?:(@[^@]+@)\s+)?([A-Z0-9_]+)(?:\s+(.*))?$/i);
+  if (!match) return null;
+
+  return {
+    level: Number(match[1]),
+    tag: match[3].toUpperCase(),
+  };
 }
 
 function createEmptyTreeData() {
