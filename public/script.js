@@ -7,6 +7,7 @@ let treeData = loadTreeData();
 let treeLayout = localStorage.getItem(LAYOUT_STORAGE_KEY) || 'vertical';
 let currentTier = localStorage.getItem(SUBSCRIPTION_STORAGE_KEY) || 'free';
 let stripeConfig = null;
+let storeUrl = '/store';
 
 const SUBSCRIPTION_TIERS = {
   free: {
@@ -60,6 +61,7 @@ const layoutButtons = document.querySelectorAll('[data-layout]');
 const subscriptionPlansDiv = document.getElementById('subscriptionPlans');
 const subscriptionStatusDiv = document.getElementById('subscriptionStatus');
 const manageBillingButton = document.getElementById('manageBilling');
+const goToStoreButton = document.getElementById('goToStore');
 
 subscriptionPlansDiv.addEventListener('click', (event) => {
   const upgradeButton = event.target.closest('[data-upgrade-tier]');
@@ -75,6 +77,10 @@ subscriptionPlansDiv.addEventListener('click', (event) => {
 });
 
 manageBillingButton.addEventListener('click', openBillingPortal);
+
+goToStoreButton.addEventListener('click', () => {
+  window.location.href = storeUrl;
+});
 
 layoutButtons.forEach((button) => {
   button.addEventListener('click', () => {
@@ -100,6 +106,10 @@ function updateLayoutButtons() {
 });
 
 manageBillingButton.addEventListener('click', openBillingPortal);
+
+goToStoreButton.addEventListener('click', () => {
+  window.location.href = storeUrl;
+});
 
 layoutButtons.forEach((button) => {
     button.classList.toggle('active', button.dataset.layout === treeLayout);
@@ -234,6 +244,7 @@ async function loadSubscriptionConfig() {
     const response = await fetch('/api/subscription/config');
     const result = await response.json();
     stripeConfig = result.stripe || null;
+    storeUrl = stripeConfig?.storeUrl || '/store';
   } catch (error) {
     stripeConfig = null;
   }
