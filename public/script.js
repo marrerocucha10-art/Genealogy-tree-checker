@@ -14,6 +14,7 @@ const relationInput = document.getElementById('relation');
 const birthYearInput = document.getElementById('birthYear');
 const familyTreeDiv = document.getElementById('familyTree');
 const clearTreeButton = document.getElementById('clearTree');
+const printTreeButton = document.getElementById('printTree');
 const layoutButtons = document.querySelectorAll('[data-layout]');
 
 layoutButtons.forEach((button) => {
@@ -92,6 +93,15 @@ familyForm.addEventListener('submit', (event) => {
   renderFamilyTree();
   familyForm.reset();
   nameInput.focus();
+});
+
+printTreeButton.addEventListener('click', () => {
+  if (!treeData.people.length) {
+    setStatus('Upload or add family members before printing the tree.', 'error');
+    return;
+  }
+
+  window.print();
 });
 
 clearTreeButton.addEventListener('click', () => {
