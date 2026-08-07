@@ -1,6 +1,7 @@
 const express = require('express');
 const net = require('net');
 const path = require('path');
+const crypto = require('crypto');
 const { parseGedcom } = require('./gedcomParser');
 
 const app = express();
@@ -8,7 +9,14 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({
+  limit: '10mb',
+  verify: (req, res, buffer) => {
+    if (req.originalUrl === '/api/stripe/webhook') {
+      req.rawBody = buffer;
+    }
+  },
+}));
 app.use(express.text({ type: ['text/*', 'application/x-gedcom', 'application/octet-stream'], limit: '10mb' }));
 
 app.use((req, res, next) => {
@@ -88,7 +96,7 @@ async function createStripeCheckoutSession(req, tierId, interval = 'monthly') {
   const baseUrl = getBaseUrl(req);
   const params = new URLSearchParams({
     mode: 'subscription',
-    success_url: `${baseUrl}/?subscription=${tierId}&interval=${interval}&checkout=success`,
+    success_url: `${baseUrl}/?subscription=${tierId}&interval=${interval}&checkout=success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${baseUrl}/?checkout=cancelled`,
     'line_items[0][price]': priceId,
     'line_items[0][quantity]': '1',
@@ -113,6 +121,96 @@ async function createStripeCheckoutSession(req, tierId, interval = 'monthly') {
   return payload;
 }
 
+function getTierByPriceId(priceId) {
+  for (const [tierId, tier] of Object.entries(SUBSCRIPTION_TIERS)) {
+    for (const [interval, envName] of Object.entries(tier.prices)) {
+      if (process.env[envName] && process.env[envName] === priceId) {
+        return { tierId, interval, tier };
+      }
+    }
+  }
+
+  return null;
+}
+
+async function stripeRequest(pathname, options = {}) {
+  if (!process.env.STRIPE_SECRET_KEY) throw new Error('Stripe is not configured yet.');
+
+  const response = await fetch(`https://api.stripe.com/v1${pathname}`, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`,
+      ...(options.headers || {}),
+    },
+  });
+  const payload = await response.json();
+
+  if (!response.ok) {
+    throw new Error(payload.error?.message || 'Stripe request failed.');
+  }
+
+  return payload;
+}
+
+async function getSubscriptionStatusFromSession(sessionId) {
+  if (!sessionId) throw new Error('Checkout session ID is required.');
+
+  const session = await stripeRequest(`/checkout/sessions/${encodeURIComponent(sessionId)}?expand[]=subscription.items.data.price`);
+  if (session.mode !== 'subscription') throw new Error('Checkout session is not a subscription.');
+
+  return formatSubscriptionStatus(session.subscription, session.customer, session.customer_details?.email);
+}
+
+async function getSubscriptionStatusFromCustomer(customerId) {
+  if (!customerId) throw new Error('Stripe customer ID is required.');
+
+  const subscriptions = await stripeRequest(`/subscriptions?customer=${encodeURIComponent(customerId)}&status=all&limit=10&expand[]=data.items.data.price`);
+  const activeSubscription = subscriptions.data.find((subscription) => ['active', 'trialing', 'past_due'].includes(subscription.status));
+
+  if (!activeSubscription) {
+    return { active: false, tier: 'free', interval: 'monthly', customerId };
+  }
+
+  return formatSubscriptionStatus(activeSubscription, customerId);
+}
+
+function formatSubscriptionStatus(subscription, customerId, customerEmail = '') {
+  if (!subscription) return { active: false, tier: 'free', interval: 'monthly', customerId, customerEmail };
+
+  const priceId = subscription.items?.data?.[0]?.price?.id;
+  const match = getTierByPriceId(priceId);
+
+  return {
+    active: ['active', 'trialing', 'past_due'].includes(subscription.status),
+    tier: match?.tierId || 'free',
+    interval: match?.interval || 'monthly',
+    status: subscription.status,
+    subscriptionId: subscription.id,
+    customerId,
+    customerEmail,
+    currentPeriodEnd: subscription.current_period_end ? new Date(subscription.current_period_end * 1000).toISOString() : '',
+  };
+}
+
+function verifyStripeWebhookSignature(req) {
+  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!secret) throw new Error('Stripe webhook secret is not configured.');
+
+  const signature = req.get('stripe-signature') || '';
+  const timestamp = signature.split(',').find((part) => part.startsWith('t='))?.slice(2);
+  const signatures = signature.split(',').filter((part) => part.startsWith('v1=')).map((part) => part.slice(3));
+  if (!timestamp || !signatures.length || !req.rawBody) throw new Error('Invalid Stripe webhook signature.');
+
+  const signedPayload = `${timestamp}.${req.rawBody.toString('utf8')}`;
+  const expected = crypto.createHmac('sha256', secret).update(signedPayload).digest('hex');
+  const verified = signatures.some((candidate) => {
+    const expectedBuffer = Buffer.from(expected, 'hex');
+    const candidateBuffer = Buffer.from(candidate, 'hex');
+    return expectedBuffer.length === candidateBuffer.length && crypto.timingSafeEqual(expectedBuffer, candidateBuffer);
+  });
+
+  if (!verified) throw new Error('Stripe webhook signature verification failed.');
+}
 
 async function createStripePortalSession(req) {
   if (!process.env.STRIPE_SECRET_KEY) throw new Error('Stripe is not configured yet.');
@@ -301,6 +399,34 @@ app.post('/api/create-checkout-session', async (req, res) => {
   }
 });
 
+
+
+app.get('/api/subscription/status', async (req, res) => {
+  try {
+    const status = req.query.session_id
+      ? await getSubscriptionStatusFromSession(req.query.session_id)
+      : await getSubscriptionStatusFromCustomer(req.query.customerId);
+
+    res.json({ success: true, subscription: status });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/stripe/webhook', (req, res) => {
+  try {
+    verifyStripeWebhookSignature(req);
+    const event = req.body;
+
+    res.json({
+      received: true,
+      type: event.type,
+      message: 'Webhook verified. Add persistent customer storage before using this event for account access control.',
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
 
 app.post('/api/create-portal-session', async (req, res) => {
   try {

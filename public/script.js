@@ -2,6 +2,7 @@ const STORAGE_KEY = 'familyTreeData';
 const LAYOUT_STORAGE_KEY = 'familyTreeLayout';
 const SUBSCRIPTION_STORAGE_KEY = 'familyTreeSubscriptionTier';
 const BILLING_INTERVAL_STORAGE_KEY = 'familyTreeBillingInterval';
+const STRIPE_CUSTOMER_STORAGE_KEY = 'familyTreeStripeCustomerId';
 const MAX_GEDCOM_FILE_BYTES = 10 * 1024 * 1024;
 
 let treeData = loadTreeData();
@@ -10,6 +11,7 @@ let currentTier = localStorage.getItem(SUBSCRIPTION_STORAGE_KEY) || 'free';
 let billingInterval = localStorage.getItem(BILLING_INTERVAL_STORAGE_KEY) || 'monthly';
 let stripeConfig = null;
 let storeUrl = '/store';
+let stripeCustomerId = localStorage.getItem(STRIPE_CUSTOMER_STORAGE_KEY) || '';
 
 const SUBSCRIPTION_TIERS = {
   free: {
@@ -260,7 +262,8 @@ async function loadSubscriptionConfig() {
 }
 
 function renderSubscriptionPlans() {
-  subscriptionStatusDiv.textContent = `Current plan: ${SUBSCRIPTION_TIERS[currentTier]?.name || 'Free'}`;
+  const intervalLabel = billingInterval === 'annual' ? 'Annual billing' : 'Monthly billing';
+  subscriptionStatusDiv.textContent = `Current plan: ${SUBSCRIPTION_TIERS[currentTier]?.name || 'Free'} · ${intervalLabel}`;
 
   subscriptionPlansDiv.innerHTML = Object.entries(SUBSCRIPTION_TIERS).map(([tierId, tier]) => {
     const isCurrent = tierId === currentTier;
@@ -325,16 +328,88 @@ async function startCheckout(tierId) {
 }
 
 async function openBillingPortal() {
-  setStatus('Billing portal requires a saved Stripe customer ID after a real checkout. Add account login/customer tracking before enabling portal access.', 'info');
+  if (!stripeCustomerId) {
+    setStatus('Open billing after a successful Stripe checkout. The app will save your Stripe customer ID locally.', 'info');
+    return;
+  }
+
+  try {
+    const response = await fetch('/api/create-portal-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customerId: stripeCustomerId }),
+    });
+    const result = await response.json();
+
+    if (!response.ok || !result.success) throw new Error(result.error || 'Could not open billing portal.');
+    window.location.href = result.url;
+  } catch (error) {
+    setStatus(error.message, 'error');
+  }
 }
 
-function applyCheckoutReturn() {
-  const params = new URLSearchParams(window.location.search);
-  const tier = params.get('subscription');
+async function loadSubscriptionStatusFromCustomer() {
+  if (!stripeCustomerId) return;
 
-  if (params.get('checkout') === 'success' && SUBSCRIPTION_TIERS[tier]) {
-    currentTier = tier;
+  try {
+    const response = await fetch(`/api/subscription/status?customerId=${encodeURIComponent(stripeCustomerId)}`);
+    const result = await response.json();
+    if (!response.ok || !result.success) throw new Error(result.error || 'Could not load subscription status.');
+
+    applySubscriptionStatus(result.subscription, false);
+  } catch (error) {
+    setStatus(error.message, 'error');
+  }
+}
+
+function applySubscriptionStatus(subscription, showMessage = true) {
+  if (!subscription) return;
+
+  currentTier = subscription.active ? subscription.tier : 'free';
+  billingInterval = subscription.interval || billingInterval;
+  if (subscription.customerId) {
+    stripeCustomerId = subscription.customerId;
+    localStorage.setItem(STRIPE_CUSTOMER_STORAGE_KEY, stripeCustomerId);
+  }
+  localStorage.setItem(SUBSCRIPTION_STORAGE_KEY, currentTier);
+  localStorage.setItem(BILLING_INTERVAL_STORAGE_KEY, billingInterval);
+  updateBillingButtons();
+  renderSubscriptionPlans();
+
+  if (showMessage) {
+    setStatus(`Stripe subscription active: ${SUBSCRIPTION_TIERS[currentTier]?.name || 'Free'} (${billingInterval}).`, 'success');
+  }
+}
+
+async function applyCheckoutReturn() {
+  const params = new URLSearchParams(window.location.search);
+  const sessionId = params.get('session_id');
+  const fallbackTier = params.get('subscription');
+  const fallbackInterval = params.get('interval');
+
+  if (params.get('checkout') !== 'success') return;
+
+  if (sessionId) {
+    try {
+      const response = await fetch(`/api/subscription/status?session_id=${encodeURIComponent(sessionId)}`);
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.error || 'Could not confirm Stripe subscription.');
+
+      applySubscriptionStatus(result.subscription);
+      window.history.replaceState({}, document.title, window.location.pathname);
+      return;
+    } catch (error) {
+      setStatus(error.message, 'error');
+    }
+  }
+
+  if (SUBSCRIPTION_TIERS[fallbackTier]) {
+    currentTier = fallbackTier;
+    billingInterval = ['monthly', 'annual'].includes(fallbackInterval) ? fallbackInterval : billingInterval;
     localStorage.setItem(SUBSCRIPTION_STORAGE_KEY, currentTier);
+    localStorage.setItem(BILLING_INTERVAL_STORAGE_KEY, billingInterval);
+    updateBillingButtons();
+    renderSubscriptionPlans();
     window.history.replaceState({}, document.title, window.location.pathname);
   }
 }
@@ -1138,5 +1213,6 @@ document.addEventListener('DOMContentLoaded', () => {
   updateBillingButtons();
   renderSubscriptionPlans();
   loadSubscriptionConfig();
+  loadSubscriptionStatusFromCustomer();
   renderFamilyTree();
 });
