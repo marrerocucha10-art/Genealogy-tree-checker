@@ -37,9 +37,22 @@ function updateLayoutButtons() {
 
 familyTreeDiv.addEventListener('click', (event) => {
   const removeButton = event.target.closest('[data-remove-person-id]');
-  if (!removeButton) return;
+  const autoFixButton = event.target.closest('[data-apply-auto-fixes]');
+  const manualFixButton = event.target.closest('[data-show-manual-fixes]');
 
-  removeMember(removeButton.dataset.removePersonId);
+  if (removeButton) {
+    removeMember(removeButton.dataset.removePersonId);
+    return;
+  }
+
+  if (autoFixButton) {
+    applyAutomaticFixes();
+    return;
+  }
+
+  if (manualFixButton) {
+    showManualFixes();
+  }
 });
 
 gedcomForm.addEventListener('submit', async (event) => {
@@ -459,40 +472,40 @@ function analyzeTreeData(data) {
     const deathYear = extractYear(person.deathDate);
 
     if (birthYear && deathYear && deathYear < birthYear) {
-      addIssue(report.errors, 'Date inconsistency', `${person.name} has a death year (${deathYear}) before birth year (${birthYear}).`, person.id);
+      addIssue(report.errors, 'Date inconsistency', `${person.name} has a death year (${deathYear}) before birth year (${birthYear}).`, person.id, 'Manual fix: review the original record and correct either the birth date or death date.');
     }
 
     if (birthYear && birthYear > new Date().getFullYear()) {
-      addIssue(report.errors, 'Date inconsistency', `${person.name} has a birth year in the future (${birthYear}).`, person.id);
+      addIssue(report.errors, 'Date inconsistency', `${person.name} has a birth year in the future (${birthYear}).`, person.id, 'Manual fix: verify the source and correct the birth date.');
     }
 
     if (deathYear && deathYear > new Date().getFullYear()) {
-      addIssue(report.errors, 'Date inconsistency', `${person.name} has a death year in the future (${deathYear}).`, person.id);
+      addIssue(report.errors, 'Date inconsistency', `${person.name} has a death year in the future (${deathYear}).`, person.id, 'Manual fix: verify the source and correct or remove the death date.');
     }
 
     if (birthYear && deathYear && deathYear - birthYear > 125) {
-      addIssue(report.warnings, 'Date warning', `${person.name} appears to have lived ${deathYear - birthYear} years.`, person.id);
+      addIssue(report.warnings, 'Date warning', `${person.name} appears to have lived ${deathYear - birthYear} years.`, person.id, 'Manual fix: confirm the birth and death dates with a source record.');
     }
 
     if (!person.birthPlace) {
-      addIssue(report.warnings, 'Place warning', `${person.name} is missing a birth place.`, person.id);
+      addIssue(report.warnings, 'Place warning', `${person.name} is missing a birth place.`, person.id, 'Manual fix: add the most specific known birth place from the source record.');
     } else if (isWeakPlace(person.birthPlace)) {
-      addIssue(report.info, 'Place detail', `${person.name} has a very broad birth place: ${person.birthPlace}.`, person.id);
+      addIssue(report.info, 'Place detail', `${person.name} has a very broad birth place: ${person.birthPlace}.`, person.id, 'Manual fix: expand the place if you know the city/county/state/country.');
     }
 
     if (person.deathDate && !person.deathPlace) {
-      addIssue(report.warnings, 'Place warning', `${person.name} has a death date but no death place.`, person.id);
+      addIssue(report.warnings, 'Place warning', `${person.name} has a death date but no death place.`, person.id, 'Manual fix: add the death place from a death certificate, obituary, or burial record.');
     }
 
     for (const familyId of person.familyAsChild || []) {
       if (!familyById.has(familyId)) {
-        addIssue(report.errors, 'Relationship inconsistency', `${person.name} references missing child-family ${familyId}.`, person.id);
+        addIssue(report.errors, 'Relationship inconsistency', `${person.name} references missing child-family ${familyId}.`, person.id, 'Automatic fix available: remove the broken family reference from this person.', { type: 'removeMissingFamilyRef', personId: person.id, field: 'familyAsChild', familyId });
       }
     }
 
     for (const familyId of person.familyAsSpouse || []) {
       if (!familyById.has(familyId)) {
-        addIssue(report.errors, 'Relationship inconsistency', `${person.name} references missing spouse-family ${familyId}.`, person.id);
+        addIssue(report.errors, 'Relationship inconsistency', `${person.name} references missing spouse-family ${familyId}.`, person.id, 'Automatic fix available: remove the broken family reference from this person.', { type: 'removeMissingFamilyRef', personId: person.id, field: 'familyAsSpouse', familyId });
       }
     }
   }
@@ -502,7 +515,9 @@ function analyzeTreeData(data) {
       addIssue(
         report.warnings,
         'Possible duplicate',
-        `${matches.length} people share the same name and birth year: ${matches.map((person) => `${person.name} (${person.id})`).join(', ')}.`
+        `${matches.length} people share the same name and birth year: ${matches.map((person) => `${person.name} (${person.id})`).join(', ')}.`,
+        '',
+        'Manual fix: compare sources, merge duplicate people in your GEDCOM editor, then re-upload the corrected file.'
       );
     }
   }
@@ -511,18 +526,18 @@ function analyzeTreeData(data) {
     const parentIds = [family.husbandId, family.wifeId].filter(Boolean);
 
     if (!parentIds.length && (family.childrenIds || []).length) {
-      addIssue(report.warnings, 'Relationship warning', `${family.id} has children but no parents/spouses listed.`, family.id);
+      addIssue(report.warnings, 'Relationship warning', `${family.id} has children but no parents/spouses listed.`, family.id, 'Manual fix: add the missing parent/spouse records or confirm this is an intentional child-only family.');
     }
 
     for (const personId of [...parentIds, ...(family.childrenIds || [])]) {
       if (!peopleById.has(personId)) {
-        addIssue(report.errors, 'Relationship inconsistency', `${family.id} references missing person ${personId}.`, family.id);
+        addIssue(report.errors, 'Relationship inconsistency', `${family.id} references missing person ${personId}.`, family.id, 'Automatic fix available: remove the missing person reference from this family.', { type: 'removeMissingPersonFromFamily', familyId: family.id, personId });
       }
     }
 
     for (const childId of family.childrenIds || []) {
       if (parentIds.includes(childId)) {
-        addIssue(report.errors, 'Relationship inconsistency', `${childId} is listed as both parent/spouse and child in ${family.id}.`, family.id);
+        addIssue(report.errors, 'Relationship inconsistency', `${childId} is listed as both parent/spouse and child in ${family.id}.`, family.id, 'Automatic fix available: remove this person from the child list and keep them as parent/spouse.', { type: 'removeChildFromFamily', familyId: family.id, childId });
       }
 
       const child = peopleById.get(childId);
@@ -537,22 +552,22 @@ function analyzeTreeData(data) {
         const parentDeathYear = extractYear(parent.deathDate);
 
         if (parentBirthYear && childBirthYear && childBirthYear < parentBirthYear) {
-          addIssue(report.errors, 'Date inconsistency', `${child.name} appears born before parent ${parent.name}.`, family.id);
+          addIssue(report.errors, 'Date inconsistency', `${child.name} appears born before parent ${parent.name}.`, family.id, 'Manual fix: verify the child and parent birth dates or the relationship link.');
         }
 
         if (parentBirthYear && childBirthYear && childBirthYear - parentBirthYear < 12) {
-          addIssue(report.warnings, 'Date warning', `${parent.name} appears younger than 12 when ${child.name} was born.`, family.id);
+          addIssue(report.warnings, 'Date warning', `${parent.name} appears younger than 12 when ${child.name} was born.`, family.id, 'Manual fix: verify dates and confirm the parent-child relationship.');
         }
 
         if (parentDeathYear && childBirthYear && childBirthYear > parentDeathYear + 1) {
-          addIssue(report.errors, 'Date inconsistency', `${child.name} appears born after parent ${parent.name} died.`, family.id);
+          addIssue(report.errors, 'Date inconsistency', `${child.name} appears born after parent ${parent.name} died.`, family.id, 'Manual fix: verify the parent death date, child birth date, and relationship link.');
         }
       }
     }
   }
 
   if (!report.errors.length && !report.warnings.length && !report.info.length) {
-    report.info.push({ category: 'No issues found', message: 'No duplicate, date, relationship, or place issues were detected by the current checks.' });
+    report.info.push({ category: 'No issues found', message: 'No duplicate, date, relationship, or place issues were detected by the current checks.', suggestion: 'No fix needed.' });
   }
 
   return report;
@@ -575,8 +590,69 @@ function isWeakPlace(place = '') {
   return parts.length < 2;
 }
 
-function addIssue(collection, category, message, subject = '') {
-  collection.push({ category, message, subject });
+function addIssue(collection, category, message, subject = '', suggestion = 'Manual fix: review this record in your source GEDCOM editor.', autoFix = null) {
+  collection.push({ category, message, subject, suggestion, autoFix });
+}
+
+
+function getAllIssues() {
+  const report = treeData.validationReport || createEmptyValidationReport();
+  return [...report.errors, ...report.warnings, ...report.info];
+}
+
+function getAutomaticFixes() {
+  return getAllIssues().filter((issue) => issue.autoFix).map((issue) => issue.autoFix);
+}
+
+function applyAutomaticFixes() {
+  const fixes = getAutomaticFixes();
+  if (!fixes.length) {
+    setStatus('No safe automatic fixes are available. Use manual fixes for the remaining issues.', 'info');
+    return;
+  }
+
+  for (const fix of fixes) {
+    if (fix.type === 'removeMissingFamilyRef') {
+      const person = treeData.people.find((item) => item.id === fix.personId);
+      if (person && Array.isArray(person[fix.field])) {
+        person[fix.field] = person[fix.field].filter((familyId) => familyId !== fix.familyId);
+      }
+    }
+
+    if (fix.type === 'removeMissingPersonFromFamily') {
+      const family = treeData.families.find((item) => item.id === fix.familyId);
+      if (family) {
+        if (family.husbandId === fix.personId) family.husbandId = null;
+        if (family.wifeId === fix.personId) family.wifeId = null;
+        family.childrenIds = (family.childrenIds || []).filter((childId) => childId !== fix.personId);
+      }
+    }
+
+    if (fix.type === 'removeChildFromFamily') {
+      const family = treeData.families.find((item) => item.id === fix.familyId);
+      if (family) {
+        family.childrenIds = (family.childrenIds || []).filter((childId) => childId !== fix.childId);
+      }
+    }
+  }
+
+  treeData.validationReport = analyzeTreeData(treeData);
+  saveTreeData();
+  renderFamilyTree();
+  setStatus(`Applied ${fixes.length} safe automatic fix(es). Review the report for remaining manual fixes.`, 'success');
+}
+
+function showManualFixes() {
+  const manualSuggestions = getAllIssues()
+    .filter((issue) => !issue.autoFix && issue.suggestion)
+    .map((issue) => `${issue.category}: ${issue.suggestion}`);
+
+  if (!manualSuggestions.length) {
+    setStatus('No manual fixes are currently listed.', 'info');
+    return;
+  }
+
+  setStatus(`Manual fix suggestions: ${manualSuggestions.slice(0, 5).join(' | ')}${manualSuggestions.length > 5 ? ' | More suggestions are listed in the report.' : ''}`, 'info');
 }
 
 function renderFamilyTree() {
@@ -668,6 +744,10 @@ function renderValidationReport() {
         <h3>Tree Error Report</h3>
         <span>${report.errors.length} errors · ${report.warnings.length} warnings · ${report.info.length} notes</span>
       </div>
+      <div class="report-actions">
+        <button type="button" class="btn-secondary" data-apply-auto-fixes>Apply Safe Automatic Fixes</button>
+        <button type="button" class="btn-secondary" data-show-manual-fixes>Show Manual Fix Guidance</button>
+      </div>
       ${renderIssueGroup('Errors', report.errors, 'error')}
       ${renderIssueGroup('Warnings', report.warnings, 'warning')}
       ${renderIssueGroup('Notes', report.info, 'info')}
@@ -682,7 +762,7 @@ function renderIssueGroup(title, issues, type) {
     <div class="issue-group ${type}">
       <h4>${title}</h4>
       <ul>
-        ${issues.map((issue) => `<li><strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(issue.message)}${issue.subject ? ` <span>${escapeHtml(issue.subject)}</span>` : ''}</li>`).join('')}
+        ${issues.map((issue) => `<li><strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(issue.message)}${issue.subject ? ` <span>${escapeHtml(issue.subject)}</span>` : ''}${issue.suggestion ? `<p class="fix-suggestion">${escapeHtml(issue.suggestion)}</p>` : ''}</li>`).join('')}
       </ul>
     </div>
   `;

@@ -924,3 +924,18 @@ input[type="file"] {
     border: 1px solid #9ca3af !important;
   }
 }
+
+.report-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.fix-suggestion {
+  background: rgba(255, 255, 255, 0.65);
+  border-radius: 8px;
+  color: #2d3748;
+  margin-top: 6px;
+  padding: 7px 9px;
+}
