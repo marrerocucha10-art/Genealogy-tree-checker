@@ -92,10 +92,40 @@ function setEventValue(target, eventTag, childTag, value) {
   if (childTag === 'PLAC') target[eventName].place = value;
 }
 
+function validateGedcomText(gedcomText) {
+  if (!gedcomText || typeof gedcomText !== 'string') {
+    return { valid: false, errors: ['GEDCOM text is required.'] };
+  }
+
+  const lines = gedcomText.replace(/^\uFEFF/, '').split(/\r?\n/);
+  const parsedLines = lines.map(parseLine).filter(Boolean);
+  const hasHeader = parsedLines.some((line) => line.level === 0 && line.tag === 'HEAD');
+  const hasTrailer = parsedLines.some((line) => line.level === 0 && line.tag === 'TRLR');
+  const hasRecords = parsedLines.some((line) => line.level === 0 && (line.tag === 'INDI' || line.tag === 'FAM'));
+  const validLineCount = parsedLines.length;
+  const errors = [];
+
+  if (!hasHeader) errors.push('Missing required GEDCOM header: 0 HEAD.');
+  if (!hasTrailer) errors.push('Missing required GEDCOM trailer: 0 TRLR.');
+  if (!hasRecords) errors.push('No individual or family records were found.');
+  if (validLineCount < 3) errors.push('File does not contain enough GEDCOM records to parse.');
+
+  return { valid: errors.length === 0, errors };
+}
+
+function assertValidGedcomText(gedcomText) {
+  const validation = validateGedcomText(gedcomText);
+  if (!validation.valid) {
+    throw new Error(`This does not look like a valid GEDCOM file. ${validation.errors.join(' ')}`);
+  }
+}
+
 function parseGedcom(gedcomText) {
   if (!gedcomText || typeof gedcomText !== 'string') {
     throw new Error('GEDCOM text is required. Send it as { "gedcom": "..." } or raw text.');
   }
+
+  assertValidGedcomText(gedcomText);
 
   const peopleById = new Map();
   const familiesById = new Map();
@@ -279,4 +309,4 @@ function parseGedcom(gedcomText) {
   };
 }
 
-module.exports = { parseGedcom };
+module.exports = { parseGedcom, validateGedcomText };
