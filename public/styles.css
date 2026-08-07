@@ -1078,3 +1078,43 @@ input[type="file"] {
     grid-template-columns: 1fr;
   }
 }
+
+.package-section {
+  margin-bottom: 40px;
+}
+
+.package-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.package-card {
+  background:
+    linear-gradient(#ffffff, #ffffff) padding-box,
+    linear-gradient(135deg, #667eea, #68d391) border-box;
+  border: 2px solid transparent;
+  border-radius: 14px;
+  box-shadow: 0 12px 28px rgba(45, 55, 72, 0.1);
+  padding: 18px;
+}
+
+.package-card h3 {
+  color: #2d3748;
+  margin-bottom: 12px;
+}
+
+.package-card ul {
+  margin-left: 20px;
+}
+
+.package-card li {
+  color: #4a5568;
+  margin: 7px 0;
+}
+
+@media (max-width: 900px) {
+  .package-grid {
+    grid-template-columns: 1fr;
+  }
+}

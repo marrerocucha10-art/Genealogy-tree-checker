@@ -24,8 +24,8 @@ const SUBSCRIPTION_TIERS = {
   pro: {
     name: 'Pro / Researcher',
     rank: 2,
-    description: 'For deeper genealogy cleanup and reporting.',
-    features: ['Safe automatic fixes', 'Full correction report', 'Advanced validation workflow', 'Printed Family Tree included', 'Correction Report included', 'Researcher Review included'],
+    description: 'For deeper genealogy cleanup, reporting, and the bundled Genealogy Pro Package.',
+    features: ['Safe automatic fixes', 'Full correction report', 'Advanced validation workflow', 'Digital report package', 'Printed tree and chart package', 'Researcher review service package'],
   },
   business: {
     name: 'Business / Genealogist',
