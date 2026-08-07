@@ -361,6 +361,11 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+
+app.get('/store', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'store.html'));
+});
+
 app.get('/api/health', (req, res) => {
   res.json({ status: 'Genealogy Tree Checker is running!' });
 });
