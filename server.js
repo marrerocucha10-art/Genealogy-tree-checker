@@ -25,6 +25,108 @@ app.use((req, res, next) => {
 
 const MAX_GEDCOM_BYTES = 10 * 1024 * 1024;
 
+const SUBSCRIPTION_TIERS = {
+  personal: {
+    name: 'Personal',
+    priceEnv: 'STRIPE_PERSONAL_PRICE_ID',
+  },
+  pro: {
+    name: 'Pro / Researcher',
+    priceEnv: 'STRIPE_PRO_PRICE_ID',
+  },
+  business: {
+    name: 'Business / Genealogist',
+    priceEnv: 'STRIPE_BUSINESS_PRICE_ID',
+  },
+};
+
+function getBaseUrl(req) {
+  if (process.env.PUBLIC_APP_URL) return process.env.PUBLIC_APP_URL.replace(/\/$/, '');
+
+  const protocol = req.get('x-forwarded-proto') || req.protocol || 'http';
+  const host = req.get('host');
+  return `${protocol}://${host}`;
+}
+
+function getStripeConfig() {
+  const tiers = Object.fromEntries(Object.entries(SUBSCRIPTION_TIERS).map(([id, tier]) => ([
+    id,
+    {
+      name: tier.name,
+      configured: Boolean(process.env[tier.priceEnv]),
+    },
+  ])));
+
+  return {
+    configured: Boolean(process.env.STRIPE_SECRET_KEY),
+    portalConfigured: Boolean(process.env.STRIPE_CUSTOMER_PORTAL_RETURN_URL || process.env.PUBLIC_APP_URL),
+    tiers,
+  };
+}
+
+async function createStripeCheckoutSession(req, tierId) {
+  const tier = SUBSCRIPTION_TIERS[tierId];
+  if (!tier) throw new Error('Unknown subscription tier.');
+  if (!process.env.STRIPE_SECRET_KEY) throw new Error('Stripe is not configured yet. Add STRIPE_SECRET_KEY in Vercel Environment Variables.');
+
+  const priceId = process.env[tier.priceEnv];
+  if (!priceId) throw new Error(`${tier.name} is missing its Stripe price ID. Add ${tier.priceEnv} in Vercel Environment Variables.`);
+
+  const baseUrl = getBaseUrl(req);
+  const params = new URLSearchParams({
+    mode: 'subscription',
+    success_url: `${baseUrl}/?subscription=${tierId}&checkout=success`,
+    cancel_url: `${baseUrl}/?checkout=cancelled`,
+    'line_items[0][price]': priceId,
+    'line_items[0][quantity]': '1',
+    'metadata[tier]': tierId,
+  });
+
+  const response = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: params,
+  });
+
+  const payload = await response.json();
+  if (!response.ok) {
+    throw new Error(payload.error?.message || 'Could not create Stripe Checkout session.');
+  }
+
+  return payload;
+}
+
+async function createStripePortalSession(req) {
+  if (!process.env.STRIPE_SECRET_KEY) throw new Error('Stripe is not configured yet.');
+  const customerId = req.body?.customerId || req.query?.customerId;
+  if (!customerId) throw new Error('Stripe customer ID is required to open the billing portal.');
+
+  const baseUrl = getBaseUrl(req);
+  const params = new URLSearchParams({
+    customer: customerId,
+    return_url: process.env.STRIPE_CUSTOMER_PORTAL_RETURN_URL || baseUrl,
+  });
+
+  const response = await fetch('https://api.stripe.com/v1/billing_portal/sessions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: params,
+  });
+
+  const payload = await response.json();
+  if (!response.ok) {
+    throw new Error(payload.error?.message || 'Could not create Stripe billing portal session.');
+  }
+
+  return payload;
+}
+
 function getGedcomInput(req) {
   if (typeof req.body === 'string') return req.body;
   if (req.body && typeof req.body.gedcom === 'string') return req.body.gedcom;
@@ -167,6 +269,29 @@ app.post(['/api/parse', '/api/parse-gedcom'], (req, res) => {
       success: false,
       error: error.message,
     });
+  }
+});
+
+
+app.get('/api/subscription/config', (req, res) => {
+  res.json({ success: true, stripe: getStripeConfig() });
+});
+
+app.post('/api/create-checkout-session', async (req, res) => {
+  try {
+    const session = await createStripeCheckoutSession(req, req.body?.tier);
+    res.json({ success: true, url: session.url, id: session.id });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/create-portal-session', async (req, res) => {
+  try {
+    const session = await createStripePortalSession(req);
+    res.json({ success: true, url: session.url });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
   }
 });
 

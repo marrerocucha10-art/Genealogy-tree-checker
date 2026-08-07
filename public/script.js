@@ -1,9 +1,47 @@
 const STORAGE_KEY = 'familyTreeData';
 const LAYOUT_STORAGE_KEY = 'familyTreeLayout';
+const SUBSCRIPTION_STORAGE_KEY = 'familyTreeSubscriptionTier';
 const MAX_GEDCOM_FILE_BYTES = 10 * 1024 * 1024;
 
 let treeData = loadTreeData();
 let treeLayout = localStorage.getItem(LAYOUT_STORAGE_KEY) || 'vertical';
+let currentTier = localStorage.getItem(SUBSCRIPTION_STORAGE_KEY) || 'free';
+let stripeConfig = null;
+
+const SUBSCRIPTION_TIERS = {
+  free: {
+    name: 'Free',
+    rank: 0,
+    description: 'Try the GEDCOM parser with basic preview and basic issue report.',
+    features: ['Small GEDCOM upload', 'Basic tree preview', 'Basic error report'],
+  },
+  personal: {
+    name: 'Personal',
+    rank: 1,
+    description: 'For one family tree with print and export tools.',
+    features: ['ZIP uploads', 'Print tree', 'Export JSON/CSV', 'Local fix records'],
+  },
+  pro: {
+    name: 'Pro / Researcher',
+    rank: 2,
+    description: 'For deeper genealogy cleanup and reporting.',
+    features: ['Safe automatic fixes', 'Full correction report', 'Advanced validation workflow'],
+  },
+  business: {
+    name: 'Business / Genealogist',
+    rank: 3,
+    description: 'For client-facing genealogy workflows.',
+    features: ['Client tree workflow', 'Branded reports roadmap', 'Higher limits roadmap'],
+  },
+};
+
+const ACTION_REQUIREMENTS = {
+  print: 'personal',
+  exportJson: 'personal',
+  exportCsv: 'personal',
+  copySummary: 'personal',
+  autoFix: 'pro',
+};
 
 const gedcomForm = document.getElementById('gedcomForm');
 const gedcomFileInput = document.getElementById('gedcomFile');
@@ -19,6 +57,24 @@ const exportJsonButton = document.getElementById('exportJson');
 const exportCsvButton = document.getElementById('exportCsv');
 const copySummaryButton = document.getElementById('copySummary');
 const layoutButtons = document.querySelectorAll('[data-layout]');
+const subscriptionPlansDiv = document.getElementById('subscriptionPlans');
+const subscriptionStatusDiv = document.getElementById('subscriptionStatus');
+const manageBillingButton = document.getElementById('manageBilling');
+
+subscriptionPlansDiv.addEventListener('click', (event) => {
+  const upgradeButton = event.target.closest('[data-upgrade-tier]');
+  const previewButton = event.target.closest('[data-preview-tier]');
+
+  if (upgradeButton) {
+    startCheckout(upgradeButton.dataset.upgradeTier);
+  }
+
+  if (previewButton) {
+    setPreviewTier(previewButton.dataset.previewTier);
+  }
+});
+
+manageBillingButton.addEventListener('click', openBillingPortal);
 
 layoutButtons.forEach((button) => {
   button.addEventListener('click', () => {
@@ -30,7 +86,22 @@ layoutButtons.forEach((button) => {
 });
 
 function updateLayoutButtons() {
-  layoutButtons.forEach((button) => {
+  subscriptionPlansDiv.addEventListener('click', (event) => {
+  const upgradeButton = event.target.closest('[data-upgrade-tier]');
+  const previewButton = event.target.closest('[data-preview-tier]');
+
+  if (upgradeButton) {
+    startCheckout(upgradeButton.dataset.upgradeTier);
+  }
+
+  if (previewButton) {
+    setPreviewTier(previewButton.dataset.previewTier);
+  }
+});
+
+manageBillingButton.addEventListener('click', openBillingPortal);
+
+layoutButtons.forEach((button) => {
     button.classList.toggle('active', button.dataset.layout === treeLayout);
   });
 }
@@ -112,6 +183,7 @@ familyForm.addEventListener('submit', (event) => {
 });
 
 printTreeButton.addEventListener('click', () => {
+  if (!requireTier('print')) return;
   if (!treeData.people.length) {
     setStatus('Upload or add family members before printing the tree.', 'error');
     return;
@@ -121,21 +193,21 @@ printTreeButton.addEventListener('click', () => {
 });
 
 exportJsonButton.addEventListener('click', () => {
-  if (!ensureTreeHasPeople('exporting JSON')) return;
+  if (!requireTier('exportJson') || !ensureTreeHasPeople('exporting JSON')) return;
 
   downloadFile('family-tree.json', JSON.stringify(treeData, null, 2), 'application/json');
   setStatus('Downloaded parsed tree JSON.', 'success');
 });
 
 exportCsvButton.addEventListener('click', () => {
-  if (!ensureTreeHasPeople('exporting CSV')) return;
+  if (!requireTier('exportCsv') || !ensureTreeHasPeople('exporting CSV')) return;
 
   downloadFile('family-tree-people.csv', buildPeopleCsv(), 'text/csv');
   setStatus('Downloaded people CSV.', 'success');
 });
 
 copySummaryButton.addEventListener('click', async () => {
-  if (!ensureTreeHasPeople('copying a summary')) return;
+  if (!requireTier('copySummary') || !ensureTreeHasPeople('copying a summary')) return;
 
   const summary = buildTreeSummary();
   try {
@@ -155,6 +227,96 @@ clearTreeButton.addEventListener('click', () => {
   }
 });
 
+
+
+async function loadSubscriptionConfig() {
+  try {
+    const response = await fetch('/api/subscription/config');
+    const result = await response.json();
+    stripeConfig = result.stripe || null;
+  } catch (error) {
+    stripeConfig = null;
+  }
+
+  renderSubscriptionPlans();
+}
+
+function renderSubscriptionPlans() {
+  subscriptionStatusDiv.textContent = `Current plan: ${SUBSCRIPTION_TIERS[currentTier]?.name || 'Free'}`;
+
+  subscriptionPlansDiv.innerHTML = Object.entries(SUBSCRIPTION_TIERS).map(([tierId, tier]) => {
+    const isCurrent = tierId === currentTier;
+    const isFree = tierId === 'free';
+    const stripeReady = isFree || stripeConfig?.configured && stripeConfig?.tiers?.[tierId]?.configured;
+
+    return `
+      <article class="subscription-card ${isCurrent ? 'current' : ''}">
+        <h3>${escapeHtml(tier.name)}</h3>
+        <p>${escapeHtml(tier.description)}</p>
+        <ul>${tier.features.map((feature) => `<li>${escapeHtml(feature)}</li>`).join('')}</ul>
+        ${isCurrent ? '<span class="plan-badge">Current</span>' : ''}
+        ${!isFree ? `<button type="button" class="btn-add" data-upgrade-tier="${tierId}">${stripeReady ? `Upgrade to ${escapeHtml(tier.name)}` : 'Stripe setup needed'}</button>` : ''}
+        ${!isCurrent ? `<button type="button" class="btn-secondary" data-preview-tier="${tierId}">Preview as ${escapeHtml(tier.name)}</button>` : ''}
+      </article>
+    `;
+  }).join('');
+}
+
+function hasTier(requiredTier) {
+  const current = SUBSCRIPTION_TIERS[currentTier] || SUBSCRIPTION_TIERS.free;
+  const required = SUBSCRIPTION_TIERS[requiredTier] || SUBSCRIPTION_TIERS.free;
+  return current.rank >= required.rank;
+}
+
+function requireTier(action) {
+  const requiredTier = ACTION_REQUIREMENTS[action];
+  if (!requiredTier || hasTier(requiredTier)) return true;
+
+  setStatus(`${SUBSCRIPTION_TIERS[requiredTier].name} subscription required for this action. Choose a plan above to upgrade.`, 'error');
+  return false;
+}
+
+function setPreviewTier(tierId) {
+  if (!SUBSCRIPTION_TIERS[tierId]) return;
+
+  currentTier = tierId;
+  localStorage.setItem(SUBSCRIPTION_STORAGE_KEY, currentTier);
+  renderSubscriptionPlans();
+  setStatus(`Previewing ${SUBSCRIPTION_TIERS[tierId].name} workflow locally. Use Stripe Checkout to activate this for real customers.`, 'info');
+}
+
+async function startCheckout(tierId) {
+  if (!SUBSCRIPTION_TIERS[tierId] || tierId === 'free') return;
+
+  try {
+    const response = await fetch('/api/create-checkout-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tier: tierId }),
+    });
+    const result = await response.json();
+
+    if (!response.ok || !result.success) throw new Error(result.error || 'Could not start checkout.');
+    window.location.href = result.url;
+  } catch (error) {
+    setStatus(`${error.message} For preview, use “Preview as ${SUBSCRIPTION_TIERS[tierId].name}”.`, 'error');
+  }
+}
+
+async function openBillingPortal() {
+  setStatus('Billing portal requires a saved Stripe customer ID after a real checkout. Add account login/customer tracking before enabling portal access.', 'info');
+}
+
+function applyCheckoutReturn() {
+  const params = new URLSearchParams(window.location.search);
+  const tier = params.get('subscription');
+
+  if (params.get('checkout') === 'success' && SUBSCRIPTION_TIERS[tier]) {
+    currentTier = tier;
+    localStorage.setItem(SUBSCRIPTION_STORAGE_KEY, currentTier);
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+}
 
 function ensureTreeHasPeople(action) {
   if (treeData.people.length) return true;
@@ -612,6 +774,8 @@ function getAutomaticFixes() {
 }
 
 function applyAutomaticFixes() {
+  if (!requireTier('autoFix')) return;
+
   const fixIssues = getAutomaticFixIssues();
   if (!fixIssues.length) {
     setStatus('No safe automatic fixes are available. Use manual fixes for the remaining issues.', 'info');
@@ -948,6 +1112,9 @@ function escapeHtml(value = '') {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  applyCheckoutReturn();
   updateLayoutButtons();
+  renderSubscriptionPlans();
+  loadSubscriptionConfig();
   renderFamilyTree();
 });
