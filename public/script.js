@@ -323,19 +323,25 @@ function renderFamilyFacts(family) {
 }
 
 function renderPersonNode(person, role = '') {
-  const birth = [person.birthDate || person.birthYear, person.birthPlace].filter(Boolean).join(' · ') || 'Unknown';
-  const death = [person.deathDate, person.deathPlace].filter(Boolean).join(' · ');
   const label = person.source === 'manual' ? person.relation : person.sex;
+  const birthDate = person.birthDate || person.birthYear || 'Unknown';
+  const birthPlace = person.birthPlace || 'Unknown';
+  const deathDate = person.deathDate || '';
+  const deathPlace = person.deathPlace || '';
 
   return `
     <article class="person-node ${escapeHtml(role)}">
       <button class="btn-remove node-remove" type="button" data-remove-person-id="${escapeHtml(person.id)}" aria-label="Remove ${escapeHtml(person.name)}">×</button>
       <h4>${escapeHtml(person.name)}</h4>
-      <p class="person-id">${escapeHtml(person.id)}</p>
-      <p><span class="relation-badge">${escapeHtml(label || 'Unknown')}</span></p>
-      <p><strong>Born:</strong> ${escapeHtml(birth)}</p>
-      ${death ? `<p><strong>Died:</strong> ${escapeHtml(death)}</p>` : ''}
-      ${person.notes?.length ? `<p><strong>Notes:</strong> ${escapeHtml(person.notes.join(' | '))}</p>` : ''}
+      <dl class="person-details">
+        <div><dt>GEDCOM ID</dt><dd>${escapeHtml(person.id)}</dd></div>
+        <div><dt>Sex / Relation</dt><dd><span class="relation-badge">${escapeHtml(label || 'Unknown')}</span></dd></div>
+        <div><dt>Birth date</dt><dd>${escapeHtml(birthDate)}</dd></div>
+        <div><dt>Birth place</dt><dd>${escapeHtml(birthPlace)}</dd></div>
+        ${deathDate ? `<div><dt>Death date</dt><dd>${escapeHtml(deathDate)}</dd></div>` : ''}
+        ${deathPlace ? `<div><dt>Death place</dt><dd>${escapeHtml(deathPlace)}</dd></div>` : ''}
+        ${person.notes?.length ? `<div><dt>Notes</dt><dd>${escapeHtml(person.notes.join(' | '))}</dd></div>` : ''}
+      </dl>
     </article>
   `;
 }
