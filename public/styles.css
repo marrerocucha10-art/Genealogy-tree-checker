@@ -1118,3 +1118,19 @@ input[type="file"] {
     grid-template-columns: 1fr;
   }
 }
+
+.billing-toggle {
+  background: #edf2f7;
+  border: 1px solid #cbd5e0;
+  border-radius: 999px;
+  display: inline-flex;
+  margin-bottom: 14px;
+  padding: 4px;
+}
+
+.plan-price {
+  color: #4c51bf;
+  font-size: 1.1em;
+  font-weight: 800;
+  margin-bottom: 8px;
+}

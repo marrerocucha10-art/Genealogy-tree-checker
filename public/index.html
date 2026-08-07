@@ -22,6 +22,10 @@
           </div>
           <button id="manageBilling" type="button" class="btn-secondary">Manage Billing</button>
         </div>
+        <div class="billing-toggle" aria-label="Billing interval">
+          <button id="monthlyBilling" type="button" class="layout-button active" data-billing-interval="monthly">Monthly</button>
+          <button id="annualBilling" type="button" class="layout-button" data-billing-interval="annual">Annual</button>
+        </div>
         <div id="subscriptionStatus" class="subscription-status">Current plan: Free</div>
         <div id="subscriptionPlans" class="subscription-plans" aria-live="polite"></div>
       </section>

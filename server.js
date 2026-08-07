@@ -28,15 +28,24 @@ const MAX_GEDCOM_BYTES = 10 * 1024 * 1024;
 const SUBSCRIPTION_TIERS = {
   personal: {
     name: 'Personal',
-    priceEnv: 'STRIPE_PERSONAL_PRICE_ID',
+    prices: {
+      monthly: 'STRIPE_PERSONAL_MONTHLY_PRICE_ID',
+      annual: 'STRIPE_PERSONAL_ANNUAL_PRICE_ID',
+    },
   },
   pro: {
     name: 'Pro / Researcher',
-    priceEnv: 'STRIPE_PRO_PRICE_ID',
+    prices: {
+      monthly: 'STRIPE_PRO_MONTHLY_PRICE_ID',
+      annual: 'STRIPE_PRO_ANNUAL_PRICE_ID',
+    },
   },
   business: {
     name: 'Business / Genealogist',
-    priceEnv: 'STRIPE_BUSINESS_PRICE_ID',
+    prices: {
+      monthly: 'STRIPE_BUSINESS_MONTHLY_PRICE_ID',
+      annual: 'STRIPE_BUSINESS_ANNUAL_PRICE_ID',
+    },
   },
 };
 
@@ -53,7 +62,8 @@ function getStripeConfig() {
     id,
     {
       name: tier.name,
-      configured: Boolean(process.env[tier.priceEnv]),
+      monthly: { configured: Boolean(process.env[tier.prices.monthly]) },
+      annual: { configured: Boolean(process.env[tier.prices.annual]) },
     },
   ])));
 
@@ -65,22 +75,25 @@ function getStripeConfig() {
   };
 }
 
-async function createStripeCheckoutSession(req, tierId) {
+async function createStripeCheckoutSession(req, tierId, interval = 'monthly') {
   const tier = SUBSCRIPTION_TIERS[tierId];
   if (!tier) throw new Error('Unknown subscription tier.');
+  if (!['monthly', 'annual'].includes(interval)) throw new Error('Unknown billing interval.');
   if (!process.env.STRIPE_SECRET_KEY) throw new Error('Stripe is not configured yet. Add STRIPE_SECRET_KEY in Vercel Environment Variables.');
 
-  const priceId = process.env[tier.priceEnv];
-  if (!priceId) throw new Error(`${tier.name} is missing its Stripe price ID. Add ${tier.priceEnv} in Vercel Environment Variables.`);
+  const priceEnv = tier.prices[interval];
+  const priceId = process.env[priceEnv];
+  if (!priceId) throw new Error(`${tier.name} ${interval} is missing its Stripe price ID. Add ${priceEnv} in Vercel Environment Variables.`);
 
   const baseUrl = getBaseUrl(req);
   const params = new URLSearchParams({
     mode: 'subscription',
-    success_url: `${baseUrl}/?subscription=${tierId}&checkout=success`,
+    success_url: `${baseUrl}/?subscription=${tierId}&interval=${interval}&checkout=success`,
     cancel_url: `${baseUrl}/?checkout=cancelled`,
     'line_items[0][price]': priceId,
     'line_items[0][quantity]': '1',
     'metadata[tier]': tierId,
+    'metadata[interval]': interval,
   });
 
   const response = await fetch('https://api.stripe.com/v1/checkout/sessions', {
@@ -281,7 +294,7 @@ app.get('/api/subscription/config', (req, res) => {
 
 app.post('/api/create-checkout-session', async (req, res) => {
   try {
-    const session = await createStripeCheckoutSession(req, req.body?.tier);
+    const session = await createStripeCheckoutSession(req, req.body?.tier, req.body?.interval);
     res.json({ success: true, url: session.url, id: session.id });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });

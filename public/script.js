@@ -1,11 +1,13 @@
 const STORAGE_KEY = 'familyTreeData';
 const LAYOUT_STORAGE_KEY = 'familyTreeLayout';
 const SUBSCRIPTION_STORAGE_KEY = 'familyTreeSubscriptionTier';
+const BILLING_INTERVAL_STORAGE_KEY = 'familyTreeBillingInterval';
 const MAX_GEDCOM_FILE_BYTES = 10 * 1024 * 1024;
 
 let treeData = loadTreeData();
 let treeLayout = localStorage.getItem(LAYOUT_STORAGE_KEY) || 'vertical';
 let currentTier = localStorage.getItem(SUBSCRIPTION_STORAGE_KEY) || 'free';
+let billingInterval = localStorage.getItem(BILLING_INTERVAL_STORAGE_KEY) || 'monthly';
 let stripeConfig = null;
 let storeUrl = '/store';
 
@@ -14,24 +16,32 @@ const SUBSCRIPTION_TIERS = {
     name: 'Free',
     rank: 0,
     description: 'Try the GEDCOM parser with basic preview and basic issue report.',
+    monthlyPrice: 0,
+    annualPrice: 0,
     features: ['Small GEDCOM upload', 'Basic tree preview', 'Basic error report'],
   },
   personal: {
     name: 'Personal',
     rank: 1,
     description: 'For one family tree with print and export tools.',
+    monthlyPrice: 19.99,
+    annualPrice: 19.99,
     features: ['ZIP uploads', 'Print tree', 'Export JSON/CSV', 'Local fix records'],
   },
   pro: {
     name: 'Pro / Researcher',
     rank: 2,
     description: 'For deeper genealogy cleanup, reporting, and the bundled Genealogy Pro Package.',
+    monthlyPrice: 29.99,
+    annualPrice: 29.99,
     features: ['Safe automatic fixes', 'Full correction report', 'Advanced validation workflow', 'Digital report package', 'Printed tree and chart package', 'Researcher review service package', 'Memory keepsake package', 'Research journals and worksheets'],
   },
   business: {
     name: 'Business / Genealogist',
     rank: 3,
     description: 'For client-facing genealogy workflows.',
+    monthlyPrice: 39.99,
+    annualPrice: 39.99,
     features: ['Client tree workflow', 'Branded reports roadmap', 'Higher limits roadmap'],
   },
 };
@@ -58,6 +68,7 @@ const exportJsonButton = document.getElementById('exportJson');
 const exportCsvButton = document.getElementById('exportCsv');
 const copySummaryButton = document.getElementById('copySummary');
 const layoutButtons = document.querySelectorAll('[data-layout]');
+const billingButtons = document.querySelectorAll('[data-billing-interval]');
 const subscriptionPlansDiv = document.getElementById('subscriptionPlans');
 const subscriptionStatusDiv = document.getElementById('subscriptionStatus');
 const manageBillingButton = document.getElementById('manageBilling');
@@ -82,6 +93,15 @@ goToStoreButton.addEventListener('click', () => {
   window.location.href = storeUrl;
 });
 
+billingButtons.forEach((button) => {
+  button.addEventListener('click', () => {
+    billingInterval = button.dataset.billingInterval;
+    localStorage.setItem(BILLING_INTERVAL_STORAGE_KEY, billingInterval);
+    updateBillingButtons();
+    renderSubscriptionPlans();
+  });
+});
+
 layoutButtons.forEach((button) => {
   button.addEventListener('click', () => {
     treeLayout = button.dataset.layout;
@@ -91,27 +111,14 @@ layoutButtons.forEach((button) => {
   });
 });
 
+function updateBillingButtons() {
+  billingButtons.forEach((button) => {
+    button.classList.toggle('active', button.dataset.billingInterval === billingInterval);
+  });
+}
+
 function updateLayoutButtons() {
-  subscriptionPlansDiv.addEventListener('click', (event) => {
-  const upgradeButton = event.target.closest('[data-upgrade-tier]');
-  const previewButton = event.target.closest('[data-preview-tier]');
-
-  if (upgradeButton) {
-    startCheckout(upgradeButton.dataset.upgradeTier);
-  }
-
-  if (previewButton) {
-    setPreviewTier(previewButton.dataset.previewTier);
-  }
-});
-
-manageBillingButton.addEventListener('click', openBillingPortal);
-
-goToStoreButton.addEventListener('click', () => {
-  window.location.href = storeUrl;
-});
-
-layoutButtons.forEach((button) => {
+  layoutButtons.forEach((button) => {
     button.classList.toggle('active', button.dataset.layout === treeLayout);
   });
 }
@@ -258,11 +265,14 @@ function renderSubscriptionPlans() {
   subscriptionPlansDiv.innerHTML = Object.entries(SUBSCRIPTION_TIERS).map(([tierId, tier]) => {
     const isCurrent = tierId === currentTier;
     const isFree = tierId === 'free';
-    const stripeReady = isFree || stripeConfig?.configured && stripeConfig?.tiers?.[tierId]?.configured;
+    const stripeReady = isFree || stripeConfig?.configured && stripeConfig?.tiers?.[tierId]?.[billingInterval]?.configured;
+    const price = billingInterval === 'annual' ? tier.annualPrice : tier.monthlyPrice;
+    const priceLabel = isFree ? 'Free' : `$${price.toFixed(2)} / month${billingInterval === 'annual' ? ' billed annually' : ''}`;
 
     return `
       <article class="subscription-card ${isCurrent ? 'current' : ''}">
         <h3>${escapeHtml(tier.name)}</h3>
+        <p class="plan-price">${escapeHtml(priceLabel)}</p>
         <p>${escapeHtml(tier.description)}</p>
         <ul>${tier.features.map((feature) => `<li>${escapeHtml(feature)}</li>`).join('')}</ul>
         ${isCurrent ? '<span class="plan-badge">Current</span>' : ''}
@@ -303,7 +313,7 @@ async function startCheckout(tierId) {
     const response = await fetch('/api/create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tier: tierId }),
+      body: JSON.stringify({ tier: tierId, interval: billingInterval }),
     });
     const result = await response.json();
 
@@ -1125,6 +1135,7 @@ function escapeHtml(value = '') {
 document.addEventListener('DOMContentLoaded', () => {
   applyCheckoutReturn();
   updateLayoutButtons();
+  updateBillingButtons();
   renderSubscriptionPlans();
   loadSubscriptionConfig();
   renderFamilyTree();
