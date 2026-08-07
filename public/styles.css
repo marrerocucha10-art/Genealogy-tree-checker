@@ -1274,3 +1274,26 @@ input[type="file"] {
     grid-template-columns: 1fr;
   }
 }
+
+.featured-option {
+  background:
+    linear-gradient(135deg, #667eea, #764ba2) padding-box,
+    linear-gradient(135deg, #667eea, #68d391) border-box;
+  color: #ffffff;
+}
+
+.product-access-link {
+  background: #edf2f7;
+  border: 1px solid #cbd5e0;
+  border-radius: 8px;
+  color: #4a5568;
+  display: inline-block;
+  font-weight: 800;
+  margin-top: 12px;
+  padding: 9px 12px;
+  text-decoration: none;
+}
+
+.product-access-link:hover {
+  background: #e2e8f0;
+}
