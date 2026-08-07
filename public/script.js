@@ -384,6 +384,7 @@ function createEmptyTreeData() {
     families: [],
     relationships: [],
     warnings: [],
+    validationReport: createEmptyValidationReport(),
   };
 }
 
@@ -397,6 +398,7 @@ function loadTreeData() {
         families: stored.families || [],
         relationships: stored.relationships || [],
         warnings: stored.warnings || [],
+        validationReport: stored.validationReport || createEmptyValidationReport(),
       };
     }
   } catch (error) {
@@ -411,7 +413,7 @@ function saveTreeData() {
 }
 
 function normalizeParsedGedcom(parsed) {
-  return {
+  const normalized = {
     metadata: parsed.metadata || { header: { source: {}, gedcom: {} }, submitters: [] },
     people: parsed.people.map((person) => ({
       id: person.id,
@@ -429,7 +431,152 @@ function normalizeParsedGedcom(parsed) {
     families: parsed.families || [],
     relationships: parsed.relationships || [],
     warnings: parsed.warnings || [],
+    validationReport: createEmptyValidationReport(),
   };
+
+  normalized.validationReport = analyzeTreeData(normalized);
+  return normalized;
+}
+
+
+function createEmptyValidationReport() {
+  return { errors: [], warnings: [], info: [] };
+}
+
+function analyzeTreeData(data) {
+  const report = createEmptyValidationReport();
+  const peopleById = new Map(data.people.map((person) => [person.id, person]));
+  const familyById = new Map(data.families.map((family) => [family.id, family]));
+  const duplicateGroups = new Map();
+
+  for (const person of data.people) {
+    const key = normalizeDuplicateKey(person);
+    if (!key) continue;
+    if (!duplicateGroups.has(key)) duplicateGroups.set(key, []);
+    duplicateGroups.get(key).push(person);
+
+    const birthYear = extractYear(person.birthDate || person.birthYear);
+    const deathYear = extractYear(person.deathDate);
+
+    if (birthYear && deathYear && deathYear < birthYear) {
+      addIssue(report.errors, 'Date inconsistency', `${person.name} has a death year (${deathYear}) before birth year (${birthYear}).`, person.id);
+    }
+
+    if (birthYear && birthYear > new Date().getFullYear()) {
+      addIssue(report.errors, 'Date inconsistency', `${person.name} has a birth year in the future (${birthYear}).`, person.id);
+    }
+
+    if (deathYear && deathYear > new Date().getFullYear()) {
+      addIssue(report.errors, 'Date inconsistency', `${person.name} has a death year in the future (${deathYear}).`, person.id);
+    }
+
+    if (birthYear && deathYear && deathYear - birthYear > 125) {
+      addIssue(report.warnings, 'Date warning', `${person.name} appears to have lived ${deathYear - birthYear} years.`, person.id);
+    }
+
+    if (!person.birthPlace) {
+      addIssue(report.warnings, 'Place warning', `${person.name} is missing a birth place.`, person.id);
+    } else if (isWeakPlace(person.birthPlace)) {
+      addIssue(report.info, 'Place detail', `${person.name} has a very broad birth place: ${person.birthPlace}.`, person.id);
+    }
+
+    if (person.deathDate && !person.deathPlace) {
+      addIssue(report.warnings, 'Place warning', `${person.name} has a death date but no death place.`, person.id);
+    }
+
+    for (const familyId of person.familyAsChild || []) {
+      if (!familyById.has(familyId)) {
+        addIssue(report.errors, 'Relationship inconsistency', `${person.name} references missing child-family ${familyId}.`, person.id);
+      }
+    }
+
+    for (const familyId of person.familyAsSpouse || []) {
+      if (!familyById.has(familyId)) {
+        addIssue(report.errors, 'Relationship inconsistency', `${person.name} references missing spouse-family ${familyId}.`, person.id);
+      }
+    }
+  }
+
+  for (const matches of duplicateGroups.values()) {
+    if (matches.length > 1) {
+      addIssue(
+        report.warnings,
+        'Possible duplicate',
+        `${matches.length} people share the same name and birth year: ${matches.map((person) => `${person.name} (${person.id})`).join(', ')}.`
+      );
+    }
+  }
+
+  for (const family of data.families) {
+    const parentIds = [family.husbandId, family.wifeId].filter(Boolean);
+
+    if (!parentIds.length && (family.childrenIds || []).length) {
+      addIssue(report.warnings, 'Relationship warning', `${family.id} has children but no parents/spouses listed.`, family.id);
+    }
+
+    for (const personId of [...parentIds, ...(family.childrenIds || [])]) {
+      if (!peopleById.has(personId)) {
+        addIssue(report.errors, 'Relationship inconsistency', `${family.id} references missing person ${personId}.`, family.id);
+      }
+    }
+
+    for (const childId of family.childrenIds || []) {
+      if (parentIds.includes(childId)) {
+        addIssue(report.errors, 'Relationship inconsistency', `${childId} is listed as both parent/spouse and child in ${family.id}.`, family.id);
+      }
+
+      const child = peopleById.get(childId);
+      if (!child) continue;
+      const childBirthYear = extractYear(child.birthDate || child.birthYear);
+
+      for (const parentId of parentIds) {
+        const parent = peopleById.get(parentId);
+        if (!parent) continue;
+
+        const parentBirthYear = extractYear(parent.birthDate || parent.birthYear);
+        const parentDeathYear = extractYear(parent.deathDate);
+
+        if (parentBirthYear && childBirthYear && childBirthYear < parentBirthYear) {
+          addIssue(report.errors, 'Date inconsistency', `${child.name} appears born before parent ${parent.name}.`, family.id);
+        }
+
+        if (parentBirthYear && childBirthYear && childBirthYear - parentBirthYear < 12) {
+          addIssue(report.warnings, 'Date warning', `${parent.name} appears younger than 12 when ${child.name} was born.`, family.id);
+        }
+
+        if (parentDeathYear && childBirthYear && childBirthYear > parentDeathYear + 1) {
+          addIssue(report.errors, 'Date inconsistency', `${child.name} appears born after parent ${parent.name} died.`, family.id);
+        }
+      }
+    }
+  }
+
+  if (!report.errors.length && !report.warnings.length && !report.info.length) {
+    report.info.push({ category: 'No issues found', message: 'No duplicate, date, relationship, or place issues were detected by the current checks.' });
+  }
+
+  return report;
+}
+
+function normalizeDuplicateKey(person) {
+  const name = String(person.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const birthYear = extractYear(person.birthDate || person.birthYear) || 'unknown';
+  if (!name || name === String(person.id).toLowerCase().replace(/[^a-z0-9]/g, '')) return '';
+  return `${name}|${birthYear}`;
+}
+
+function extractYear(value = '') {
+  const match = String(value).match(/\b(\d{3,4})\b/);
+  return match ? Number(match[1]) : null;
+}
+
+function isWeakPlace(place = '') {
+  const parts = String(place).split(',').map((part) => part.trim()).filter(Boolean);
+  return parts.length < 2;
+}
+
+function addIssue(collection, category, message, subject = '') {
+  collection.push({ category, message, subject });
 }
 
 function renderFamilyTree() {
@@ -455,6 +602,7 @@ function renderFamilyTree() {
     ${renderSummary()}
     ${renderGedcomInfo()}
     ${treeData.warnings.length ? renderWarnings() : ''}
+    ${renderValidationReport()}
     ${treeCharts || `<section class="tree-chart standalone-people"><h3>People</h3><div class="children-row">${unconnectedPeople.map(renderPersonNode).join('')}</div></section>`}
     ${treeCharts && unconnectedPeople.length ? `<section class="tree-chart standalone-people"><h3>Unconnected People</h3><div class="children-row">${unconnectedPeople.map(renderPersonNode).join('')}</div></section>` : ''}
   `;
@@ -505,6 +653,38 @@ function renderGedcomInfo() {
         `).join('')}
       ` : ''}
     </section>
+  `;
+}
+
+
+function renderValidationReport() {
+  const report = treeData.validationReport || createEmptyValidationReport();
+  const total = report.errors.length + report.warnings.length + report.info.length;
+  if (!total) return '';
+
+  return `
+    <section class="validation-report">
+      <div class="report-heading">
+        <h3>Tree Error Report</h3>
+        <span>${report.errors.length} errors · ${report.warnings.length} warnings · ${report.info.length} notes</span>
+      </div>
+      ${renderIssueGroup('Errors', report.errors, 'error')}
+      ${renderIssueGroup('Warnings', report.warnings, 'warning')}
+      ${renderIssueGroup('Notes', report.info, 'info')}
+    </section>
+  `;
+}
+
+function renderIssueGroup(title, issues, type) {
+  if (!issues.length) return '';
+
+  return `
+    <div class="issue-group ${type}">
+      <h4>${title}</h4>
+      <ul>
+        ${issues.map((issue) => `<li><strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(issue.message)}${issue.subject ? ` <span>${escapeHtml(issue.subject)}</span>` : ''}</li>`).join('')}
+      </ul>
+    </div>
   `;
 }
 

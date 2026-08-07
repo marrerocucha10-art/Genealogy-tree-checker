@@ -846,3 +846,81 @@ input[type="file"] {
     background: #374151 !important;
   }
 }
+
+.validation-report {
+  background: #ffffff;
+  border: 1px solid #f6ad55;
+  border-radius: 12px;
+  margin-bottom: 18px;
+  padding: 18px;
+}
+
+.report-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  margin-bottom: 12px;
+}
+
+.report-heading h3 {
+  color: #2d3748;
+  margin: 0;
+}
+
+.report-heading span {
+  color: #718096;
+  font-weight: 700;
+}
+
+.issue-group {
+  border-radius: 10px;
+  margin-top: 12px;
+  padding: 12px 14px;
+}
+
+.issue-group.error {
+  background: #fff5f5;
+  border: 1px solid #fc8181;
+  color: #742a2a;
+}
+
+.issue-group.warning {
+  background: #fffaf0;
+  border: 1px solid #f6ad55;
+  color: #744210;
+}
+
+.issue-group.info {
+  background: #ebf8ff;
+  border: 1px solid #63b3ed;
+  color: #2a4365;
+}
+
+.issue-group h4 {
+  margin-bottom: 8px;
+}
+
+.issue-group ul {
+  margin-left: 18px;
+}
+
+.issue-group li {
+  margin: 6px 0;
+}
+
+.issue-group li span {
+  color: #718096;
+  font-family: Consolas, Monaco, monospace;
+  font-size: 0.86em;
+}
+
+@media print {
+  .validation-report {
+    border: 1px solid #9ca3af;
+  }
+
+  .issue-group {
+    border: 1px solid #9ca3af !important;
+  }
+}
