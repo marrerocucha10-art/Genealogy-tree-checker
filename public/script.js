@@ -33,10 +33,10 @@ const SUBSCRIPTION_TIERS = {
   pro: {
     name: 'Pro / Researcher',
     rank: 2,
-    description: 'For deeper genealogy cleanup, reporting, and the bundled Genealogy Pro Package.',
+    description: 'For deeper genealogy cleanup, reporting, and the Genealogy Pro Package included free with subscription.',
     monthlyPrice: 29.99,
     annualPrice: 29.99,
-    features: ['Safe automatic fixes', 'Full correction report', 'Advanced validation workflow', 'Digital report package', 'Printed tree and chart package', 'Researcher review service package', 'Memory keepsake package', 'Research journals and worksheets'],
+    features: ['Safe automatic fixes', 'Full correction report', 'Advanced validation workflow', 'Free Genealogy Pro Package included', 'Digital report package', 'Printed tree and chart package', 'Researcher review service package', 'Memory keepsake package', 'Research journals and worksheets'],
   },
   business: {
     name: 'Business / Genealogist',
