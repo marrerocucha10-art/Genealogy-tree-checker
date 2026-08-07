@@ -939,3 +939,41 @@ input[type="file"] {
   margin-top: 6px;
   padding: 7px 9px;
 }
+
+.fix-history {
+  background: #f0fff4;
+  border: 1px solid #68d391;
+  border-radius: 12px;
+  margin-bottom: 18px;
+  padding: 18px;
+}
+
+.fix-history ol {
+  margin-left: 20px;
+}
+
+.fix-history li {
+  background: rgba(255, 255, 255, 0.72);
+  border-radius: 10px;
+  margin: 10px 0;
+  padding: 10px 12px;
+}
+
+.fix-history li span,
+.fix-time {
+  color: #718096;
+  font-family: Consolas, Monaco, monospace;
+  font-size: 0.86em;
+}
+
+.fix-history p {
+  margin: 5px 0;
+}
+
+@media print {
+  .fix-history {
+    border: 1px solid #9ca3af;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

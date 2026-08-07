@@ -398,6 +398,7 @@ function createEmptyTreeData() {
     relationships: [],
     warnings: [],
     validationReport: createEmptyValidationReport(),
+    fixHistory: [],
   };
 }
 
@@ -412,6 +413,7 @@ function loadTreeData() {
         relationships: stored.relationships || [],
         warnings: stored.warnings || [],
         validationReport: stored.validationReport || createEmptyValidationReport(),
+        fixHistory: stored.fixHistory || [],
       };
     }
   } catch (error) {
@@ -445,6 +447,7 @@ function normalizeParsedGedcom(parsed) {
     relationships: parsed.relationships || [],
     warnings: parsed.warnings || [],
     validationReport: createEmptyValidationReport(),
+    fixHistory: [],
   };
 
   normalized.validationReport = analyzeTreeData(normalized);
@@ -600,46 +603,75 @@ function getAllIssues() {
   return [...report.errors, ...report.warnings, ...report.info];
 }
 
+function getAutomaticFixIssues() {
+  return getAllIssues().filter((issue) => issue.autoFix);
+}
+
 function getAutomaticFixes() {
-  return getAllIssues().filter((issue) => issue.autoFix).map((issue) => issue.autoFix);
+  return getAutomaticFixIssues().map((issue) => issue.autoFix);
 }
 
 function applyAutomaticFixes() {
-  const fixes = getAutomaticFixes();
-  if (!fixes.length) {
+  const fixIssues = getAutomaticFixIssues();
+  if (!fixIssues.length) {
     setStatus('No safe automatic fixes are available. Use manual fixes for the remaining issues.', 'info');
     return;
   }
 
-  for (const fix of fixes) {
+  const appliedRecords = [];
+
+  for (const issue of fixIssues) {
+    const fix = issue.autoFix;
+    let applied = false;
     if (fix.type === 'removeMissingFamilyRef') {
       const person = treeData.people.find((item) => item.id === fix.personId);
       if (person && Array.isArray(person[fix.field])) {
+        const before = person[fix.field].length;
         person[fix.field] = person[fix.field].filter((familyId) => familyId !== fix.familyId);
+        applied = person[fix.field].length !== before;
       }
     }
 
     if (fix.type === 'removeMissingPersonFromFamily') {
       const family = treeData.families.find((item) => item.id === fix.familyId);
       if (family) {
+        const before = JSON.stringify({ husbandId: family.husbandId, wifeId: family.wifeId, childrenIds: family.childrenIds || [] });
         if (family.husbandId === fix.personId) family.husbandId = null;
         if (family.wifeId === fix.personId) family.wifeId = null;
         family.childrenIds = (family.childrenIds || []).filter((childId) => childId !== fix.personId);
+        const after = JSON.stringify({ husbandId: family.husbandId, wifeId: family.wifeId, childrenIds: family.childrenIds || [] });
+        applied = before !== after;
       }
     }
 
     if (fix.type === 'removeChildFromFamily') {
       const family = treeData.families.find((item) => item.id === fix.familyId);
       if (family) {
+        const before = family.childrenIds?.length || 0;
         family.childrenIds = (family.childrenIds || []).filter((childId) => childId !== fix.childId);
+        applied = family.childrenIds.length !== before;
       }
+    }
+    if (applied) {
+      appliedRecords.push({
+        time: new Date().toISOString(),
+        category: issue.category,
+        subject: issue.subject || '',
+        problem: issue.message,
+        fix: issue.suggestion.replace(/^Automatic fix available:\s*/i, ''),
+      });
     }
   }
 
+  treeData.fixHistory = [...(treeData.fixHistory || []), ...appliedRecords];
   treeData.validationReport = analyzeTreeData(treeData);
   saveTreeData();
   renderFamilyTree();
-  setStatus(`Applied ${fixes.length} safe automatic fix(es). Review the report for remaining manual fixes.`, 'success');
+  setStatus(`Applied ${appliedRecords.length} safe automatic fix(es). Review the Fix Record and remaining manual fixes.`, 'success');
+
+  if (appliedRecords.length && confirm('Safe fixes were applied. Do you want a printout of the fixed family tree and fix record?')) {
+    window.print();
+  }
 }
 
 function showManualFixes() {
@@ -679,6 +711,7 @@ function renderFamilyTree() {
     ${renderGedcomInfo()}
     ${treeData.warnings.length ? renderWarnings() : ''}
     ${renderValidationReport()}
+    ${renderFixHistory()}
     ${treeCharts || `<section class="tree-chart standalone-people"><h3>People</h3><div class="children-row">${unconnectedPeople.map(renderPersonNode).join('')}</div></section>`}
     ${treeCharts && unconnectedPeople.length ? `<section class="tree-chart standalone-people"><h3>Unconnected People</h3><div class="children-row">${unconnectedPeople.map(renderPersonNode).join('')}</div></section>` : ''}
   `;
@@ -732,6 +765,31 @@ function renderGedcomInfo() {
   `;
 }
 
+
+
+function renderFixHistory() {
+  const records = treeData.fixHistory || [];
+  if (!records.length) return '';
+
+  return `
+    <section class="fix-history">
+      <div class="report-heading">
+        <h3>Fix Record</h3>
+        <span>${records.length} automatic fix(es) applied</span>
+      </div>
+      <ol>
+        ${records.map((record) => `
+          <li>
+            <strong>${escapeHtml(record.category)}</strong>${record.subject ? ` <span>${escapeHtml(record.subject)}</span>` : ''}
+            <p><strong>Problem:</strong> ${escapeHtml(record.problem)}</p>
+            <p><strong>Fix:</strong> ${escapeHtml(record.fix)}</p>
+            <p class="fix-time">${escapeHtml(new Date(record.time).toLocaleString())}</p>
+          </li>
+        `).join('')}
+      </ol>
+    </section>
+  `;
+}
 
 function renderValidationReport() {
   const report = treeData.validationReport || createEmptyValidationReport();
