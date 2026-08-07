@@ -92,7 +92,7 @@ subscriptionPlansDiv.addEventListener('click', (event) => {
 manageBillingButton.addEventListener('click', openBillingPortal);
 
 goToStoreButton.addEventListener('click', () => {
-  window.location.href = storeUrl;
+  window.open(storeUrl, '_blank', 'noopener');
 });
 
 billingButtons.forEach((button) => {
