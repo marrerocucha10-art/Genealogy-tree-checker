@@ -15,6 +15,9 @@ const birthYearInput = document.getElementById('birthYear');
 const familyTreeDiv = document.getElementById('familyTree');
 const clearTreeButton = document.getElementById('clearTree');
 const printTreeButton = document.getElementById('printTree');
+const exportJsonButton = document.getElementById('exportJson');
+const exportCsvButton = document.getElementById('exportCsv');
+const copySummaryButton = document.getElementById('copySummary');
 const layoutButtons = document.querySelectorAll('[data-layout]');
 
 layoutButtons.forEach((button) => {
@@ -104,6 +107,32 @@ printTreeButton.addEventListener('click', () => {
   window.print();
 });
 
+exportJsonButton.addEventListener('click', () => {
+  if (!ensureTreeHasPeople('exporting JSON')) return;
+
+  downloadFile('family-tree.json', JSON.stringify(treeData, null, 2), 'application/json');
+  setStatus('Downloaded parsed tree JSON.', 'success');
+});
+
+exportCsvButton.addEventListener('click', () => {
+  if (!ensureTreeHasPeople('exporting CSV')) return;
+
+  downloadFile('family-tree-people.csv', buildPeopleCsv(), 'text/csv');
+  setStatus('Downloaded people CSV.', 'success');
+});
+
+copySummaryButton.addEventListener('click', async () => {
+  if (!ensureTreeHasPeople('copying a summary')) return;
+
+  const summary = buildTreeSummary();
+  try {
+    await navigator.clipboard.writeText(summary);
+    setStatus('Copied tree summary to clipboard.', 'success');
+  } catch (error) {
+    setStatus(summary, 'info');
+  }
+});
+
 clearTreeButton.addEventListener('click', () => {
   if (!treeData.people.length || confirm('Clear the current family tree?')) {
     treeData = createEmptyTreeData();
@@ -113,6 +142,56 @@ clearTreeButton.addEventListener('click', () => {
   }
 });
 
+
+function ensureTreeHasPeople(action) {
+  if (treeData.people.length) return true;
+
+  setStatus(`Upload or add family members before ${action}.`, 'error');
+  return false;
+}
+
+function downloadFile(filename, content, type) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function buildPeopleCsv() {
+  const headers = ['ID', 'Name', 'Sex/Relation', 'Birth Date', 'Birth Place', 'Death Date', 'Death Place', 'Notes'];
+  const rows = treeData.people.map((person) => ([
+    person.id,
+    person.name,
+    person.source === 'manual' ? person.relation : person.sex,
+    person.birthDate || person.birthYear || '',
+    person.birthPlace || '',
+    person.deathDate || '',
+    person.deathPlace || '',
+    (person.notes || []).join(' | '),
+  ]));
+
+  return [headers, ...rows]
+    .map((row) => row.map(formatCsvCell).join(','))
+    .join('\n');
+}
+
+function formatCsvCell(value = '') {
+  const text = String(value);
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+function buildTreeSummary() {
+  const header = treeData.metadata?.header || {};
+  const source = header.source?.name ? ` Source: ${header.source.name}.` : '';
+
+  return `Family tree: ${treeData.people.length} people, ${treeData.families.length} families, ${treeData.relationships.length} relationships.${source}`;
+}
 
 async function readGedcomFile(file) {
   if (file.size > MAX_GEDCOM_FILE_BYTES) {
