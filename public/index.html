@@ -63,7 +63,13 @@
       <section class="tree-section">
         <div class="section-header">
           <h2>Family Tree</h2>
-          <button id="clearTree" type="button" class="btn-secondary">Clear Tree</button>
+          <div class="tree-actions">
+            <div class="layout-toggle" aria-label="Tree layout">
+              <button id="verticalLayout" type="button" class="layout-button active" data-layout="vertical">Vertical</button>
+              <button id="horizontalLayout" type="button" class="layout-button" data-layout="horizontal">Horizontal</button>
+            </div>
+            <button id="clearTree" type="button" class="btn-secondary">Clear Tree</button>
+          </div>
         </div>
         <div id="familyTree" class="family-tree">
           <p class="empty-message">No family members added yet. Upload a GEDCOM file or add someone manually.</p>

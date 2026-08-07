@@ -1,7 +1,9 @@
 const STORAGE_KEY = 'familyTreeData';
+const LAYOUT_STORAGE_KEY = 'familyTreeLayout';
 const MAX_GEDCOM_FILE_BYTES = 10 * 1024 * 1024;
 
 let treeData = loadTreeData();
+let treeLayout = localStorage.getItem(LAYOUT_STORAGE_KEY) || 'vertical';
 
 const gedcomForm = document.getElementById('gedcomForm');
 const gedcomFileInput = document.getElementById('gedcomFile');
@@ -12,6 +14,22 @@ const relationInput = document.getElementById('relation');
 const birthYearInput = document.getElementById('birthYear');
 const familyTreeDiv = document.getElementById('familyTree');
 const clearTreeButton = document.getElementById('clearTree');
+const layoutButtons = document.querySelectorAll('[data-layout]');
+
+layoutButtons.forEach((button) => {
+  button.addEventListener('click', () => {
+    treeLayout = button.dataset.layout;
+    localStorage.setItem(LAYOUT_STORAGE_KEY, treeLayout);
+    updateLayoutButtons();
+    renderFamilyTree();
+  });
+});
+
+function updateLayoutButtons() {
+  layoutButtons.forEach((button) => {
+    button.classList.toggle('active', button.dataset.layout === treeLayout);
+  });
+}
 
 familyTreeDiv.addEventListener('click', (event) => {
   const removeButton = event.target.closest('[data-remove-person-id]');
@@ -211,6 +229,9 @@ function renderFamilyTree() {
     ? treeData.people.filter((person) => !connectedIds.has(person.id))
     : treeData.people;
 
+  familyTreeDiv.classList.toggle('horizontal-layout', treeLayout === 'horizontal');
+  familyTreeDiv.classList.toggle('vertical-layout', treeLayout !== 'horizontal');
+
   familyTreeDiv.innerHTML = `
     ${renderSummary()}
     ${renderGedcomInfo()}
@@ -287,7 +308,7 @@ function renderFamilyTreeChart(family, peopleById, familyNumber) {
     .filter(Boolean);
 
   return `
-    <section class="tree-chart">
+    <section class="tree-chart ${treeLayout === 'horizontal' ? 'tree-chart-horizontal' : 'tree-chart-vertical'}">
       <div class="family-heading">
         <h3>Family ${familyNumber}</h3>
         <span>${escapeHtml(family.id)}</span>
@@ -389,4 +410,7 @@ function escapeHtml(value = '') {
   }[char]));
 }
 
-document.addEventListener('DOMContentLoaded', renderFamilyTree);
+document.addEventListener('DOMContentLoaded', () => {
+  updateLayoutButtons();
+  renderFamilyTree();
+});

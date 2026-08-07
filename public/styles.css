@@ -581,3 +581,171 @@ input[type="file"] {
   margin: 2px 0 0;
   overflow-wrap: anywhere;
 }
+
+.tree-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.layout-toggle {
+  background: #edf2f7;
+  border: 1px solid #cbd5e0;
+  border-radius: 999px;
+  display: flex;
+  padding: 4px;
+}
+
+.layout-button {
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  color: #4a5568;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 8px 14px;
+}
+
+.layout-button.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  box-shadow: 0 6px 14px rgba(102, 126, 234, 0.28);
+  color: white;
+}
+
+.family-tree {
+  background:
+    radial-gradient(circle at top left, rgba(102, 126, 234, 0.14), transparent 32%),
+    linear-gradient(180deg, #f8f9ff 0%, #f7fafc 100%);
+}
+
+.tree-chart {
+  background:
+    linear-gradient(white, white) padding-box,
+    linear-gradient(135deg, #667eea, #68d391) border-box;
+  border: 2px solid transparent;
+  box-shadow: 0 16px 38px rgba(76, 81, 191, 0.12);
+}
+
+.person-node {
+  background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+  border: 0;
+  box-shadow: 0 12px 30px rgba(45, 55, 72, 0.14);
+  overflow: hidden;
+}
+
+.person-node::before {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  content: '';
+  display: block;
+  height: 6px;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+.person-node.child::before {
+  background: linear-gradient(135deg, #48bb78 0%, #38b2ac 100%);
+}
+
+.person-node h4 {
+  font-size: 1.12em;
+  margin-top: 6px;
+}
+
+.person-details div {
+  background: #f8fafc;
+  border: 1px solid #edf2f7;
+  border-radius: 8px;
+  padding: 7px 9px;
+}
+
+.tree-chart-horizontal {
+  min-width: 720px;
+}
+
+.tree-chart-horizontal .parents-row {
+  align-items: center;
+  flex-direction: column;
+  float: left;
+  margin-right: 80px;
+  min-width: 240px;
+}
+
+.tree-chart-horizontal .tree-connector {
+  float: left;
+  height: 220px;
+  margin: 20px -45px 0 -35px;
+  max-width: none;
+  width: 70px;
+}
+
+.tree-chart-horizontal .tree-connector::before {
+  height: 3px;
+  left: 0;
+  top: 50%;
+  transform: none;
+  width: 70px;
+}
+
+.tree-chart-horizontal .tree-connector span {
+  border-left: 3px solid #667eea;
+  border-top: 0;
+  bottom: 14%;
+  left: 68px;
+  right: auto;
+  top: 14%;
+  width: 0;
+}
+
+.tree-chart-horizontal .tree-connector span::before,
+.tree-chart-horizontal .tree-connector span::after {
+  height: 3px;
+  left: 0;
+  right: auto;
+  width: 28px;
+}
+
+.tree-chart-horizontal .tree-connector span::before {
+  top: 0;
+}
+
+.tree-chart-horizontal .tree-connector span::after {
+  bottom: 0;
+  top: auto;
+}
+
+.tree-chart-horizontal .children-row {
+  align-content: center;
+  align-items: center;
+  display: flex;
+  min-height: 250px;
+  padding-top: 0;
+}
+
+.tree-chart-horizontal::after {
+  clear: both;
+  content: '';
+  display: table;
+}
+
+@media (max-width: 700px) {
+  .tree-actions {
+    justify-content: stretch;
+  }
+
+  .layout-toggle,
+  .tree-actions .btn-secondary {
+    width: 100%;
+  }
+
+  .layout-button {
+    flex: 1;
+  }
+
+  .tree-chart-horizontal {
+    min-width: 640px;
+  }
+}
