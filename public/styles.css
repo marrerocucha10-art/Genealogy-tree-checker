@@ -774,7 +774,18 @@ input[type="file"] {
     width: 100%;
   }
 
+  body * {
+    visibility: hidden !important;
+  }
+
+  .tree-section,
+  .tree-section * {
+    visibility: visible !important;
+  }
+
   header,
+  .subscription-section,
+  .package-section,
   .form-section,
   footer,
   .tree-actions,
@@ -790,7 +801,11 @@ input[type="file"] {
   }
 
   .tree-section {
+    left: 0;
     margin: 0;
+    position: absolute;
+    top: 0;
+    width: 100%;
   }
 
   .section-header {
@@ -805,7 +820,16 @@ input[type="file"] {
 
   .family-tree {
     background: white !important;
+    min-height: 0;
     padding: 0;
+  }
+
+  .family-tree::before {
+    content: 'Family Tree Preview';
+    display: block;
+    font-size: 20pt;
+    font-weight: 800;
+    margin-bottom: 14px;
   }
 
   .tree-summary,
@@ -823,6 +847,12 @@ input[type="file"] {
   }
 
   .tree-chart-horizontal {
+    min-width: 0;
+  }
+
+  .parents-row,
+  .children-row {
+    flex-wrap: wrap;
     min-width: 0;
   }
 
