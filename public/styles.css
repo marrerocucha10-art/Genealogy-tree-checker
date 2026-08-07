@@ -1226,3 +1226,51 @@ input[type="file"] {
   border: 1px solid #cbd5e0;
   color: #4a5568;
 }
+
+.options-section {
+  margin-bottom: 40px;
+}
+
+.options-section h2 {
+  border-bottom: 3px solid #667eea;
+  color: #333;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+}
+
+.option-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.option-button {
+  background:
+    linear-gradient(#ffffff, #ffffff) padding-box,
+    linear-gradient(135deg, #667eea, #68d391) border-box;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  color: #2d3748;
+  font-weight: 800;
+  padding: 14px 12px;
+  text-align: center;
+  text-decoration: none;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.option-button:hover {
+  box-shadow: 0 10px 22px rgba(102, 126, 234, 0.18);
+  transform: translateY(-2px);
+}
+
+@media (max-width: 900px) {
+  .option-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .option-grid {
+    grid-template-columns: 1fr;
+  }
+}
