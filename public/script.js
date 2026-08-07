@@ -8,6 +8,24 @@ let treeLayout = localStorage.getItem(LAYOUT_STORAGE_KEY) || 'vertical';
 let currentTier = localStorage.getItem(SUBSCRIPTION_STORAGE_KEY) || 'free';
 let stripeConfig = null;
 
+const STORE_PRODUCTS = {
+  printedTree: {
+    name: 'Printed Family Tree',
+    description: 'Order a printable family tree layout after review.',
+    priceEnv: 'STRIPE_PRINTED_TREE_PRICE_ID',
+  },
+  correctionReport: {
+    name: 'Correction Report',
+    description: 'Download a polished report of detected issues and suggested fixes.',
+    priceEnv: 'STRIPE_CORRECTION_REPORT_PRICE_ID',
+  },
+  researcherReview: {
+    name: 'Researcher Review',
+    description: 'Request a manual genealogy review workflow for complex records.',
+    priceEnv: 'STRIPE_RESEARCHER_REVIEW_PRICE_ID',
+  },
+};
+
 const SUBSCRIPTION_TIERS = {
   free: {
     name: 'Free',
@@ -59,6 +77,7 @@ const copySummaryButton = document.getElementById('copySummary');
 const layoutButtons = document.querySelectorAll('[data-layout]');
 const subscriptionPlansDiv = document.getElementById('subscriptionPlans');
 const subscriptionStatusDiv = document.getElementById('subscriptionStatus');
+const storeProductsDiv = document.getElementById('storeProducts');
 const manageBillingButton = document.getElementById('manageBilling');
 
 subscriptionPlansDiv.addEventListener('click', (event) => {
@@ -75,6 +94,13 @@ subscriptionPlansDiv.addEventListener('click', (event) => {
 });
 
 manageBillingButton.addEventListener('click', openBillingPortal);
+
+storeProductsDiv.addEventListener('click', (event) => {
+  const productButton = event.target.closest('[data-store-product]');
+  if (!productButton) return;
+
+  startProductCheckout(productButton.dataset.storeProduct);
+});
 
 layoutButtons.forEach((button) => {
   button.addEventListener('click', () => {
@@ -100,6 +126,13 @@ function updateLayoutButtons() {
 });
 
 manageBillingButton.addEventListener('click', openBillingPortal);
+
+storeProductsDiv.addEventListener('click', (event) => {
+  const productButton = event.target.closest('[data-store-product]');
+  if (!productButton) return;
+
+  startProductCheckout(productButton.dataset.storeProduct);
+});
 
 layoutButtons.forEach((button) => {
     button.classList.toggle('active', button.dataset.layout === treeLayout);
@@ -283,6 +316,24 @@ function setPreviewTier(tierId) {
   localStorage.setItem(SUBSCRIPTION_STORAGE_KEY, currentTier);
   renderSubscriptionPlans();
   setStatus(`Previewing ${SUBSCRIPTION_TIERS[tierId].name} workflow locally. Use Stripe Checkout to activate this for real customers.`, 'info');
+}
+
+async function startProductCheckout(productId) {
+  if (!STORE_PRODUCTS[productId]) return;
+
+  try {
+    const response = await fetch('/api/create-product-checkout-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ product: productId }),
+    });
+    const result = await response.json();
+
+    if (!response.ok || !result.success) throw new Error(result.error || 'Could not start product checkout.');
+    window.location.href = result.url;
+  } catch (error) {
+    setStatus(`${error.message} Add the Stripe product price ID before accepting product purchases.`, 'error');
+  }
 }
 
 async function startCheckout(tierId) {
@@ -1115,6 +1166,7 @@ document.addEventListener('DOMContentLoaded', () => {
   applyCheckoutReturn();
   updateLayoutButtons();
   renderSubscriptionPlans();
+  renderStoreProducts();
   loadSubscriptionConfig();
   renderFamilyTree();
 });

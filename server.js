@@ -25,6 +25,21 @@ app.use((req, res, next) => {
 
 const MAX_GEDCOM_BYTES = 10 * 1024 * 1024;
 
+const STORE_PRODUCTS = {
+  printedTree: {
+    name: 'Printed Family Tree',
+    priceEnv: 'STRIPE_PRINTED_TREE_PRICE_ID',
+  },
+  correctionReport: {
+    name: 'Correction Report',
+    priceEnv: 'STRIPE_CORRECTION_REPORT_PRICE_ID',
+  },
+  researcherReview: {
+    name: 'Researcher Review',
+    priceEnv: 'STRIPE_RESEARCHER_REVIEW_PRICE_ID',
+  },
+};
+
 const SUBSCRIPTION_TIERS = {
   personal: {
     name: 'Personal',
@@ -57,10 +72,19 @@ function getStripeConfig() {
     },
   ])));
 
+  const products = Object.fromEntries(Object.entries(STORE_PRODUCTS).map(([id, product]) => ([
+    id,
+    {
+      name: product.name,
+      configured: Boolean(process.env[product.priceEnv]),
+    },
+  ])));
+
   return {
     configured: Boolean(process.env.STRIPE_SECRET_KEY),
     portalConfigured: Boolean(process.env.STRIPE_CUSTOMER_PORTAL_RETURN_URL || process.env.PUBLIC_APP_URL),
     tiers,
+    products,
   };
 }
 
@@ -94,6 +118,42 @@ async function createStripeCheckoutSession(req, tierId) {
   const payload = await response.json();
   if (!response.ok) {
     throw new Error(payload.error?.message || 'Could not create Stripe Checkout session.');
+  }
+
+  return payload;
+}
+
+
+async function createStripeProductCheckoutSession(req, productId) {
+  const product = STORE_PRODUCTS[productId];
+  if (!product) throw new Error('Unknown store product.');
+  if (!process.env.STRIPE_SECRET_KEY) throw new Error('Stripe is not configured yet. Add STRIPE_SECRET_KEY in Vercel Environment Variables.');
+
+  const priceId = process.env[product.priceEnv];
+  if (!priceId) throw new Error(`${product.name} is missing its Stripe price ID. Add ${product.priceEnv} in Vercel Environment Variables.`);
+
+  const baseUrl = getBaseUrl(req);
+  const params = new URLSearchParams({
+    mode: 'payment',
+    success_url: `${baseUrl}/?product=${productId}&checkout=success`,
+    cancel_url: `${baseUrl}/?checkout=cancelled`,
+    'line_items[0][price]': priceId,
+    'line_items[0][quantity]': '1',
+    'metadata[product]': productId,
+  });
+
+  const response = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: params,
+  });
+
+  const payload = await response.json();
+  if (!response.ok) {
+    throw new Error(payload.error?.message || 'Could not create Stripe product Checkout session.');
   }
 
   return payload;
@@ -280,6 +340,16 @@ app.get('/api/subscription/config', (req, res) => {
 app.post('/api/create-checkout-session', async (req, res) => {
   try {
     const session = await createStripeCheckoutSession(req, req.body?.tier);
+    res.json({ success: true, url: session.url, id: session.id });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+
+app.post('/api/create-product-checkout-session', async (req, res) => {
+  try {
+    const session = await createStripeProductCheckoutSession(req, req.body?.product);
     res.json({ success: true, url: session.url, id: session.id });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });

@@ -1078,3 +1078,25 @@ input[type="file"] {
     grid-template-columns: 1fr;
   }
 }
+
+.store-section {
+  margin-bottom: 40px;
+}
+
+.store-card {
+  border-color: #bee3f8;
+}
+
+.store-card h3::before {
+  content: '+';
+  background: #667eea;
+  border-radius: 999px;
+  color: white;
+  display: inline-block;
+  font-size: 0.82em;
+  height: 22px;
+  line-height: 22px;
+  margin-right: 8px;
+  text-align: center;
+  width: 22px;
+}
