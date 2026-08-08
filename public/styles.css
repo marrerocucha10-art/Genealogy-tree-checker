@@ -379,3 +379,22 @@ input[type="file"] {
     grid-template-columns: 1fr;
   }
 }
+
+
+.subscription-section {
+  background: #f8f9ff;
+  border: 1px solid #d9defc;
+  border-radius: 10px;
+  padding: 20px;
+}
+
+.subscription-section p {
+  color: #555;
+  margin-bottom: 16px;
+}
+
+.btn-subscribe:disabled {
+  cursor: wait;
+  opacity: 0.7;
+  transform: none;
+}

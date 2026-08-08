@@ -11,6 +11,19 @@ const relationInput = document.getElementById('relation');
 const birthYearInput = document.getElementById('birthYear');
 const familyTreeDiv = document.getElementById('familyTree');
 const clearTreeButton = document.getElementById('clearTree');
+const subscribeButton = document.getElementById('subscribeButton');
+const subscriptionStatus = document.getElementById('subscriptionStatus');
+
+if (subscribeButton) {
+  subscribeButton.addEventListener('click', startSubscriptionCheckout);
+}
+
+const subscriptionState = new URLSearchParams(window.location.search).get('subscription');
+if (subscriptionState === 'success') {
+  setSubscriptionStatus('Subscription checkout completed. Thank you!', 'success');
+} else if (subscriptionState === 'cancelled') {
+  setSubscriptionStatus('Subscription checkout was cancelled.', 'info');
+}
 
 familyTreeDiv.addEventListener('click', (event) => {
   const removeButton = event.target.closest('[data-remove-person-id]');
@@ -83,6 +96,36 @@ clearTreeButton.addEventListener('click', () => {
     setStatus('', 'info');
   }
 });
+
+
+async function startSubscriptionCheckout() {
+  setSubscriptionStatus('Starting secure checkout...', 'info');
+  subscribeButton.disabled = true;
+
+  try {
+    const response = await fetch('/api/create-checkout-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    const result = await response.json();
+    if (!response.ok || !result.url) {
+      throw new Error(result.error || 'Unable to start checkout.');
+    }
+
+    window.location.href = result.url;
+  } catch (error) {
+    setSubscriptionStatus(error.message, 'error');
+    subscribeButton.disabled = false;
+  }
+}
+
+function setSubscriptionStatus(message, type = 'info') {
+  if (!subscriptionStatus) return;
+
+  subscriptionStatus.textContent = message;
+  subscriptionStatus.className = `status-message ${type}`;
+}
 
 function createEmptyTreeData() {
   return {
