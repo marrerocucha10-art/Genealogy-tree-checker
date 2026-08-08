@@ -2,12 +2,56 @@ const express = require('express');
 const net = require('net');
 const path = require('path');
 const { parseGedcom } = require('./gedcomParser');
+const Stripe = require('stripe');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
+
+function getStripeClient() {
+  if (!stripe) {
+    throw new Error('Stripe is not configured. Set STRIPE_SECRET_KEY in Vercel environment variables.');
+  }
+
+  return stripe;
+}
 
 // Middleware
 app.use(express.static(path.join(__dirname, 'public')));
+
+app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), (req, res) => {
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  if (!webhookSecret) {
+    return res.status(500).json({ error: 'Stripe webhook secret is not configured.' });
+  }
+
+  let event;
+
+  try {
+    event = getStripeClient().webhooks.constructEvent(
+      req.body,
+      req.headers['stripe-signature'],
+      webhookSecret
+    );
+  } catch (error) {
+    return res.status(400).send(`Webhook Error: ${error.message}`);
+  }
+
+  switch (event.type) {
+    case 'checkout.session.completed':
+    case 'customer.subscription.created':
+    case 'customer.subscription.updated':
+    case 'customer.subscription.deleted':
+      console.log(`Received Stripe event: ${event.type}`);
+      break;
+    default:
+      console.log(`Unhandled Stripe event: ${event.type}`);
+  }
+
+  return res.json({ received: true });
+});
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.text({ type: ['text/*', 'application/x-gedcom', 'application/octet-stream'], limit: '10mb' }));
 
@@ -148,6 +192,64 @@ app.get('/', (req, res) => {
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'Genealogy Tree Checker is running!' });
+});
+
+
+const SUBSCRIPTION_PLANS = {
+  basic: {
+    name: 'Basic',
+    price: '$9.99/month',
+    envVar: 'STRIPE_BASIC_PRICE_ID',
+  },
+  plus: {
+    name: 'Plus',
+    price: '$19.99/month',
+    envVar: 'STRIPE_PLUS_PRICE_ID',
+  },
+  pro: {
+    name: 'Pro',
+    price: '$29.99/month',
+    envVar: 'STRIPE_PRO_PRICE_ID',
+  },
+};
+
+app.post('/api/create-checkout-session', async (req, res) => {
+  try {
+    const selectedPlan = typeof req.body?.plan === 'string' ? req.body.plan : 'basic';
+    const plan = SUBSCRIPTION_PLANS[selectedPlan];
+
+    if (!plan) {
+      return res.status(400).json({ error: 'Select a valid subscription plan.' });
+    }
+
+    const priceId = process.env[plan.envVar];
+
+    if (!priceId) {
+      return res.status(500).json({ error: `${plan.name} is not configured. Set ${plan.envVar} in Vercel environment variables.` });
+    }
+
+    const origin = req.headers.origin || `${req.protocol}://${req.get('host')}`;
+    const session = await getStripeClient().checkout.sessions.create({
+      mode: 'subscription',
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      metadata: {
+        plan: selectedPlan,
+      },
+      success_url: `${origin}/?subscription=success&plan=${selectedPlan}`,
+      cancel_url: `${origin}/?subscription=cancelled`,
+      allow_promotion_codes: true,
+    });
+
+    return res.json({ url: session.url });
+  } catch (error) {
+    console.error('Unable to create Stripe checkout session:', error);
+    return res.status(500).json({ error: 'Unable to start subscription checkout.' });
+  }
 });
 
 function sendParsedGedcom(res, gedcom) {

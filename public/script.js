@@ -11,6 +11,19 @@ const relationInput = document.getElementById('relation');
 const birthYearInput = document.getElementById('birthYear');
 const familyTreeDiv = document.getElementById('familyTree');
 const clearTreeButton = document.getElementById('clearTree');
+const subscribeButtons = document.querySelectorAll('[data-plan]');
+const subscriptionStatus = document.getElementById('subscriptionStatus');
+
+subscribeButtons.forEach((button) => {
+  button.addEventListener('click', () => startSubscriptionCheckout(button.dataset.plan, button));
+});
+
+const subscriptionState = new URLSearchParams(window.location.search).get('subscription');
+if (subscriptionState === 'success') {
+  setSubscriptionStatus('Subscription checkout completed. Thank you!', 'success');
+} else if (subscriptionState === 'cancelled') {
+  setSubscriptionStatus('Subscription checkout was cancelled.', 'info');
+}
 
 familyTreeDiv.addEventListener('click', (event) => {
   const removeButton = event.target.closest('[data-remove-person-id]');
@@ -83,6 +96,37 @@ clearTreeButton.addEventListener('click', () => {
     setStatus('', 'info');
   }
 });
+
+
+async function startSubscriptionCheckout(plan, button) {
+  setSubscriptionStatus('Starting secure checkout...', 'info');
+  button.disabled = true;
+
+  try {
+    const response = await fetch('/api/create-checkout-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan }),
+    });
+
+    const result = await response.json();
+    if (!response.ok || !result.url) {
+      throw new Error(result.error || 'Unable to start checkout.');
+    }
+
+    window.location.href = result.url;
+  } catch (error) {
+    setSubscriptionStatus(error.message, 'error');
+    button.disabled = false;
+  }
+}
+
+function setSubscriptionStatus(message, type = 'info') {
+  if (!subscriptionStatus) return;
+
+  subscriptionStatus.textContent = message;
+  subscriptionStatus.className = `status-message ${type}`;
+}
 
 function createEmptyTreeData() {
   return {
