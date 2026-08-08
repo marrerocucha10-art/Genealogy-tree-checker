@@ -15,9 +15,28 @@
 
     <main>
       <section class="form-section subscription-section">
-        <h2>Premium Subscription</h2>
-        <p>Subscribe to unlock premium genealogy tools as they become available.</p>
-        <button id="subscribeButton" type="button" class="btn-add btn-subscribe">Subscribe</button>
+        <h2>Premium Subscriptions</h2>
+        <p>Choose the plan that fits how much genealogy research you want to manage.</p>
+        <div class="plan-grid">
+          <article class="plan-card">
+            <h3>Basic</h3>
+            <p class="plan-price">$9.99/month</p>
+            <p>Start organizing and checking your genealogy tree.</p>
+            <button type="button" class="btn-add btn-subscribe" data-plan="basic">Choose Basic</button>
+          </article>
+          <article class="plan-card">
+            <h3>Plus</h3>
+            <p class="plan-price">$19.99/month</p>
+            <p>For larger family trees and more frequent research.</p>
+            <button type="button" class="btn-add btn-subscribe" data-plan="plus">Choose Plus</button>
+          </article>
+          <article class="plan-card">
+            <h3>Pro</h3>
+            <p class="plan-price">$29.99/month</p>
+            <p>For advanced genealogy projects and premium access.</p>
+            <button type="button" class="btn-add btn-subscribe" data-plan="pro">Choose Pro</button>
+          </article>
+        </div>
         <p id="subscriptionStatus" class="status-message" aria-live="polite"></p>
       </section>
 

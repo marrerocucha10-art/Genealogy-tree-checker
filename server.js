@@ -195,12 +195,37 @@ app.get('/api/health', (req, res) => {
 });
 
 
+const SUBSCRIPTION_PLANS = {
+  basic: {
+    name: 'Basic',
+    price: '$9.99/month',
+    envVar: 'STRIPE_BASIC_PRICE_ID',
+  },
+  plus: {
+    name: 'Plus',
+    price: '$19.99/month',
+    envVar: 'STRIPE_PLUS_PRICE_ID',
+  },
+  pro: {
+    name: 'Pro',
+    price: '$29.99/month',
+    envVar: 'STRIPE_PRO_PRICE_ID',
+  },
+};
+
 app.post('/api/create-checkout-session', async (req, res) => {
   try {
-    const priceId = process.env.STRIPE_PRICE_ID;
+    const selectedPlan = typeof req.body?.plan === 'string' ? req.body.plan : 'basic';
+    const plan = SUBSCRIPTION_PLANS[selectedPlan];
+
+    if (!plan) {
+      return res.status(400).json({ error: 'Select a valid subscription plan.' });
+    }
+
+    const priceId = process.env[plan.envVar];
 
     if (!priceId) {
-      return res.status(500).json({ error: 'Stripe price is not configured. Set STRIPE_PRICE_ID in Vercel environment variables.' });
+      return res.status(500).json({ error: `${plan.name} is not configured. Set ${plan.envVar} in Vercel environment variables.` });
     }
 
     const origin = req.headers.origin || `${req.protocol}://${req.get('host')}`;
@@ -212,7 +237,10 @@ app.post('/api/create-checkout-session', async (req, res) => {
           quantity: 1,
         },
       ],
-      success_url: `${origin}/?subscription=success`,
+      metadata: {
+        plan: selectedPlan,
+      },
+      success_url: `${origin}/?subscription=success&plan=${selectedPlan}`,
       cancel_url: `${origin}/?subscription=cancelled`,
       allow_promotion_codes: true,
     });

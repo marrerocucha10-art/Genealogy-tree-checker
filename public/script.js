@@ -11,12 +11,12 @@ const relationInput = document.getElementById('relation');
 const birthYearInput = document.getElementById('birthYear');
 const familyTreeDiv = document.getElementById('familyTree');
 const clearTreeButton = document.getElementById('clearTree');
-const subscribeButton = document.getElementById('subscribeButton');
+const subscribeButtons = document.querySelectorAll('[data-plan]');
 const subscriptionStatus = document.getElementById('subscriptionStatus');
 
-if (subscribeButton) {
-  subscribeButton.addEventListener('click', startSubscriptionCheckout);
-}
+subscribeButtons.forEach((button) => {
+  button.addEventListener('click', () => startSubscriptionCheckout(button.dataset.plan, button));
+});
 
 const subscriptionState = new URLSearchParams(window.location.search).get('subscription');
 if (subscriptionState === 'success') {
@@ -98,14 +98,15 @@ clearTreeButton.addEventListener('click', () => {
 });
 
 
-async function startSubscriptionCheckout() {
+async function startSubscriptionCheckout(plan, button) {
   setSubscriptionStatus('Starting secure checkout...', 'info');
-  subscribeButton.disabled = true;
+  button.disabled = true;
 
   try {
     const response = await fetch('/api/create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan }),
     });
 
     const result = await response.json();
@@ -116,7 +117,7 @@ async function startSubscriptionCheckout() {
     window.location.href = result.url;
   } catch (error) {
     setSubscriptionStatus(error.message, 'error');
-    subscribeButton.disabled = false;
+    button.disabled = false;
   }
 }
 

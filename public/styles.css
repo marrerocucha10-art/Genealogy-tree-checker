@@ -393,8 +393,39 @@ input[type="file"] {
   margin-bottom: 16px;
 }
 
+.plan-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.plan-card {
+  background: white;
+  border: 1px solid #d9defc;
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.plan-card h3 {
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.plan-price {
+  color: #4c51bf;
+  font-size: 1.4em;
+  font-weight: 700;
+}
+
 .btn-subscribe:disabled {
   cursor: wait;
   opacity: 0.7;
   transform: none;
+}
+
+@media (max-width: 800px) {
+  .plan-grid {
+    grid-template-columns: 1fr;
+  }
 }
