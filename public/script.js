@@ -147,6 +147,9 @@ if (reportPageDiv) {
   reportPageDiv.addEventListener('click', (event) => {
     const autoFixButton = event.target.closest('[data-apply-auto-fixes]');
     const manualFixButton = event.target.closest('[data-show-manual-fixes]');
+    const markReviewedButton = event.target.closest('[data-mark-report-reviewed]');
+    const downloadReportButton = event.target.closest('[data-download-report]');
+    const issueGuidanceButton = event.target.closest('[data-issue-guidance]');
 
     if (autoFixButton) {
       applyAutomaticFixes();
@@ -155,6 +158,21 @@ if (reportPageDiv) {
 
     if (manualFixButton) {
       showManualFixes();
+      return;
+    }
+
+    if (markReviewedButton) {
+      markReportReviewed();
+      return;
+    }
+
+    if (downloadReportButton) {
+      downloadErrorReport();
+      return;
+    }
+
+    if (issueGuidanceButton) {
+      setReportStatus(issueGuidanceButton.dataset.issueGuidance, 'info');
     }
   });
 }
@@ -1002,6 +1020,7 @@ function createEmptyTreeData() {
     warnings: [],
     validationReport: createEmptyValidationReport(),
     fixHistory: [],
+    reportReviewedAt: '',
   };
 }
 
@@ -1017,6 +1036,7 @@ function loadTreeData() {
         warnings: stored.warnings || [],
         validationReport: stored.validationReport || createEmptyValidationReport(),
         fixHistory: stored.fixHistory || [],
+        reportReviewedAt: stored.reportReviewedAt || '',
       };
     }
   } catch (error) {
@@ -1057,6 +1077,7 @@ function normalizeParsedGedcom(parsed) {
     warnings: parsed.warnings || [],
     validationReport: createEmptyValidationReport(),
     fixHistory: [],
+    reportReviewedAt: '',
   };
 
   normalized.validationReport = analyzeTreeData(normalized);
@@ -1545,20 +1566,71 @@ function renderReportPage() {
   `;
 }
 
+function markReportReviewed() {
+  treeData.reportReviewedAt = new Date().toISOString();
+  saveTreeData();
+  renderReportPage();
+  setReportStatus('Marked this error report as reviewed.', 'success');
+}
+
+function downloadErrorReport() {
+  downloadFile('tree-error-report.txt', buildErrorReportText(), 'text/plain');
+  setReportStatus('Downloaded the Tree Error Report.', 'success');
+}
+
+function buildErrorReportText() {
+  const report = treeData.validationReport || createEmptyValidationReport();
+  const lines = [
+    'Tree Error Report',
+    `Generated: ${new Date().toLocaleString()}`,
+    `People: ${treeData.people.length}`,
+    `Families: ${treeData.families.length}`,
+    `Relationships: ${treeData.relationships.length}`,
+    `Errors: ${report.errors.length}`,
+    `Warnings: ${report.warnings.length}`,
+    `Notes: ${report.info.length}`,
+    '',
+  ];
+
+  for (const [title, issues] of [['Errors', report.errors], ['Warnings', report.warnings], ['Notes', report.info]]) {
+    lines.push(title);
+    if (!issues.length) {
+      lines.push('- None');
+    } else {
+      issues.forEach((issue, index) => {
+        lines.push(`${index + 1}. ${issue.category}: ${issue.message}`);
+        if (issue.subject) lines.push(`   Subject: ${issue.subject}`);
+        if (issue.suggestion) lines.push(`   Guidance: ${issue.suggestion}`);
+      });
+    }
+    lines.push('');
+  }
+
+  return lines.join('\n');
+}
+
 function renderValidationReport() {
   const report = treeData.validationReport || createEmptyValidationReport();
   const total = report.errors.length + report.warnings.length + report.info.length;
   if (!total) return '';
+
+  const safeFixCount = getAutomaticFixIssues().length;
+  const reviewedLabel = treeData.reportReviewedAt
+    ? `<span>Reviewed ${escapeHtml(new Date(treeData.reportReviewedAt).toLocaleString())}</span>`
+    : '';
 
   return `
     <section class="validation-report">
       <div class="report-heading">
         <h3>Tree Error Report</h3>
         <span>${report.errors.length} errors · ${report.warnings.length} warnings · ${report.info.length} notes</span>
+        ${reviewedLabel}
       </div>
       <div class="report-actions">
-        <button type="button" class="btn-secondary" data-apply-auto-fixes>Apply Safe Automatic Fixes</button>
+        ${safeFixCount ? `<button type="button" class="btn-secondary" data-apply-auto-fixes>Apply ${safeFixCount} Safe Automatic Fix${safeFixCount === 1 ? '' : 'es'}</button>` : '<span class="manual-fix-note">No safe automatic fixes are available for this report.</span>'}
         <button type="button" class="btn-secondary" data-show-manual-fixes>Show Manual Fix Guidance</button>
+        <button type="button" class="btn-secondary" data-mark-report-reviewed>Mark Report Reviewed</button>
+        <button type="button" class="btn-secondary" data-download-report>Download Report</button>
       </div>
       <p id="treeReportStatus" class="status-message report-status" aria-live="polite"></p>
       ${renderIssueGroup('Errors', report.errors, 'error')}
@@ -1575,7 +1647,7 @@ function renderIssueGroup(title, issues, type) {
     <div class="issue-group ${type}">
       <h4>${title}</h4>
       <ul>
-        ${issues.map((issue) => `<li><strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(issue.message)}${issue.subject ? ` <span>${escapeHtml(issue.subject)}</span>` : ''}${issue.suggestion ? `<p class="fix-suggestion">${escapeHtml(issue.suggestion)}</p>` : ''}</li>`).join('')}
+        ${issues.map((issue) => `<li><strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(issue.message)}${issue.subject ? ` <span>${escapeHtml(issue.subject)}</span>` : ''}${issue.suggestion ? `<p class="fix-suggestion">${escapeHtml(issue.suggestion)}</p>${!issue.autoFix ? `<button type="button" class="btn-secondary issue-guidance-button" data-issue-guidance="${escapeHtml(issue.suggestion)}">Use This Manual Guidance</button>` : ''}` : ''}</li>`).join('')}
       </ul>
     </div>
   `;

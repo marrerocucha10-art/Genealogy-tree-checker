@@ -966,6 +966,17 @@ input[type="file"] {
   margin: 10px 0 0;
 }
 
+.manual-fix-note {
+  align-items: center;
+  color: #4a5568;
+  display: inline-flex;
+  font-weight: 700;
+}
+
+.issue-guidance-button {
+  margin-top: 8px;
+}
+
 .report-page-link {
   display: inline-flex;
   margin-top: 6px;
