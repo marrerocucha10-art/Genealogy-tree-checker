@@ -1622,7 +1622,7 @@ function renderReportPage() {
         <h2>Tree Error Report</h2>
         <div class="report-header-actions">
           <a class="btn-secondary" href="/">Back to Tree</a>
-          <a class="btn-add report-page-link" href="/#gedcomForm">Upload Repaired Tree</a>
+          <a class="btn-add report-page-link" href="/#gedcomForm">Upload New GED with Repairs</a>
         </div>
       </div>
       ${renderValidationReport()}
