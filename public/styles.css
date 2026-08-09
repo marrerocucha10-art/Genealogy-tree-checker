@@ -977,6 +977,21 @@ input[type="file"] {
   margin-top: 8px;
 }
 
+.repair-suggestion {
+  background: #ebf8ff;
+  border-radius: 8px;
+  color: #2b6cb0;
+  margin-top: 6px;
+  padding: 7px 9px;
+}
+
+.issue-status-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
 .report-page-link {
   display: inline-flex;
   margin-top: 6px;

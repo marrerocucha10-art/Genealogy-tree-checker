@@ -150,6 +150,7 @@ if (reportPageDiv) {
     const markReviewedButton = event.target.closest('[data-mark-report-reviewed]');
     const downloadReportButton = event.target.closest('[data-download-report]');
     const issueGuidanceButton = event.target.closest('[data-issue-guidance]');
+    const issueStatusButton = event.target.closest('[data-issue-status]');
 
     if (autoFixButton) {
       applyAutomaticFixes();
@@ -173,6 +174,11 @@ if (reportPageDiv) {
 
     if (issueGuidanceButton) {
       setReportStatus(issueGuidanceButton.dataset.issueGuidance, 'info');
+      return;
+    }
+
+    if (issueStatusButton) {
+      updateIssueReviewStatus(issueStatusButton.dataset.issueKey, issueStatusButton.dataset.issueStatus);
     }
   });
 }
@@ -1021,6 +1027,7 @@ function createEmptyTreeData() {
     validationReport: createEmptyValidationReport(),
     fixHistory: [],
     reportReviewedAt: '',
+    issueReviewStatuses: {},
   };
 }
 
@@ -1037,6 +1044,7 @@ function loadTreeData() {
         validationReport: stored.validationReport || createEmptyValidationReport(),
         fixHistory: stored.fixHistory || [],
         reportReviewedAt: stored.reportReviewedAt || '',
+        issueReviewStatuses: stored.issueReviewStatuses || {},
       };
     }
   } catch (error) {
@@ -1078,6 +1086,7 @@ function normalizeParsedGedcom(parsed) {
     validationReport: createEmptyValidationReport(),
     fixHistory: [],
     reportReviewedAt: '',
+    issueReviewStatuses: {},
   };
 
   normalized.validationReport = analyzeTreeData(normalized);
@@ -1566,6 +1575,62 @@ function renderReportPage() {
   `;
 }
 
+function getIssueKey(issue) {
+  return [issue.category, issue.subject || '', issue.message].join('|').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+function updateIssueReviewStatus(issueKey, status) {
+  if (!issueKey || !['needs-review', 'fixed', 'ignored'].includes(status)) return;
+
+  treeData.issueReviewStatuses = {
+    ...(treeData.issueReviewStatuses || {}),
+    [issueKey]: status,
+  };
+  saveTreeData();
+  renderReportPage();
+  setReportStatus(`Issue marked ${status.replace('-', ' ')}.`, 'success');
+}
+
+function getRepairSuggestion(issue) {
+  const text = `${issue.category} ${issue.message} ${issue.suggestion || ''}`.toLowerCase();
+
+  if (text.includes('death year') || text.includes('birth year') || text.includes('date')) {
+    return 'Repair suggestion: open the source GEDCOM record, compare the birth/death dates against the original document, then correct the wrong date before re-uploading.';
+  }
+
+  if (text.includes('birth place') || text.includes('death place') || text.includes('place')) {
+    return 'Repair suggestion: add the most specific verified place available, using city/county/state/country when known.';
+  }
+
+  if (text.includes('duplicate')) {
+    return 'Repair suggestion: compare both people side by side in your GEDCOM editor, merge only confirmed duplicates, and keep all source notes.';
+  }
+
+  if (text.includes('relationship') || text.includes('family') || text.includes('parent') || text.includes('child') || text.includes('spouse')) {
+    return issue.autoFix
+      ? 'Repair suggestion: review the listed relationship, then use the safe automatic fix if removing the broken reference is correct.'
+      : 'Repair suggestion: verify the parent/child/spouse links in the source tree and reconnect the correct people manually.';
+  }
+
+  return 'Repair suggestion: review the original record, confirm the correct value from a source, then update the GEDCOM and re-upload.';
+}
+
+function renderIssueStatusControls(issue) {
+  const issueKey = getIssueKey(issue);
+  const currentStatus = treeData.issueReviewStatuses?.[issueKey] || 'needs-review';
+  const statuses = [
+    ['needs-review', 'Needs Review'],
+    ['fixed', 'Fixed'],
+    ['ignored', 'Ignored'],
+  ];
+
+  return `
+    <div class="issue-status-controls" aria-label="Issue review status">
+      ${statuses.map(([value, label]) => `<button type="button" class="layout-button ${currentStatus === value ? 'active' : ''}" data-issue-key="${escapeHtml(issueKey)}" data-issue-status="${value}">${label}</button>`).join('')}
+    </div>
+  `;
+}
+
 function markReportReviewed() {
   treeData.reportReviewedAt = new Date().toISOString();
   saveTreeData();
@@ -1600,7 +1665,10 @@ function buildErrorReportText() {
       issues.forEach((issue, index) => {
         lines.push(`${index + 1}. ${issue.category}: ${issue.message}`);
         if (issue.subject) lines.push(`   Subject: ${issue.subject}`);
+        const status = treeData.issueReviewStatuses?.[getIssueKey(issue)] || 'needs-review';
+        lines.push(`   Status: ${status.replace('-', ' ')}`);
         if (issue.suggestion) lines.push(`   Guidance: ${issue.suggestion}`);
+        lines.push(`   Repair: ${getRepairSuggestion(issue)}`);
       });
     }
     lines.push('');
@@ -1647,7 +1715,7 @@ function renderIssueGroup(title, issues, type) {
     <div class="issue-group ${type}">
       <h4>${title}</h4>
       <ul>
-        ${issues.map((issue) => `<li><strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(issue.message)}${issue.subject ? ` <span>${escapeHtml(issue.subject)}</span>` : ''}${issue.suggestion ? `<p class="fix-suggestion">${escapeHtml(issue.suggestion)}</p>${!issue.autoFix ? `<button type="button" class="btn-secondary issue-guidance-button" data-issue-guidance="${escapeHtml(issue.suggestion)}">Use This Manual Guidance</button>` : ''}` : ''}</li>`).join('')}
+        ${issues.map((issue) => `<li><strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(issue.message)}${issue.subject ? ` <span>${escapeHtml(issue.subject)}</span>` : ''}${issue.suggestion ? `<p class="fix-suggestion">${escapeHtml(issue.suggestion)}</p>` : ''}<p class="repair-suggestion">${escapeHtml(getRepairSuggestion(issue))}</p>${!issue.autoFix ? `<button type="button" class="btn-secondary issue-guidance-button" data-issue-guidance="${escapeHtml(getRepairSuggestion(issue))}">Use This Repair Suggestion</button>` : ''}${renderIssueStatusControls(issue)}</li>`).join('')}
       </ul>
     </div>
   `;
