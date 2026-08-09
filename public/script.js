@@ -182,7 +182,7 @@ gedcomForm.addEventListener('submit', async (event) => {
     setStatus(`Imported ${people} people, ${families} families, and ${relationships} relationships.${warningText}${cleanupText}${storageText}`, 'success');
     gedcomForm.reset();
   } catch (error) {
-    setStatus(error.message, 'error');
+    setStatus(formatGedcomLoadError(error), 'error');
   }
 });
 
@@ -469,6 +469,15 @@ function buildTreeSummary() {
   return `Family tree: ${treeData.people.length} people, ${treeData.families.length} families, ${treeData.relationships.length} relationships.${source}`;
 }
 
+
+function formatGedcomLoadError(error) {
+  const message = error?.message || String(error || 'Unable to load GEDCOM file.');
+  if (/expected pattern/i.test(message)) {
+    return 'Safari could not decode this file format. If this is a ZIP, extract the .ged file and upload the .ged file directly. If it is already a .ged file, export it as GEDCOM 5.5 or 5.5.1 plain text and try again.';
+  }
+  return message;
+}
+
 async function readGedcomFile(file) {
   if (file.size > MAX_GEDCOM_FILE_BYTES) {
     throw new Error('GEDCOM file is too large. Maximum size is 150 MB.');
@@ -582,7 +591,12 @@ async function extractZipEntry(zipBytes, entry) {
       const stream = new Response(compressedData).body.pipeThrough(new DecompressionStream('deflate-raw'));
       return await new Response(stream).arrayBuffer();
     } catch (error) {
-      throw new Error('Safari could not read this compressed ZIP GEDCOM directly. Extract the .ged file from the ZIP, then upload the .ged file.');
+      try {
+        const stream = new Response(compressedData).body.pipeThrough(new DecompressionStream('deflate'));
+        return await new Response(stream).arrayBuffer();
+      } catch (fallbackError) {
+        throw new Error('This browser could not read the compressed ZIP GEDCOM. Extract the .ged file from the ZIP, then upload the .ged file directly.');
+      }
     }
   }
 
@@ -916,7 +930,15 @@ function assertValidGedcomText(text) {
   const validation = validateGedcomText(text);
 
   if (!validation.valid) {
-    throw new Error(`This does not look like a valid GEDCOM file. ${validation.errors.join(' ')}`);
+    const firstLines = String(text || '')
+      .replace(/^\uFEFF/, '')
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .slice(0, 3)
+      .join(' | ');
+    const sampleText = firstLines ? ` First lines found: ${firstLines}` : '';
+    throw new Error(`This does not look like a valid GEDCOM file. ${validation.errors.join(' ')}${sampleText}`);
   }
 }
 
