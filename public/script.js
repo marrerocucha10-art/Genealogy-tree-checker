@@ -3,7 +3,7 @@ const LAYOUT_STORAGE_KEY = 'familyTreeLayout';
 const SUBSCRIPTION_STORAGE_KEY = 'familyTreeSubscriptionTier';
 const BILLING_INTERVAL_STORAGE_KEY = 'familyTreeBillingInterval';
 const STRIPE_CUSTOMER_STORAGE_KEY = 'familyTreeStripeCustomerId';
-const MAX_GEDCOM_FILE_BYTES = 50 * 1024 * 1024;
+const MAX_GEDCOM_FILE_BYTES = 150 * 1024 * 1024;
 
 let treeData = loadTreeData();
 let treeLayout = localStorage.getItem(LAYOUT_STORAGE_KEY) || 'vertical';
@@ -176,8 +176,11 @@ gedcomForm.addEventListener('submit', async (event) => {
     const warningText = result.parsed.warnings.length
       ? ` ${result.parsed.warnings.length} warning(s) found.`
       : '';
+    const cleanupText = result.cleanup?.repeatedRecordsRemoved
+      ? ` Removed ${result.cleanup.repeatedRecordsRemoved} repeated GEDCOM record(s) before parsing.`
+      : '';
     const storageText = savedLocally ? '' : ' This tree is too large for browser storage, so it will stay available only until this tab is refreshed.';
-    setStatus(`Imported ${people} people, ${families} families, and ${relationships} relationships.${warningText}${storageText}`, 'success');
+    setStatus(`Imported ${people} people, ${families} families, and ${relationships} relationships.${warningText}${cleanupText}${storageText}`, 'success');
     gedcomForm.reset();
   } catch (error) {
     setStatus(error.message, 'error');
@@ -469,7 +472,7 @@ function buildTreeSummary() {
 
 async function readGedcomFile(file) {
   if (file.size > MAX_GEDCOM_FILE_BYTES) {
-    throw new Error('GEDCOM file is too large. Maximum size is 50 MB.');
+    throw new Error('GEDCOM file is too large. Maximum size is 150 MB.');
   }
 
   const buffer = await file.arrayBuffer();
@@ -501,7 +504,7 @@ async function readGedcomFromZip(buffer) {
   }
 
   if (gedcomEntry.uncompressedSize > MAX_GEDCOM_FILE_BYTES) {
-    throw new Error('The GEDCOM file inside this ZIP is too large. Maximum size is 50 MB.');
+    throw new Error('The GEDCOM file inside this ZIP is too large. Maximum size is 150 MB.');
   }
 
   const data = await extractZipEntry(zipBytes, gedcomEntry);

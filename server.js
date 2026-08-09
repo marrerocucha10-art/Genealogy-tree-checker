@@ -10,14 +10,14 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json({
-  limit: '60mb',
+  limit: '170mb',
   verify: (req, res, buffer) => {
     if (req.originalUrl === '/api/stripe/webhook') {
       req.rawBody = buffer;
     }
   },
 }));
-app.use(express.text({ type: ['text/*', 'application/x-gedcom', 'application/octet-stream'], limit: '60mb' }));
+app.use(express.text({ type: ['text/*', 'application/x-gedcom', 'application/octet-stream'], limit: '170mb' }));
 
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
@@ -31,7 +31,7 @@ app.use((req, res, next) => {
   return next();
 });
 
-const MAX_GEDCOM_BYTES = 50 * 1024 * 1024;
+const MAX_GEDCOM_BYTES = 150 * 1024 * 1024;
 
 const SUBSCRIPTION_TIERS = {
   personal: {
@@ -296,7 +296,7 @@ async function readResponseTextWithLimit(response) {
   if (!response.body || !response.body.getReader) {
     const buffer = Buffer.from(await response.arrayBuffer());
     if (buffer.length > MAX_GEDCOM_BYTES) {
-      throw new Error('GEDCOM file is too large. Maximum size is 50 MB.');
+      throw new Error('GEDCOM file is too large. Maximum size is 150 MB.');
     }
 
     return buffer.toString('utf8');
@@ -313,7 +313,7 @@ async function readResponseTextWithLimit(response) {
     totalBytes += value.byteLength;
     if (totalBytes > MAX_GEDCOM_BYTES) {
       await reader.cancel();
-      throw new Error('GEDCOM file is too large. Maximum size is 50 MB.');
+      throw new Error('GEDCOM file is too large. Maximum size is 150 MB.');
     }
 
     chunks.push(Buffer.from(value));
@@ -356,7 +356,7 @@ async function fetchGedcomFromUrl(fileUrl) {
 
     const contentLength = Number(response.headers.get('content-length') || 0);
     if (contentLength > MAX_GEDCOM_BYTES) {
-      throw new Error('GEDCOM file is too large. Maximum size is 50 MB.');
+      throw new Error('GEDCOM file is too large. Maximum size is 150 MB.');
     }
 
     return await readResponseTextWithLimit(response);
@@ -385,12 +385,70 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'Genealogy Tree Checker is running!' });
 });
 
+
+function splitGedcomRecords(gedcom) {
+  const normalized = String(gedcom || '').replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
+  const lines = normalized.split('\n');
+  const records = [];
+  let current = [];
+
+  for (const line of lines) {
+    if (/^0\s+/.test(line) && current.length) {
+      records.push(current);
+      current = [];
+    }
+    current.push(line);
+  }
+
+  if (current.length) records.push(current);
+  return records;
+}
+
+function normalizeGedcomRecord(lines) {
+  return lines
+    .map((line) => line.trimEnd())
+    .filter((line) => line.trim())
+    .join('\n');
+}
+
+function cleanupRepeatedGedcomRecords(gedcom) {
+  const records = splitGedcomRecords(gedcom);
+  const seen = new Set();
+  const cleanedRecords = [];
+  let repeatedRecordsRemoved = 0;
+
+  for (const record of records) {
+    const firstLine = record.find((line) => line.trim()) || '';
+    const isTopLevelEntity = /^0\s+@[^@]+@\s+(INDI|FAM|SUBM|NOTE|SOUR|REPO|OBJE)\b/i.test(firstLine);
+    const key = isTopLevelEntity ? normalizeGedcomRecord(record) : '';
+
+    if (key) {
+      if (seen.has(key)) {
+        repeatedRecordsRemoved += 1;
+        continue;
+      }
+      seen.add(key);
+    }
+
+    cleanedRecords.push(record);
+  }
+
+  return {
+    gedcom: cleanedRecords.map((record) => record.join('\n')).join('\n'),
+    repeatedRecordsRemoved,
+  };
+}
+
 function sendParsedGedcom(res, gedcom) {
-  const parsed = parseGedcom(gedcom);
+  const cleanup = cleanupRepeatedGedcomRecords(gedcom);
+  const parsed = parseGedcom(cleanup.gedcom);
 
   res.json({
     success: true,
     parsed,
+    cleanup: {
+      repeatedRecordsRemoved: cleanup.repeatedRecordsRemoved,
+    },
   });
 }
 
