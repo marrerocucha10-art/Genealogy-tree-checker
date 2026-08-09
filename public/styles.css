@@ -1297,3 +1297,60 @@ input[type="file"] {
 .product-access-link:hover {
   background: #e2e8f0;
 }
+
+
+.generation-block {
+  background: #f8f9ff;
+  border: 1px solid #c3dafe;
+  border-radius: 14px;
+  margin-bottom: 24px;
+  padding: 18px;
+}
+
+.later-generations {
+  background: #fffaf0;
+  border-color: #f6ad55;
+}
+
+.generation-heading,
+.single-generation-heading {
+  align-items: baseline;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.generation-heading h3,
+.single-generation-heading h4 {
+  color: #2d3748;
+  margin: 0;
+}
+
+.generation-heading span,
+.single-generation-heading span {
+  color: #718096;
+  font-weight: 700;
+}
+
+.single-generation {
+  margin-top: 18px;
+}
+
+.single-generation:first-of-type {
+  margin-top: 0;
+}
+
+@media print {
+  .generation-block,
+  .single-generation {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  .generation-heading,
+  .single-generation-heading {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+}

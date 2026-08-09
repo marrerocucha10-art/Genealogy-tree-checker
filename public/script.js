@@ -956,37 +956,142 @@ function renderFamilyTree() {
   }
 
   const peopleById = new Map(treeData.people.map((person) => [person.id, person]));
-  const connectedIds = new Set();
-  const treeCharts = treeData.families.map((family, index) => {
-    [family.husbandId, family.wifeId, ...(family.childrenIds || [])].filter(Boolean).forEach((id) => connectedIds.add(id));
-    return renderFamilyTreeChart(family, peopleById, index + 1);
-  }).join('');
+  const generationData = buildGenerationData(peopleById);
   const unconnectedPeople = treeData.families.length
-    ? treeData.people.filter((person) => !connectedIds.has(person.id))
+    ? treeData.people.filter((person) => !generationData.connectedIds.has(person.id))
     : treeData.people;
 
   familyTreeDiv.classList.toggle('horizontal-layout', treeLayout === 'horizontal');
   familyTreeDiv.classList.toggle('vertical-layout', treeLayout !== 'horizontal');
 
   familyTreeDiv.innerHTML = `
-    ${renderSummary()}
+    ${renderSummary(generationData)}
     ${renderGedcomInfo()}
     ${treeData.warnings.length ? renderWarnings() : ''}
     ${renderValidationReport()}
     ${renderFixHistory()}
-    ${treeCharts || `<section class="tree-chart standalone-people"><h3>People</h3><div class="children-row">${unconnectedPeople.map(renderPersonNode).join('')}</div></section>`}
-    ${treeCharts && unconnectedPeople.length ? `<section class="tree-chart standalone-people"><h3>Unconnected People</h3><div class="children-row">${unconnectedPeople.map(renderPersonNode).join('')}</div></section>` : ''}
+    ${renderGenerationSections(generationData, peopleById)}
+    ${!treeData.families.length ? `<section class="tree-chart standalone-people"><h3>People</h3><div class="children-row">${unconnectedPeople.map(renderPersonNode).join('')}</div></section>` : ''}
+    ${treeData.families.length && unconnectedPeople.length ? `<section class="tree-chart standalone-people"><h3>Unconnected People</h3><div class="children-row">${unconnectedPeople.map(renderPersonNode).join('')}</div></section>` : ''}
   `;
 }
 
-function renderSummary() {
+function renderSummary(generationData = null) {
+  const generationCount = generationData ? generationData.generations.length : 0;
+
   return `
     <div class="tree-summary">
       <span><strong>${treeData.people.length}</strong> people</span>
       <span><strong>${treeData.families.length}</strong> families</span>
       <span><strong>${treeData.relationships.length}</strong> relationships</span>
+      ${generationCount ? `<span><strong>${generationCount}</strong> generation group${generationCount === 1 ? '' : 's'}</span>` : ''}
     </div>
   `;
+}
+
+
+function buildGenerationData(peopleById) {
+  const connectedIds = new Set();
+  const parentToChildren = new Map();
+  const childToParents = new Map();
+
+  for (const family of treeData.families) {
+    const parentIds = [family.husbandId, family.wifeId].filter((id) => id && peopleById.has(id));
+    const childIds = (family.childrenIds || []).filter((id) => id && peopleById.has(id));
+    [...parentIds, ...childIds].forEach((id) => connectedIds.add(id));
+
+    for (const parentId of parentIds) {
+      if (!parentToChildren.has(parentId)) parentToChildren.set(parentId, new Set());
+      childIds.forEach((childId) => parentToChildren.get(parentId).add(childId));
+    }
+
+    for (const childId of childIds) {
+      if (!childToParents.has(childId)) childToParents.set(childId, new Set());
+      parentIds.forEach((parentId) => childToParents.get(childId).add(parentId));
+    }
+  }
+
+  const generationByPerson = new Map();
+  const rootIds = [...connectedIds].filter((id) => !childToParents.has(id) || childToParents.get(id).size === 0);
+  const queue = (rootIds.length ? rootIds : [...connectedIds]).map((id) => ({ id, generation: 1 }));
+
+  while (queue.length) {
+    const { id, generation } = queue.shift();
+    const knownGeneration = generationByPerson.get(id);
+    if (knownGeneration && knownGeneration <= generation) continue;
+
+    generationByPerson.set(id, generation);
+    for (const childId of parentToChildren.get(id) || []) {
+      queue.push({ id: childId, generation: generation + 1 });
+    }
+  }
+
+  for (const id of connectedIds) {
+    if (!generationByPerson.has(id)) generationByPerson.set(id, 1);
+  }
+
+  const familyRows = treeData.families.map((family, index) => {
+    const memberGenerations = [family.husbandId, family.wifeId, ...(family.childrenIds || [])]
+      .filter(Boolean)
+      .map((id) => generationByPerson.get(id))
+      .filter(Boolean);
+    const parentGenerations = [family.husbandId, family.wifeId]
+      .filter(Boolean)
+      .map((id) => generationByPerson.get(id))
+      .filter(Boolean);
+
+    return {
+      family,
+      index,
+      generation: parentGenerations[0] || Math.min(...memberGenerations, 1),
+    };
+  });
+
+  const generations = [...new Set(familyRows.map((row) => row.generation))].sort((a, b) => a - b);
+  return { connectedIds, generationByPerson, familyRows, generations };
+}
+
+function renderGenerationSections(generationData, peopleById) {
+  if (!generationData.familyRows.length) return '';
+
+  const firstSeven = generationData.familyRows.filter((row) => row.generation <= 7);
+  const later = generationData.familyRows.filter((row) => row.generation > 7);
+
+  return `
+    <section class="generation-block primary-generations">
+      <div class="generation-heading">
+        <h3>First 7 Generations</h3>
+        <span>${firstSeven.length} family group${firstSeven.length === 1 ? '' : 's'}</span>
+      </div>
+      ${firstSeven.length ? renderGenerationGroups(firstSeven, peopleById) : '<p class="muted">No connected family groups were found in generations 1–7.</p>'}
+    </section>
+    ${later.length ? `
+      <section class="generation-block later-generations">
+        <div class="generation-heading">
+          <h3>Remaining Generations</h3>
+          <span>Generations 8+ · ${later.length} family group${later.length === 1 ? '' : 's'}</span>
+        </div>
+        ${renderGenerationGroups(later, peopleById)}
+      </section>
+    ` : ''}
+  `;
+}
+
+function renderGenerationGroups(familyRows, peopleById) {
+  const generations = [...new Set(familyRows.map((row) => row.generation))].sort((a, b) => a - b);
+
+  return generations.map((generation) => {
+    const rows = familyRows.filter((row) => row.generation === generation);
+    return `
+      <section class="single-generation" id="generation-${generation}">
+        <div class="single-generation-heading">
+          <h4>Generation ${generation}</h4>
+          <span>${rows.length} family group${rows.length === 1 ? '' : 's'}</span>
+        </div>
+        ${rows.map((row) => renderFamilyTreeChart(row.family, peopleById, row.index + 1, row.generation)).join('')}
+      </section>
+    `;
+  }).join('');
 }
 
 function renderGedcomInfo() {
@@ -1097,7 +1202,7 @@ function renderWarnings() {
   return `<div class="warnings"><strong>Import warnings</strong><ul>${warningItems}${remaining}</ul></div>`;
 }
 
-function renderFamilyTreeChart(family, peopleById, familyNumber) {
+function renderFamilyTreeChart(family, peopleById, familyNumber, generation = null) {
   const parents = [family.husbandId, family.wifeId]
     .filter(Boolean)
     .map((id) => peopleById.get(id))
@@ -1109,7 +1214,7 @@ function renderFamilyTreeChart(family, peopleById, familyNumber) {
   return `
     <section class="tree-chart ${treeLayout === 'horizontal' ? 'tree-chart-horizontal' : 'tree-chart-vertical'}">
       <div class="family-heading">
-        <h3>Family ${familyNumber}</h3>
+        <h3>Family ${familyNumber}${generation ? ` · Generation ${generation}` : ''}</h3>
         <span>${escapeHtml(family.id)}</span>
       </div>
       ${renderFamilyFacts(family)}
