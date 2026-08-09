@@ -151,6 +151,7 @@ if (reportPageDiv) {
     const downloadReportButton = event.target.closest('[data-download-report]');
     const issueGuidanceButton = event.target.closest('[data-issue-guidance]');
     const issueStatusButton = event.target.closest('[data-issue-status]');
+    const mergeDuplicatesButton = event.target.closest('[data-merge-duplicate-ids]');
 
     if (autoFixButton) {
       applyAutomaticFixes();
@@ -179,6 +180,11 @@ if (reportPageDiv) {
 
     if (issueStatusButton) {
       updateIssueReviewStatus(issueStatusButton.dataset.issueKey, issueStatusButton.dataset.issueStatus);
+      return;
+    }
+
+    if (mergeDuplicatesButton) {
+      mergeDuplicatePeople(mergeDuplicatesButton.dataset.mergeDuplicateIds);
     }
   });
 }
@@ -1579,6 +1585,76 @@ function getIssueKey(issue) {
   return [issue.category, issue.subject || '', issue.message].join('|').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
+function getDuplicatePersonIds(issue) {
+  if (!String(issue.category || '').toLowerCase().includes('duplicate')) return [];
+
+  const ids = [...String(issue.message || '').matchAll(/\((@[^@]+@|manual-[^)]+)\)/g)].map((match) => match[1]);
+  return [...new Set(ids)].filter((id) => treeData.people.some((person) => person.id === id));
+}
+
+function mergeDuplicatePeople(encodedIds) {
+  const duplicateIds = String(encodedIds || '').split(',').map((id) => id.trim()).filter(Boolean);
+  if (duplicateIds.length < 2) {
+    setReportStatus('Select at least two duplicate people to merge.', 'error');
+    return;
+  }
+
+  const people = duplicateIds.map((id) => treeData.people.find((person) => person.id === id)).filter(Boolean);
+  if (people.length < 2) {
+    setReportStatus('The duplicate records were not found in this tree.', 'error');
+    return;
+  }
+
+  const primary = people[0];
+  const duplicateIdSet = new Set(people.slice(1).map((person) => person.id));
+  const duplicateNames = people.slice(1).map((person) => person.name).join(', ');
+  if (!confirm(`Merge ${duplicateNames} into ${primary.name}? Review source records first; this cannot be undone except by re-uploading.`)) return;
+
+  for (const duplicate of people.slice(1)) {
+    primary.notes = [...new Set([...(primary.notes || []), ...(duplicate.notes || []), `Merged duplicate record ${duplicate.id} (${duplicate.name}).`])];
+    primary.familyAsChild = [...new Set([...(primary.familyAsChild || []), ...(duplicate.familyAsChild || [])])];
+    primary.familyAsSpouse = [...new Set([...(primary.familyAsSpouse || []), ...(duplicate.familyAsSpouse || [])])];
+    if (!primary.birthDate && duplicate.birthDate) primary.birthDate = duplicate.birthDate;
+    if (!primary.birthPlace && duplicate.birthPlace) primary.birthPlace = duplicate.birthPlace;
+    if (!primary.deathDate && duplicate.deathDate) primary.deathDate = duplicate.deathDate;
+    if (!primary.deathPlace && duplicate.deathPlace) primary.deathPlace = duplicate.deathPlace;
+  }
+
+  treeData.families = treeData.families.map((family) => ({
+    ...family,
+    husbandId: duplicateIdSet.has(family.husbandId) ? primary.id : family.husbandId,
+    wifeId: duplicateIdSet.has(family.wifeId) ? primary.id : family.wifeId,
+    childrenIds: [...new Set((family.childrenIds || []).map((childId) => duplicateIdSet.has(childId) ? primary.id : childId))],
+  }));
+  treeData.relationships = treeData.relationships.map((relationship) => ({
+    ...relationship,
+    personId: duplicateIdSet.has(relationship.personId) ? primary.id : relationship.personId,
+    relatedPersonId: duplicateIdSet.has(relationship.relatedPersonId) ? primary.id : relationship.relatedPersonId,
+  }));
+  treeData.people = treeData.people.filter((person) => !duplicateIdSet.has(person.id));
+  treeData.fixHistory = [
+    ...(treeData.fixHistory || []),
+    {
+      time: new Date().toISOString(),
+      category: 'Duplicate merge',
+      subject: primary.id,
+      problem: `Duplicate records merged: ${people.slice(1).map((person) => person.id).join(', ')}`,
+      fix: `Kept ${primary.name} (${primary.id}) and merged notes, family links, and missing facts from duplicate records.`,
+    },
+  ];
+  treeData.validationReport = analyzeTreeData(treeData);
+  saveTreeData();
+  renderReportPage();
+  setReportStatus(`Merged ${people.length - 1} duplicate record(s) into ${primary.name}.`, 'success');
+}
+
+function renderDuplicateMergeAction(issue) {
+  const ids = getDuplicatePersonIds(issue);
+  if (ids.length < 2) return '';
+
+  return `<button type="button" class="btn-secondary issue-guidance-button" data-merge-duplicate-ids="${escapeHtml(ids.join(','))}">Merge Duplicate Records</button>`;
+}
+
 function updateIssueReviewStatus(issueKey, status) {
   if (!issueKey || !['needs-review', 'fixed', 'ignored'].includes(status)) return;
 
@@ -1715,7 +1791,7 @@ function renderIssueGroup(title, issues, type) {
     <div class="issue-group ${type}">
       <h4>${title}</h4>
       <ul>
-        ${issues.map((issue) => `<li><strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(issue.message)}${issue.subject ? ` <span>${escapeHtml(issue.subject)}</span>` : ''}${issue.suggestion ? `<p class="fix-suggestion">${escapeHtml(issue.suggestion)}</p>` : ''}<p class="repair-suggestion">${escapeHtml(getRepairSuggestion(issue))}</p>${!issue.autoFix ? `<button type="button" class="btn-secondary issue-guidance-button" data-issue-guidance="${escapeHtml(getRepairSuggestion(issue))}">Use This Repair Suggestion</button>` : ''}${renderIssueStatusControls(issue)}</li>`).join('')}
+        ${issues.map((issue) => `<li><strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(issue.message)}${issue.subject ? ` <span>${escapeHtml(issue.subject)}</span>` : ''}${issue.suggestion ? `<p class="fix-suggestion">${escapeHtml(issue.suggestion)}</p>` : ''}<p class="repair-suggestion">${escapeHtml(getRepairSuggestion(issue))}</p>${!issue.autoFix ? `<button type="button" class="btn-secondary issue-guidance-button" data-issue-guidance="${escapeHtml(getRepairSuggestion(issue))}">Use This Repair Suggestion</button>` : ''}${renderDuplicateMergeAction(issue)}${renderIssueStatusControls(issue)}</li>`).join('')}
       </ul>
     </div>
   `;
