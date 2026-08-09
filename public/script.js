@@ -153,6 +153,9 @@ gedcomForm.addEventListener('submit', async (event) => {
   const file = gedcomFileInput.files[0];
   if (!file) return;
 
+  const previousTreeData = treeData;
+  treeData = createEmptyTreeData();
+  renderFamilyTree();
   setStatus('Reading GEDCOM file...', 'info');
 
   try {
@@ -182,7 +185,12 @@ gedcomForm.addEventListener('submit', async (event) => {
     setStatus(`Imported ${people} people, ${families} families, and ${relationships} relationships.${warningText}${cleanupText}${storageText}`, 'success');
     gedcomForm.reset();
   } catch (error) {
-    setStatus(formatGedcomLoadError(error), 'error');
+    treeData = previousTreeData;
+    renderFamilyTree();
+    const restoreText = previousTreeData.people.length
+      ? ' Previous tree restored; no new GEDCOM was imported.'
+      : ' No GEDCOM was imported.';
+    setStatus(`${formatGedcomLoadError(error)}${restoreText}`, 'error');
   }
 });
 
