@@ -1188,11 +1188,15 @@ function getAutomaticFixes() {
 }
 
 function applyAutomaticFixes() {
-  if (!requireTier('autoFix')) return;
+  const requiredTier = ACTION_REQUIREMENTS.autoFix;
+  if (requiredTier && !hasTier(requiredTier)) {
+    setReportStatus(`${SUBSCRIPTION_TIERS[requiredTier].name} subscription required for this action. Choose a plan above to upgrade.`, 'error');
+    return;
+  }
 
   const fixIssues = getAutomaticFixIssues();
   if (!fixIssues.length) {
-    setStatus('No safe automatic fixes are available. Use manual fixes for the remaining issues.', 'info');
+    setReportStatus('No safe automatic fixes are available. Use manual fixes for the remaining issues.', 'info');
     return;
   }
 
@@ -1245,7 +1249,7 @@ function applyAutomaticFixes() {
   treeData.validationReport = analyzeTreeData(treeData);
   saveTreeData();
   renderFamilyTree();
-  setStatus(`Applied ${appliedRecords.length} safe automatic fix(es). Review the Fix Record and remaining manual fixes.`, 'success');
+  setReportStatus(`Applied ${appliedRecords.length} safe automatic fix(es). Review the Fix Record and remaining manual fixes.`, 'success');
 
   if (appliedRecords.length && confirm('Safe fixes were applied. Do you want a printout of the fixed family tree and fix record?')) {
     window.print();
@@ -1258,11 +1262,11 @@ function showManualFixes() {
     .map((issue) => `${issue.category}: ${issue.suggestion}`);
 
   if (!manualSuggestions.length) {
-    setStatus('No manual fixes are currently listed.', 'info');
+    setReportStatus('No manual fixes are currently listed.', 'info');
     return;
   }
 
-  setStatus(`Manual fix suggestions: ${manualSuggestions.slice(0, 5).join(' | ')}${manualSuggestions.length > 5 ? ' | More suggestions are listed in the report.' : ''}`, 'info');
+  setReportStatus(`Manual fix suggestions: ${manualSuggestions.slice(0, 5).join(' | ')}${manualSuggestions.length > 5 ? ' | More suggestions are listed in the report.' : ''}`, 'info');
 }
 
 function renderFamilyTree() {
@@ -1489,6 +1493,7 @@ function renderValidationReport() {
         <button type="button" class="btn-secondary" data-apply-auto-fixes>Apply Safe Automatic Fixes</button>
         <button type="button" class="btn-secondary" data-show-manual-fixes>Show Manual Fix Guidance</button>
       </div>
+      <p id="treeReportStatus" class="status-message report-status" aria-live="polite"></p>
       ${renderIssueGroup('Errors', report.errors, 'error')}
       ${renderIssueGroup('Warnings', report.warnings, 'warning')}
       ${renderIssueGroup('Notes', report.info, 'info')}
@@ -1618,6 +1623,17 @@ function removeMember(id) {
 function setStatus(message, type) {
   uploadStatus.textContent = message;
   uploadStatus.className = `status-message ${type || ''}`.trim();
+}
+
+function setReportStatus(message, type) {
+  const reportStatus = document.getElementById('treeReportStatus');
+  if (!reportStatus) {
+    setStatus(message, type);
+    return;
+  }
+
+  reportStatus.textContent = message;
+  reportStatus.className = `status-message report-status ${type || ''}`.trim();
 }
 
 function escapeHtml(value = '') {

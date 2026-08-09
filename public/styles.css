@@ -962,6 +962,10 @@ input[type="file"] {
   margin-bottom: 12px;
 }
 
+.report-status {
+  margin: 10px 0 0;
+}
+
 .fix-suggestion {
   background: rgba(255, 255, 255, 0.65);
   border-radius: 8px;
