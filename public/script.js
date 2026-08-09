@@ -1620,7 +1620,10 @@ function renderReportPage() {
     <section class="validation-report report-page-card">
       <div class="report-heading">
         <h2>Tree Error Report</h2>
-        <a class="btn-secondary" href="/">Back to Tree</a>
+        <div class="report-header-actions">
+          <a class="btn-secondary" href="/">Back to Tree</a>
+          <a class="btn-add report-page-link" href="/#gedcomForm">Upload Repaired Tree</a>
+        </div>
       </div>
       ${renderValidationReport()}
       ${renderRepairLog()}

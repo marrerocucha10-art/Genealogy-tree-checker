@@ -992,6 +992,12 @@ input[type="file"] {
   margin-top: 10px;
 }
 
+.report-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .report-page-link {
   display: inline-flex;
   margin-top: 6px;
