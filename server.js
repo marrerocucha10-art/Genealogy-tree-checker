@@ -10,14 +10,14 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json({
-  limit: '10mb',
+  limit: '60mb',
   verify: (req, res, buffer) => {
     if (req.originalUrl === '/api/stripe/webhook') {
       req.rawBody = buffer;
     }
   },
 }));
-app.use(express.text({ type: ['text/*', 'application/x-gedcom', 'application/octet-stream'], limit: '10mb' }));
+app.use(express.text({ type: ['text/*', 'application/x-gedcom', 'application/octet-stream'], limit: '60mb' }));
 
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
@@ -31,7 +31,7 @@ app.use((req, res, next) => {
   return next();
 });
 
-const MAX_GEDCOM_BYTES = 10 * 1024 * 1024;
+const MAX_GEDCOM_BYTES = 50 * 1024 * 1024;
 
 const SUBSCRIPTION_TIERS = {
   personal: {
@@ -296,7 +296,7 @@ async function readResponseTextWithLimit(response) {
   if (!response.body || !response.body.getReader) {
     const buffer = Buffer.from(await response.arrayBuffer());
     if (buffer.length > MAX_GEDCOM_BYTES) {
-      throw new Error('GEDCOM file is too large. Maximum size is 10 MB.');
+      throw new Error('GEDCOM file is too large. Maximum size is 50 MB.');
     }
 
     return buffer.toString('utf8');
@@ -313,7 +313,7 @@ async function readResponseTextWithLimit(response) {
     totalBytes += value.byteLength;
     if (totalBytes > MAX_GEDCOM_BYTES) {
       await reader.cancel();
-      throw new Error('GEDCOM file is too large. Maximum size is 10 MB.');
+      throw new Error('GEDCOM file is too large. Maximum size is 50 MB.');
     }
 
     chunks.push(Buffer.from(value));
@@ -356,7 +356,7 @@ async function fetchGedcomFromUrl(fileUrl) {
 
     const contentLength = Number(response.headers.get('content-length') || 0);
     if (contentLength > MAX_GEDCOM_BYTES) {
-      throw new Error('GEDCOM file is too large. Maximum size is 10 MB.');
+      throw new Error('GEDCOM file is too large. Maximum size is 50 MB.');
     }
 
     return await readResponseTextWithLimit(response);

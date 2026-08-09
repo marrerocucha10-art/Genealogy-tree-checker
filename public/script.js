@@ -3,7 +3,7 @@ const LAYOUT_STORAGE_KEY = 'familyTreeLayout';
 const SUBSCRIPTION_STORAGE_KEY = 'familyTreeSubscriptionTier';
 const BILLING_INTERVAL_STORAGE_KEY = 'familyTreeBillingInterval';
 const STRIPE_CUSTOMER_STORAGE_KEY = 'familyTreeStripeCustomerId';
-const MAX_GEDCOM_FILE_BYTES = 10 * 1024 * 1024;
+const MAX_GEDCOM_FILE_BYTES = 50 * 1024 * 1024;
 
 let treeData = loadTreeData();
 let treeLayout = localStorage.getItem(LAYOUT_STORAGE_KEY) || 'vertical';
@@ -169,14 +169,15 @@ gedcomForm.addEventListener('submit', async (event) => {
     }
 
     treeData = normalizeParsedGedcom(result.parsed);
-    saveTreeData();
+    const savedLocally = saveTreeData();
     renderFamilyTree();
 
     const { people, families, relationships } = result.parsed.stats;
     const warningText = result.parsed.warnings.length
       ? ` ${result.parsed.warnings.length} warning(s) found.`
       : '';
-    setStatus(`Imported ${people} people, ${families} families, and ${relationships} relationships.${warningText}`, 'success');
+    const storageText = savedLocally ? '' : ' This tree is too large for browser storage, so it will stay available only until this tab is refreshed.';
+    setStatus(`Imported ${people} people, ${families} families, and ${relationships} relationships.${warningText}${storageText}`, 'success');
     gedcomForm.reset();
   } catch (error) {
     setStatus(error.message, 'error');
@@ -468,7 +469,7 @@ function buildTreeSummary() {
 
 async function readGedcomFile(file) {
   if (file.size > MAX_GEDCOM_FILE_BYTES) {
-    throw new Error('GEDCOM file is too large. Maximum size is 10 MB.');
+    throw new Error('GEDCOM file is too large. Maximum size is 50 MB.');
   }
 
   const buffer = await file.arrayBuffer();
@@ -500,7 +501,7 @@ async function readGedcomFromZip(buffer) {
   }
 
   if (gedcomEntry.uncompressedSize > MAX_GEDCOM_FILE_BYTES) {
-    throw new Error('The GEDCOM file inside this ZIP is too large. Maximum size is 10 MB.');
+    throw new Error('The GEDCOM file inside this ZIP is too large. Maximum size is 50 MB.');
   }
 
   const data = await extractZipEntry(zipBytes, gedcomEntry);
@@ -684,7 +685,13 @@ function loadTreeData() {
 }
 
 function saveTreeData() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(treeData));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(treeData));
+    return true;
+  } catch (error) {
+    console.warn('Tree is too large to save in browser storage:', error);
+    return false;
+  }
 }
 
 function normalizeParsedGedcom(parsed) {
