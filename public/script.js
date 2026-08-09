@@ -76,20 +76,24 @@ const subscriptionStatusDiv = document.getElementById('subscriptionStatus');
 const manageBillingButton = document.getElementById('manageBilling');
 const goToStoreButton = document.getElementById('goToStore');
 
-subscriptionPlansDiv.addEventListener('click', (event) => {
-  const upgradeButton = event.target.closest('[data-upgrade-tier]');
-  const previewButton = event.target.closest('[data-preview-tier]');
+if (subscriptionPlansDiv) {
+  subscriptionPlansDiv.addEventListener('click', (event) => {
+    const upgradeButton = event.target.closest('[data-upgrade-tier]');
+    const previewButton = event.target.closest('[data-preview-tier]');
 
-  if (upgradeButton) {
-    startCheckout(upgradeButton.dataset.upgradeTier);
-  }
+    if (upgradeButton) {
+      startCheckout(upgradeButton.dataset.upgradeTier);
+    }
 
-  if (previewButton) {
-    setPreviewTier(previewButton.dataset.previewTier);
-  }
-});
+    if (previewButton) {
+      setPreviewTier(previewButton.dataset.previewTier);
+    }
+  });
+}
 
-manageBillingButton.addEventListener('click', openBillingPortal);
+if (manageBillingButton) {
+  manageBillingButton.addEventListener('click', openBillingPortal);
+}
 
 if (goToStoreButton) {
   goToStoreButton.addEventListener('click', () => {
@@ -127,26 +131,35 @@ function updateLayoutButtons() {
   });
 }
 
-familyTreeDiv.addEventListener('click', (event) => {
-  const removeButton = event.target.closest('[data-remove-person-id]');
-  const autoFixButton = event.target.closest('[data-apply-auto-fixes]');
-  const manualFixButton = event.target.closest('[data-show-manual-fixes]');
+if (familyTreeDiv) {
+  familyTreeDiv.addEventListener('click', (event) => {
+    const removeButton = event.target.closest('[data-remove-person-id]');
 
-  if (removeButton) {
-    removeMember(removeButton.dataset.removePersonId);
-    return;
-  }
+    if (removeButton) {
+      removeMember(removeButton.dataset.removePersonId);
+    }
+  });
+}
 
-  if (autoFixButton) {
-    applyAutomaticFixes();
-    return;
-  }
+const reportPageDiv = document.getElementById('errorReportPage');
 
-  if (manualFixButton) {
-    showManualFixes();
-  }
-});
+if (reportPageDiv) {
+  reportPageDiv.addEventListener('click', (event) => {
+    const autoFixButton = event.target.closest('[data-apply-auto-fixes]');
+    const manualFixButton = event.target.closest('[data-show-manual-fixes]');
 
+    if (autoFixButton) {
+      applyAutomaticFixes();
+      return;
+    }
+
+    if (manualFixButton) {
+      showManualFixes();
+    }
+  });
+}
+
+if (gedcomForm) {
 gedcomForm.addEventListener('submit', async (event) => {
   event.preventDefault();
 
@@ -193,7 +206,9 @@ gedcomForm.addEventListener('submit', async (event) => {
     setStatus(`${formatGedcomLoadError(error)}${restoreText}`, 'error');
   }
 });
+}
 
+if (familyForm) {
 familyForm.addEventListener('submit', (event) => {
   event.preventDefault();
   
@@ -213,7 +228,9 @@ familyForm.addEventListener('submit', (event) => {
   familyForm.reset();
   nameInput.focus();
 });
+}
 
+if (printTreeButton) {
 printTreeButton.addEventListener('click', () => {
   if (!requireTier('print')) return;
   if (!treeData.people.length) {
@@ -223,21 +240,27 @@ printTreeButton.addEventListener('click', () => {
 
   window.print();
 });
+}
 
+if (exportJsonButton) {
 exportJsonButton.addEventListener('click', () => {
   if (!requireTier('exportJson') || !ensureTreeHasPeople('exporting JSON')) return;
 
   downloadFile('family-tree.json', JSON.stringify(treeData, null, 2), 'application/json');
   setStatus('Downloaded parsed tree JSON.', 'success');
 });
+}
 
+if (exportCsvButton) {
 exportCsvButton.addEventListener('click', () => {
   if (!requireTier('exportCsv') || !ensureTreeHasPeople('exporting CSV')) return;
 
   downloadFile('family-tree-people.csv', buildPeopleCsv(), 'text/csv');
   setStatus('Downloaded people CSV.', 'success');
 });
+}
 
+if (copySummaryButton) {
 copySummaryButton.addEventListener('click', async () => {
   if (!requireTier('copySummary') || !ensureTreeHasPeople('copying a summary')) return;
 
@@ -249,7 +272,9 @@ copySummaryButton.addEventListener('click', async () => {
     setStatus(summary, 'info');
   }
 });
+}
 
+if (clearTreeButton) {
 clearTreeButton.addEventListener('click', () => {
   if (!treeData.people.length || confirm('Clear the current family tree?')) {
     treeData = createEmptyTreeData();
@@ -258,6 +283,7 @@ clearTreeButton.addEventListener('click', () => {
     setStatus('', 'info');
   }
 });
+}
 
 
 
@@ -1248,7 +1274,8 @@ function applyAutomaticFixes() {
   treeData.fixHistory = [...(treeData.fixHistory || []), ...appliedRecords];
   treeData.validationReport = analyzeTreeData(treeData);
   saveTreeData();
-  renderFamilyTree();
+  if (familyTreeDiv) renderFamilyTree();
+  if (reportPageDiv) renderReportPage();
   setReportStatus(`Applied ${appliedRecords.length} safe automatic fix(es). Review the Fix Record and remaining manual fixes.`, 'success');
 
   if (appliedRecords.length && confirm('Safe fixes were applied. Do you want a printout of the fixed family tree and fix record?')) {
@@ -1288,7 +1315,7 @@ function renderFamilyTree() {
     ${renderSummary(generationData)}
     ${renderGedcomInfo()}
     ${treeData.warnings.length ? renderWarnings() : ''}
-    ${renderValidationReport()}
+    ${renderReportSummaryLink()}
     ${renderFixHistory()}
     ${renderGenerationSections(generationData, peopleById)}
     ${!treeData.families.length ? `<section class="tree-chart standalone-people"><h3>People</h3><div class="children-row">${unconnectedPeople.map(renderPersonNode).join('')}</div></section>` : ''}
@@ -1478,6 +1505,39 @@ function renderFixHistory() {
   `;
 }
 
+function renderReportSummaryLink() {
+  const report = treeData.validationReport || createEmptyValidationReport();
+  const total = report.errors.length + report.warnings.length + report.info.length;
+  if (!total) return '';
+
+  return `
+    <section class="validation-report report-summary-card">
+      <div class="report-heading">
+        <h3>Tree Error Report</h3>
+        <span>${report.errors.length} errors · ${report.warnings.length} warnings · ${report.info.length} notes</span>
+      </div>
+      <p>Review issues and choose fix options on the dedicated report page.</p>
+      <a class="btn-secondary report-page-link" href="/report.html">Open Error Report</a>
+    </section>
+  `;
+}
+
+function renderReportPage() {
+  if (!reportPageDiv) return;
+
+  treeData.validationReport = analyzeTreeData(treeData);
+  reportPageDiv.innerHTML = `
+    <section class="validation-report report-page-card">
+      <div class="report-heading">
+        <h2>Tree Error Report</h2>
+        <a class="btn-secondary" href="/">Back to Tree</a>
+      </div>
+      ${renderValidationReport()}
+      ${renderFixHistory()}
+    </section>
+  `;
+}
+
 function renderValidationReport() {
   const report = treeData.validationReport || createEmptyValidationReport();
   const total = report.errors.length + report.warnings.length + report.info.length;
@@ -1621,6 +1681,7 @@ function removeMember(id) {
 }
 
 function setStatus(message, type) {
+  if (!uploadStatus) return;
   uploadStatus.textContent = message;
   uploadStatus.className = `status-message ${type || ''}`.trim();
 }
@@ -1647,6 +1708,11 @@ function escapeHtml(value = '') {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  if (reportPageDiv) {
+    renderReportPage();
+    return;
+  }
+
   applyCheckoutReturn();
   updateLayoutButtons();
   updateBillingButtons();
