@@ -107,6 +107,80 @@ Content-Type: application/json
 
 The same URL parser is also available at `POST /api/parse-gedcom-url`. It accepts JSON fields named `url`, `fileUrl`, or `gedcomUrl`, downloads up to 10 MB, then returns the same structured JSON response.
 
+
+## Bubble Stripe Subscription API
+
+Bubble should call the Vercel API endpoints below from backend workflows. Stripe secret keys stay in Vercel Environment Variables and are never sent to Bubble.
+
+Optional security: set `BUBBLE_API_KEY` in Vercel, then include either `x-bubble-api-key: <key>` or `Authorization: Bearer <key>` on Bubble API Connector calls.
+
+### Create a Stripe Checkout Session
+
+```http
+POST /api/bubble/create-checkout-session
+Content-Type: application/json
+
+{
+  "tier": "pro",
+  "interval": "monthly",
+  "email": "customer@example.com",
+  "bubbleUserId": "Bubble user unique id",
+  "successUrl": "https://your-bubble-app.com/checkout-success?session_id={CHECKOUT_SESSION_ID}",
+  "cancelUrl": "https://your-bubble-app.com/pricing"
+}
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "checkoutUrl": "https://checkout.stripe.com/...",
+  "checkoutSessionId": "cs_test_..."
+}
+```
+
+Redirect the Bubble user to `checkoutUrl`.
+
+### Check Subscription Status
+
+```http
+POST /api/bubble/subscription/status
+Content-Type: application/json
+
+{
+  "sessionId": "cs_test_..."
+}
+```
+
+You can also send `customerId` or `subscriptionId`. The response includes `active`, `tier`, `interval`, `status`, `subscriptionId`, `customerId`, `customerEmail`, and `currentPeriodEnd`.
+
+### Open the Stripe Billing Portal
+
+```http
+POST /api/bubble/create-portal-session
+Content-Type: application/json
+
+{
+  "customerId": "cus_..."
+}
+```
+
+Redirect the Bubble user to `portalUrl` from the response.
+
+### Configure Prices
+
+The server supports these Vercel Environment Variables for Stripe Price IDs:
+
+- `STRIPE_PERSONAL_MONTHLY_PRICE_ID`
+- `STRIPE_PERSONAL_ANNUAL_PRICE_ID`
+- `STRIPE_PRO_MONTHLY_PRICE_ID`
+- `STRIPE_PRO_ANNUAL_PRICE_ID`
+- `STRIPE_BUSINESS_MONTHLY_PRICE_ID`
+- `STRIPE_BUSINESS_ANNUAL_PRICE_ID`
+
+If a Price ID is missing, the API falls back to inline Stripe prices defined in `server.js`.
+
 ## 💾 Data Storage
 
 Your family tree data is automatically saved to your browser's **LocalStorage**. This means:

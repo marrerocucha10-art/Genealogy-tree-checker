@@ -22,7 +22,7 @@ app.use(express.text({ type: ['text/*', 'application/x-gedcom', 'application/oct
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, x-vercel-protection-bypass');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-bubble-api-key, x-vercel-protection-bypass');
 
   if (req.method === 'OPTIONS') {
     return res.sendStatus(204);
@@ -71,6 +71,71 @@ function getBaseUrl(req) {
   return `${protocol}://${host}`;
 }
 
+function getRequestValue(req, names) {
+  for (const name of names) {
+    if (req.body && typeof req.body === 'object' && req.body[name] != null) return req.body[name];
+    if (req.query && req.query[name] != null) return req.query[name];
+  }
+  return '';
+}
+
+function normalizeUrlCandidate(value) {
+  if (!value || typeof value !== 'string') return '';
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+
+  const url = new URL(trimmed);
+  if (!['http:', 'https:'].includes(url.protocol)) {
+    throw new Error('Bubble redirect URLs must use http or https.');
+  }
+  return url.toString().replace(/%7BCHECKOUT_SESSION_ID%7D/gi, '{CHECKOUT_SESSION_ID}');
+}
+
+function getBubbleMetadata(req) {
+  const metadata = {};
+  const rawMetadata = req.body && typeof req.body.metadata === 'object' && !Array.isArray(req.body.metadata) ? req.body.metadata : {};
+
+  for (const [key, value] of Object.entries(rawMetadata)) {
+    if (/^[a-zA-Z0-9_]+$/.test(key) && value != null) metadata[key] = String(value).slice(0, 500);
+  }
+
+  const bubbleUserId = getRequestValue(req, ['bubbleUserId', 'bubble_user_id', 'userId', 'user_id']);
+  const bubbleThingId = getRequestValue(req, ['bubbleThingId', 'bubble_thing_id', 'thingId', 'thing_id']);
+  if (bubbleUserId) metadata.bubble_user_id = String(bubbleUserId).slice(0, 500);
+  if (bubbleThingId) metadata.bubble_thing_id = String(bubbleThingId).slice(0, 500);
+
+  return metadata;
+}
+
+function addMetadataParams(params, prefix, metadata) {
+  for (const [key, value] of Object.entries(metadata)) {
+    params.set(`${prefix}[${key}]`, value);
+  }
+}
+
+function hasValidBubbleSecret(req) {
+  const expected = process.env.BUBBLE_API_KEY;
+  if (!expected) return true;
+
+  const authorization = req.get('authorization') || '';
+  const provided = req.get('x-bubble-api-key') || authorization.replace(/^Bearer\s+/i, '');
+  if (!provided) return false;
+
+  const expectedBuffer = Buffer.from(expected);
+  const providedBuffer = Buffer.from(provided);
+  return expectedBuffer.length === providedBuffer.length && crypto.timingSafeEqual(expectedBuffer, providedBuffer);
+}
+
+function requireBubbleSecret(req, res) {
+  if (hasValidBubbleSecret(req)) return true;
+
+  res.status(401).json({
+    success: false,
+    error: 'Bubble API key is missing or invalid.',
+  });
+  return false;
+}
+
 function getStripeConfig() {
   const hasStripeSecret = Boolean(process.env.STRIPE_SECRET_KEY);
   const tiers = Object.fromEntries(Object.entries(SUBSCRIPTION_TIERS).map(([id, tier]) => ([
@@ -90,7 +155,7 @@ function getStripeConfig() {
   };
 }
 
-async function createStripeCheckoutSession(req, tierId, interval = 'monthly') {
+async function createStripeCheckoutSession(req, tierId, interval = 'monthly', options = {}) {
   const tier = SUBSCRIPTION_TIERS[tierId];
   if (!tier) throw new Error('Unknown subscription tier.');
   if (!['monthly', 'annual'].includes(interval)) throw new Error('Unknown billing interval.');
@@ -101,20 +166,36 @@ async function createStripeCheckoutSession(req, tierId, interval = 'monthly') {
   if (!Number.isFinite(unitAmount) || unitAmount <= 0) throw new Error(`${tier.name} ${interval} has an invalid price.`);
 
   const baseUrl = getBaseUrl(req);
+  const successUrl = normalizeUrlCandidate(options.successUrl || '') || `${baseUrl}/?subscription=${tierId}&interval=${interval}&checkout=success&session_id={CHECKOUT_SESSION_ID}`;
+  const cancelUrl = normalizeUrlCandidate(options.cancelUrl || '') || `${baseUrl}/?checkout=cancelled`;
+  const priceIdEnvName = tier.prices[interval];
+  const priceId = process.env[priceIdEnvName];
+  const metadata = {
+    tier: tierId,
+    interval,
+    ...(options.metadata || {}),
+  };
+
   const params = new URLSearchParams({
     mode: 'subscription',
-    success_url: `${baseUrl}/?subscription=${tierId}&interval=${interval}&checkout=success&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${baseUrl}/?checkout=cancelled`,
-    'line_items[0][price_data][currency]': 'usd',
-    'line_items[0][price_data][product_data][name]': `${tier.name} ${interval === 'annual' ? 'Annual' : 'Monthly'} Subscription`,
-    'line_items[0][price_data][unit_amount]': String(unitAmount),
-    'line_items[0][price_data][recurring][interval]': interval === 'annual' ? 'year' : 'month',
+    success_url: successUrl,
+    cancel_url: cancelUrl,
     'line_items[0][quantity]': '1',
-    'metadata[tier]': tierId,
-    'metadata[interval]': interval,
-    'subscription_data[metadata][tier]': tierId,
-    'subscription_data[metadata][interval]': interval,
   });
+
+  if (priceId) {
+    params.set('line_items[0][price]', priceId);
+  } else {
+    params.set('line_items[0][price_data][currency]', 'usd');
+    params.set('line_items[0][price_data][product_data][name]', `${tier.name} ${interval === 'annual' ? 'Annual' : 'Monthly'} Subscription`);
+    params.set('line_items[0][price_data][unit_amount]', String(unitAmount));
+    params.set('line_items[0][price_data][recurring][interval]', interval === 'annual' ? 'year' : 'month');
+  }
+
+  if (options.customerEmail) params.set('customer_email', String(options.customerEmail).trim());
+  if (options.clientReferenceId) params.set('client_reference_id', String(options.clientReferenceId).slice(0, 200));
+  addMetadataParams(params, 'metadata', metadata);
+  addMetadataParams(params, 'subscription_data[metadata]', metadata);
 
   const response = await fetch('https://api.stripe.com/v1/checkout/sessions', {
     method: 'POST',
@@ -184,6 +265,24 @@ async function getSubscriptionStatusFromCustomer(customerId) {
   }
 
   return formatSubscriptionStatus(activeSubscription, customerId);
+}
+
+async function getSubscriptionStatusFromSubscription(subscriptionId) {
+  if (!subscriptionId) throw new Error('Stripe subscription ID is required.');
+
+  const subscription = await stripeRequest(`/subscriptions/${encodeURIComponent(subscriptionId)}?expand[]=items.data.price`);
+  return formatSubscriptionStatus(subscription, subscription.customer);
+}
+
+async function getSubscriptionStatus(req) {
+  const sessionId = getRequestValue(req, ['session_id', 'sessionId', 'checkoutSessionId', 'checkout_session_id']);
+  const subscriptionId = getRequestValue(req, ['subscription_id', 'subscriptionId']);
+  const customerId = getRequestValue(req, ['customer_id', 'customerId']);
+
+  if (sessionId) return getSubscriptionStatusFromSession(sessionId);
+  if (subscriptionId) return getSubscriptionStatusFromSubscription(subscriptionId);
+  if (customerId) return getSubscriptionStatusFromCustomer(customerId);
+  throw new Error('Provide sessionId, subscriptionId, or customerId.');
 }
 
 function formatSubscriptionStatus(subscription, customerId, customerEmail = '') {
@@ -477,15 +576,77 @@ app.post('/api/create-checkout-session', async (req, res) => {
   }
 });
 
-
-
 app.get('/api/subscription/status', async (req, res) => {
   try {
-    const status = req.query.session_id
-      ? await getSubscriptionStatusFromSession(req.query.session_id)
-      : await getSubscriptionStatusFromCustomer(req.query.customerId);
+    const status = await getSubscriptionStatus(req);
 
     res.json({ success: true, subscription: status });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+app.get('/api/bubble/subscription/config', (req, res) => {
+  if (!requireBubbleSecret(req, res)) return;
+
+  res.json({
+    success: true,
+    stripe: getStripeConfig(),
+    tiers: Object.fromEntries(Object.entries(SUBSCRIPTION_TIERS).map(([id, tier]) => ([
+      id,
+      {
+        name: tier.name,
+        monthlyPrice: tier.monthlyPrice,
+        annualPrice: tier.annualPrice,
+      },
+    ]))),
+  });
+});
+
+app.post('/api/bubble/create-checkout-session', async (req, res) => {
+  if (!requireBubbleSecret(req, res)) return;
+
+  try {
+    const tier = getRequestValue(req, ['tier', 'tierId', 'subscriptionTier']);
+    const interval = getRequestValue(req, ['interval', 'billingInterval']) || 'monthly';
+    const session = await createStripeCheckoutSession(req, tier, interval, {
+      successUrl: getRequestValue(req, ['successUrl', 'success_url']),
+      cancelUrl: getRequestValue(req, ['cancelUrl', 'cancel_url']),
+      customerEmail: getRequestValue(req, ['customerEmail', 'customer_email', 'email']),
+      clientReferenceId: getRequestValue(req, ['clientReferenceId', 'client_reference_id', 'bubbleUserId', 'bubble_user_id', 'userId', 'user_id']),
+      metadata: getBubbleMetadata(req),
+    });
+
+    res.json({
+      success: true,
+      checkoutUrl: session.url,
+      checkoutSessionId: session.id,
+      url: session.url,
+      id: session.id,
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/bubble/subscription/status', async (req, res) => {
+  if (!requireBubbleSecret(req, res)) return;
+
+  try {
+    const status = await getSubscriptionStatus(req);
+
+    res.json({ success: true, subscription: status });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/bubble/create-portal-session', async (req, res) => {
+  if (!requireBubbleSecret(req, res)) return;
+
+  try {
+    const session = await createStripePortalSession(req);
+    res.json({ success: true, portalUrl: session.url, url: session.url });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
   }
