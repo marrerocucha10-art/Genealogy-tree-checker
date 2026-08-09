@@ -301,6 +301,8 @@ async function loadSubscriptionConfig() {
 }
 
 function renderSubscriptionPlans() {
+  if (!subscriptionPlansDiv || !subscriptionStatusDiv) return;
+
   const intervalLabel = billingInterval === 'annual' ? 'Annual billing' : 'Monthly billing';
   subscriptionStatusDiv.textContent = `Current plan: ${SUBSCRIPTION_TIERS[currentTier]?.name || 'Free'} · ${intervalLabel}`;
 
@@ -355,7 +357,12 @@ async function startCheckout(tierId) {
     const response = await fetch('/api/create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tier: tierId, interval: billingInterval }),
+      body: JSON.stringify({
+        tier: tierId,
+        interval: billingInterval,
+        successUrl: `${window.location.origin}/subscriptions.html?subscription=${tierId}&interval=${billingInterval}&checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: `${window.location.origin}/subscriptions.html?checkout=cancelled`,
+      }),
     });
     const result = await response.json();
 
@@ -1719,5 +1726,5 @@ document.addEventListener('DOMContentLoaded', () => {
   renderSubscriptionPlans();
   loadSubscriptionConfig();
   loadSubscriptionStatusFromCustomer();
-  renderFamilyTree();
+  if (familyTreeDiv) renderFamilyTree();
 });

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Choose Subscription | Genealogy Tree Checker</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Choose Subscription</h1>
+      <p>Start free, then unlock printing, exports, automatic fixes, and client workflows as needed.</p>
+      <a class="btn-secondary report-page-link" href="/">Back to Tree</a>
+    </header>
+
+    <main>
+      <section id="subscriptionWorkflows" class="subscription-section">
+        <div class="subscription-header">
+          <div>
+            <h2>Subscription Workflows</h2>
+            <p>Choose a plan or preview a workflow locally.</p>
+          </div>
+          <button id="manageBilling" type="button" class="btn-secondary">Manage Billing</button>
+        </div>
+        <div class="billing-toggle" aria-label="Billing interval">
+          <button id="monthlyBilling" type="button" class="layout-button active" data-billing-interval="monthly">Monthly</button>
+          <button id="annualBilling" type="button" class="layout-button" data-billing-interval="annual">Annual</button>
+        </div>
+        <div id="subscriptionStatus" class="subscription-status">Current plan: Free</div>
+        <div id="subscriptionPlans" class="subscription-plans" aria-live="polite"></div>
+        <p id="uploadStatus" class="status-message" aria-live="polite"></p>
+      </section>
+    </main>
+  </div>
+
+  <script src="script.js?v=subscription-page"></script>
+</body>
+</html>
