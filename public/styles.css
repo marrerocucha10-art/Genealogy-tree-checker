@@ -37,6 +37,30 @@ header p {
   opacity: 0.9;
 }
 
+.btn-chart {
+  display: inline-block;
+  margin-top: 22px;
+  background: #ffffff;
+  color: #5a67d8;
+  padding: 12px 28px;
+  border-radius: 999px;
+  font-size: 1em;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 10px 25px rgba(45, 55, 72, 0.18);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.btn-chart:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgba(45, 55, 72, 0.24);
+}
+
+.btn-chart:focus {
+  outline: 3px solid rgba(255, 255, 255, 0.55);
+  outline-offset: 3px;
+}
+
 main {
   padding: 40px;
 }
