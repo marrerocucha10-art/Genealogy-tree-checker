@@ -1524,6 +1524,53 @@ function renderGedcomInfo() {
 
 
 
+function renderRepairLog() {
+  const issues = getAllIssues().filter((issue) => issue.category !== 'No issues found');
+  if (!issues.length) return '';
+
+  const toFix = issues.filter((issue) => (treeData.issueReviewStatuses?.[getIssueKey(issue)] || 'needs-review') === 'needs-review');
+  const fixed = issues.filter((issue) => treeData.issueReviewStatuses?.[getIssueKey(issue)] === 'fixed');
+  const ignored = issues.filter((issue) => treeData.issueReviewStatuses?.[getIssueKey(issue)] === 'ignored');
+  const fixRecords = treeData.fixHistory || [];
+
+  return `
+    <section class="repair-log">
+      <div class="report-heading">
+        <h3>Error Repair Log</h3>
+        <span>${toFix.length} to fix · ${fixed.length + fixRecords.length} fixed · ${ignored.length} ignored</span>
+      </div>
+      <div class="repair-log-grid">
+        ${renderRepairLogList('Errors to be fixed', toFix, 'No open errors need review.')}
+        ${renderRepairLogList('Errors fixed', fixed, 'No errors have been marked fixed yet.', fixRecords)}
+      </div>
+    </section>
+  `;
+}
+
+function renderRepairLogList(title, issues, emptyMessage, fixRecords = []) {
+  const issueItems = issues.map((issue) => `
+    <li>
+      <strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(issue.message)}
+      ${issue.subject ? `<span>${escapeHtml(issue.subject)}</span>` : ''}
+      <p>${escapeHtml(getRepairSuggestion(issue))}</p>
+    </li>
+  `);
+  const recordItems = fixRecords.map((record) => `
+    <li>
+      <strong>${escapeHtml(record.category)}:</strong> ${escapeHtml(record.problem)}
+      <p>${escapeHtml(record.fix)}</p>
+    </li>
+  `);
+  const items = [...issueItems, ...recordItems];
+
+  return `
+    <div class="repair-log-column">
+      <h4>${escapeHtml(title)}</h4>
+      ${items.length ? `<ol>${items.join('')}</ol>` : `<p class="muted">${escapeHtml(emptyMessage)}</p>`}
+    </div>
+  `;
+}
+
 function renderFixHistory() {
   const records = treeData.fixHistory || [];
   if (!records.length) return '';
@@ -1576,6 +1623,7 @@ function renderReportPage() {
         <a class="btn-secondary" href="/">Back to Tree</a>
       </div>
       ${renderValidationReport()}
+      ${renderRepairLog()}
       ${renderFixHistory()}
     </section>
   `;
@@ -1721,6 +1769,7 @@ function downloadErrorReport() {
 
 function buildErrorReportText() {
   const report = treeData.validationReport || createEmptyValidationReport();
+  const repairIssues = getAllIssues().filter((issue) => issue.category !== 'No issues found');
   const lines = [
     'Tree Error Report',
     `Generated: ${new Date().toLocaleString()}`,
@@ -1730,6 +1779,9 @@ function buildErrorReportText() {
     `Errors: ${report.errors.length}`,
     `Warnings: ${report.warnings.length}`,
     `Notes: ${report.info.length}`,
+    `To fix: ${repairIssues.filter((issue) => (treeData.issueReviewStatuses?.[getIssueKey(issue)] || 'needs-review') === 'needs-review').length}`,
+    `Marked fixed: ${repairIssues.filter((issue) => treeData.issueReviewStatuses?.[getIssueKey(issue)] === 'fixed').length}`,
+    `Automatic fixes logged: ${(treeData.fixHistory || []).length}`,
     '',
   ];
 

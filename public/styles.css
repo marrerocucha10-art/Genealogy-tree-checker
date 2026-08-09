@@ -1006,6 +1006,39 @@ input[type="file"] {
   padding: 7px 9px;
 }
 
+.repair-log {
+  background: #f7fafc;
+  border: 1px solid #cbd5e0;
+  border-radius: 14px;
+  margin: 20px 0;
+  padding: 18px;
+}
+
+.repair-log-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.repair-log-column {
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.repair-log-column ol {
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
+
+.repair-log-column li + li {
+  margin-top: 10px;
+}
+
+.repair-log-column p {
+  margin: 6px 0 0;
+}
+
 .fix-history {
   background: #f0fff4;
   border: 1px solid #68d391;
