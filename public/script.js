@@ -76,20 +76,24 @@ const subscriptionStatusDiv = document.getElementById('subscriptionStatus');
 const manageBillingButton = document.getElementById('manageBilling');
 const goToStoreButton = document.getElementById('goToStore');
 
-subscriptionPlansDiv.addEventListener('click', (event) => {
-  const upgradeButton = event.target.closest('[data-upgrade-tier]');
-  const previewButton = event.target.closest('[data-preview-tier]');
+if (subscriptionPlansDiv) {
+  subscriptionPlansDiv.addEventListener('click', (event) => {
+    const upgradeButton = event.target.closest('[data-upgrade-tier]');
+    const previewButton = event.target.closest('[data-preview-tier]');
 
-  if (upgradeButton) {
-    startCheckout(upgradeButton.dataset.upgradeTier);
-  }
+    if (upgradeButton) {
+      startCheckout(upgradeButton.dataset.upgradeTier);
+    }
 
-  if (previewButton) {
-    setPreviewTier(previewButton.dataset.previewTier);
-  }
-});
+    if (previewButton) {
+      setPreviewTier(previewButton.dataset.previewTier);
+    }
+  });
+}
 
-manageBillingButton.addEventListener('click', openBillingPortal);
+if (manageBillingButton) {
+  manageBillingButton.addEventListener('click', openBillingPortal);
+}
 
 if (goToStoreButton) {
   goToStoreButton.addEventListener('click', () => {
@@ -127,26 +131,65 @@ function updateLayoutButtons() {
   });
 }
 
-familyTreeDiv.addEventListener('click', (event) => {
-  const removeButton = event.target.closest('[data-remove-person-id]');
-  const autoFixButton = event.target.closest('[data-apply-auto-fixes]');
-  const manualFixButton = event.target.closest('[data-show-manual-fixes]');
+if (familyTreeDiv) {
+  familyTreeDiv.addEventListener('click', (event) => {
+    const removeButton = event.target.closest('[data-remove-person-id]');
 
-  if (removeButton) {
-    removeMember(removeButton.dataset.removePersonId);
-    return;
-  }
+    if (removeButton) {
+      removeMember(removeButton.dataset.removePersonId);
+    }
+  });
+}
 
-  if (autoFixButton) {
-    applyAutomaticFixes();
-    return;
-  }
+const reportPageDiv = document.getElementById('errorReportPage');
 
-  if (manualFixButton) {
-    showManualFixes();
-  }
-});
+if (reportPageDiv) {
+  reportPageDiv.addEventListener('click', (event) => {
+    const autoFixButton = event.target.closest('[data-apply-auto-fixes]');
+    const manualFixButton = event.target.closest('[data-show-manual-fixes]');
+    const markReviewedButton = event.target.closest('[data-mark-report-reviewed]');
+    const downloadReportButton = event.target.closest('[data-download-report]');
+    const issueGuidanceButton = event.target.closest('[data-issue-guidance]');
+    const issueStatusButton = event.target.closest('[data-issue-status]');
+    const mergeDuplicatesButton = event.target.closest('[data-merge-duplicate-ids]');
 
+    if (autoFixButton) {
+      applyAutomaticFixes();
+      return;
+    }
+
+    if (manualFixButton) {
+      showManualFixes();
+      return;
+    }
+
+    if (markReviewedButton) {
+      markReportReviewed();
+      return;
+    }
+
+    if (downloadReportButton) {
+      downloadErrorReport();
+      return;
+    }
+
+    if (issueGuidanceButton) {
+      setReportStatus(issueGuidanceButton.dataset.issueGuidance, 'info');
+      return;
+    }
+
+    if (issueStatusButton) {
+      updateIssueReviewStatus(issueStatusButton.dataset.issueKey, issueStatusButton.dataset.issueStatus);
+      return;
+    }
+
+    if (mergeDuplicatesButton) {
+      mergeDuplicatePeople(mergeDuplicatesButton.dataset.mergeDuplicateIds);
+    }
+  });
+}
+
+if (gedcomForm) {
 gedcomForm.addEventListener('submit', async (event) => {
   event.preventDefault();
 
@@ -193,7 +236,9 @@ gedcomForm.addEventListener('submit', async (event) => {
     setStatus(`${formatGedcomLoadError(error)}${restoreText}`, 'error');
   }
 });
+}
 
+if (familyForm) {
 familyForm.addEventListener('submit', (event) => {
   event.preventDefault();
   
@@ -213,7 +258,9 @@ familyForm.addEventListener('submit', (event) => {
   familyForm.reset();
   nameInput.focus();
 });
+}
 
+if (printTreeButton) {
 printTreeButton.addEventListener('click', () => {
   if (!requireTier('print')) return;
   if (!treeData.people.length) {
@@ -223,21 +270,27 @@ printTreeButton.addEventListener('click', () => {
 
   window.print();
 });
+}
 
+if (exportJsonButton) {
 exportJsonButton.addEventListener('click', () => {
   if (!requireTier('exportJson') || !ensureTreeHasPeople('exporting JSON')) return;
 
   downloadFile('family-tree.json', JSON.stringify(treeData, null, 2), 'application/json');
   setStatus('Downloaded parsed tree JSON.', 'success');
 });
+}
 
+if (exportCsvButton) {
 exportCsvButton.addEventListener('click', () => {
   if (!requireTier('exportCsv') || !ensureTreeHasPeople('exporting CSV')) return;
 
   downloadFile('family-tree-people.csv', buildPeopleCsv(), 'text/csv');
   setStatus('Downloaded people CSV.', 'success');
 });
+}
 
+if (copySummaryButton) {
 copySummaryButton.addEventListener('click', async () => {
   if (!requireTier('copySummary') || !ensureTreeHasPeople('copying a summary')) return;
 
@@ -249,7 +302,9 @@ copySummaryButton.addEventListener('click', async () => {
     setStatus(summary, 'info');
   }
 });
+}
 
+if (clearTreeButton) {
 clearTreeButton.addEventListener('click', () => {
   if (!treeData.people.length || confirm('Clear the current family tree?')) {
     treeData = createEmptyTreeData();
@@ -258,6 +313,7 @@ clearTreeButton.addEventListener('click', () => {
     setStatus('', 'info');
   }
 });
+}
 
 
 
@@ -275,6 +331,8 @@ async function loadSubscriptionConfig() {
 }
 
 function renderSubscriptionPlans() {
+  if (!subscriptionPlansDiv || !subscriptionStatusDiv) return;
+
   const intervalLabel = billingInterval === 'annual' ? 'Annual billing' : 'Monthly billing';
   subscriptionStatusDiv.textContent = `Current plan: ${SUBSCRIPTION_TIERS[currentTier]?.name || 'Free'} · ${intervalLabel}`;
 
@@ -329,7 +387,12 @@ async function startCheckout(tierId) {
     const response = await fetch('/api/create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tier: tierId, interval: billingInterval }),
+      body: JSON.stringify({
+        tier: tierId,
+        interval: billingInterval,
+        successUrl: `${window.location.origin}/subscriptions.html?subscription=${tierId}&interval=${billingInterval}&checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: `${window.location.origin}/subscriptions.html?checkout=cancelled`,
+      }),
     });
     const result = await response.json();
 
@@ -969,6 +1032,8 @@ function createEmptyTreeData() {
     warnings: [],
     validationReport: createEmptyValidationReport(),
     fixHistory: [],
+    reportReviewedAt: '',
+    issueReviewStatuses: {},
   };
 }
 
@@ -984,6 +1049,8 @@ function loadTreeData() {
         warnings: stored.warnings || [],
         validationReport: stored.validationReport || createEmptyValidationReport(),
         fixHistory: stored.fixHistory || [],
+        reportReviewedAt: stored.reportReviewedAt || '',
+        issueReviewStatuses: stored.issueReviewStatuses || {},
       };
     }
   } catch (error) {
@@ -1024,6 +1091,8 @@ function normalizeParsedGedcom(parsed) {
     warnings: parsed.warnings || [],
     validationReport: createEmptyValidationReport(),
     fixHistory: [],
+    reportReviewedAt: '',
+    issueReviewStatuses: {},
   };
 
   normalized.validationReport = analyzeTreeData(normalized);
@@ -1188,11 +1257,15 @@ function getAutomaticFixes() {
 }
 
 function applyAutomaticFixes() {
-  if (!requireTier('autoFix')) return;
+  const requiredTier = ACTION_REQUIREMENTS.autoFix;
+  if (requiredTier && !hasTier(requiredTier)) {
+    setReportStatus(`${SUBSCRIPTION_TIERS[requiredTier].name} subscription required for this action. Choose a plan above to upgrade.`, 'error');
+    return;
+  }
 
   const fixIssues = getAutomaticFixIssues();
   if (!fixIssues.length) {
-    setStatus('No safe automatic fixes are available. Use manual fixes for the remaining issues.', 'info');
+    setReportStatus('No safe automatic fixes are available. Use manual fixes for the remaining issues.', 'info');
     return;
   }
 
@@ -1244,8 +1317,9 @@ function applyAutomaticFixes() {
   treeData.fixHistory = [...(treeData.fixHistory || []), ...appliedRecords];
   treeData.validationReport = analyzeTreeData(treeData);
   saveTreeData();
-  renderFamilyTree();
-  setStatus(`Applied ${appliedRecords.length} safe automatic fix(es). Review the Fix Record and remaining manual fixes.`, 'success');
+  if (familyTreeDiv) renderFamilyTree();
+  if (reportPageDiv) renderReportPage();
+  setReportStatus(`Applied ${appliedRecords.length} safe automatic fix(es). Review the Fix Record and remaining manual fixes.`, 'success');
 
   if (appliedRecords.length && confirm('Safe fixes were applied. Do you want a printout of the fixed family tree and fix record?')) {
     window.print();
@@ -1258,11 +1332,11 @@ function showManualFixes() {
     .map((issue) => `${issue.category}: ${issue.suggestion}`);
 
   if (!manualSuggestions.length) {
-    setStatus('No manual fixes are currently listed.', 'info');
+    setReportStatus('No manual fixes are currently listed.', 'info');
     return;
   }
 
-  setStatus(`Manual fix suggestions: ${manualSuggestions.slice(0, 5).join(' | ')}${manualSuggestions.length > 5 ? ' | More suggestions are listed in the report.' : ''}`, 'info');
+  setReportStatus(`Manual fix suggestions: ${manualSuggestions.slice(0, 5).join(' | ')}${manualSuggestions.length > 5 ? ' | More suggestions are listed in the report.' : ''}`, 'info');
 }
 
 function renderFamilyTree() {
@@ -1284,7 +1358,7 @@ function renderFamilyTree() {
     ${renderSummary(generationData)}
     ${renderGedcomInfo()}
     ${treeData.warnings.length ? renderWarnings() : ''}
-    ${renderValidationReport()}
+    ${renderReportSummaryLink()}
     ${renderFixHistory()}
     ${renderGenerationSections(generationData, peopleById)}
     ${!treeData.families.length ? `<section class="tree-chart standalone-people"><h3>People</h3><div class="children-row">${unconnectedPeople.map(renderPersonNode).join('')}</div></section>` : ''}
@@ -1450,6 +1524,53 @@ function renderGedcomInfo() {
 
 
 
+function renderRepairLog() {
+  const issues = getAllIssues().filter((issue) => issue.category !== 'No issues found');
+  if (!issues.length) return '';
+
+  const toFix = issues.filter((issue) => (treeData.issueReviewStatuses?.[getIssueKey(issue)] || 'needs-review') === 'needs-review');
+  const fixed = issues.filter((issue) => treeData.issueReviewStatuses?.[getIssueKey(issue)] === 'fixed');
+  const ignored = issues.filter((issue) => treeData.issueReviewStatuses?.[getIssueKey(issue)] === 'ignored');
+  const fixRecords = treeData.fixHistory || [];
+
+  return `
+    <section class="repair-log">
+      <div class="report-heading">
+        <h3>Error Repair Log</h3>
+        <span>${toFix.length} to fix · ${fixed.length + fixRecords.length} fixed · ${ignored.length} ignored</span>
+      </div>
+      <div class="repair-log-grid">
+        ${renderRepairLogList('Errors to be fixed', toFix, 'No open errors need review.')}
+        ${renderRepairLogList('Errors fixed', fixed, 'No errors have been marked fixed yet.', fixRecords)}
+      </div>
+    </section>
+  `;
+}
+
+function renderRepairLogList(title, issues, emptyMessage, fixRecords = []) {
+  const issueItems = issues.map((issue) => `
+    <li>
+      <strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(issue.message)}
+      ${issue.subject ? `<span>${escapeHtml(issue.subject)}</span>` : ''}
+      <p>${escapeHtml(getRepairSuggestion(issue))}</p>
+    </li>
+  `);
+  const recordItems = fixRecords.map((record) => `
+    <li>
+      <strong>${escapeHtml(record.category)}:</strong> ${escapeHtml(record.problem)}
+      <p>${escapeHtml(record.fix)}</p>
+    </li>
+  `);
+  const items = [...issueItems, ...recordItems];
+
+  return `
+    <div class="repair-log-column">
+      <h4>${escapeHtml(title)}</h4>
+      ${items.length ? `<ol>${items.join('')}</ol>` : `<p class="muted">${escapeHtml(emptyMessage)}</p>`}
+    </div>
+  `;
+}
+
 function renderFixHistory() {
   const records = treeData.fixHistory || [];
   if (!records.length) return '';
@@ -1474,21 +1595,243 @@ function renderFixHistory() {
   `;
 }
 
+function renderReportSummaryLink() {
+  const report = treeData.validationReport || createEmptyValidationReport();
+  const total = report.errors.length + report.warnings.length + report.info.length;
+  if (!total) return '';
+
+  return `
+    <section class="validation-report report-summary-card">
+      <div class="report-heading">
+        <h3>Tree Error Report</h3>
+        <span>${report.errors.length} errors · ${report.warnings.length} warnings · ${report.info.length} notes</span>
+      </div>
+      <p>Review issues and choose fix options on the dedicated report page.</p>
+      <a class="btn-secondary report-page-link" href="/report.html">Open Error Report</a>
+    </section>
+  `;
+}
+
+function renderReportPage() {
+  if (!reportPageDiv) return;
+
+  treeData.validationReport = analyzeTreeData(treeData);
+  reportPageDiv.innerHTML = `
+    <section class="validation-report report-page-card">
+      <div class="report-heading">
+        <h2>Tree Error Report</h2>
+        <div class="report-header-actions">
+          <a class="btn-secondary" href="/">Back to Tree</a>
+          <a class="btn-add report-page-link" href="/#gedcomForm">Upload New GED with Repairs</a>
+        </div>
+      </div>
+      ${renderValidationReport()}
+      ${renderRepairLog()}
+      ${renderFixHistory()}
+    </section>
+  `;
+}
+
+function getIssueKey(issue) {
+  return [issue.category, issue.subject || '', issue.message].join('|').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+function getDuplicatePersonIds(issue) {
+  if (!String(issue.category || '').toLowerCase().includes('duplicate')) return [];
+
+  const ids = [...String(issue.message || '').matchAll(/\((@[^@]+@|manual-[^)]+)\)/g)].map((match) => match[1]);
+  return [...new Set(ids)].filter((id) => treeData.people.some((person) => person.id === id));
+}
+
+function mergeDuplicatePeople(encodedIds) {
+  const duplicateIds = String(encodedIds || '').split(',').map((id) => id.trim()).filter(Boolean);
+  if (duplicateIds.length < 2) {
+    setReportStatus('Select at least two duplicate people to merge.', 'error');
+    return;
+  }
+
+  const people = duplicateIds.map((id) => treeData.people.find((person) => person.id === id)).filter(Boolean);
+  if (people.length < 2) {
+    setReportStatus('The duplicate records were not found in this tree.', 'error');
+    return;
+  }
+
+  const primary = people[0];
+  const duplicateIdSet = new Set(people.slice(1).map((person) => person.id));
+  const duplicateNames = people.slice(1).map((person) => person.name).join(', ');
+  if (!confirm(`Merge ${duplicateNames} into ${primary.name}? Review source records first; this cannot be undone except by re-uploading.`)) return;
+
+  for (const duplicate of people.slice(1)) {
+    primary.notes = [...new Set([...(primary.notes || []), ...(duplicate.notes || []), `Merged duplicate record ${duplicate.id} (${duplicate.name}).`])];
+    primary.familyAsChild = [...new Set([...(primary.familyAsChild || []), ...(duplicate.familyAsChild || [])])];
+    primary.familyAsSpouse = [...new Set([...(primary.familyAsSpouse || []), ...(duplicate.familyAsSpouse || [])])];
+    if (!primary.birthDate && duplicate.birthDate) primary.birthDate = duplicate.birthDate;
+    if (!primary.birthPlace && duplicate.birthPlace) primary.birthPlace = duplicate.birthPlace;
+    if (!primary.deathDate && duplicate.deathDate) primary.deathDate = duplicate.deathDate;
+    if (!primary.deathPlace && duplicate.deathPlace) primary.deathPlace = duplicate.deathPlace;
+  }
+
+  treeData.families = treeData.families.map((family) => ({
+    ...family,
+    husbandId: duplicateIdSet.has(family.husbandId) ? primary.id : family.husbandId,
+    wifeId: duplicateIdSet.has(family.wifeId) ? primary.id : family.wifeId,
+    childrenIds: [...new Set((family.childrenIds || []).map((childId) => duplicateIdSet.has(childId) ? primary.id : childId))],
+  }));
+  treeData.relationships = treeData.relationships.map((relationship) => ({
+    ...relationship,
+    personId: duplicateIdSet.has(relationship.personId) ? primary.id : relationship.personId,
+    relatedPersonId: duplicateIdSet.has(relationship.relatedPersonId) ? primary.id : relationship.relatedPersonId,
+  }));
+  treeData.people = treeData.people.filter((person) => !duplicateIdSet.has(person.id));
+  treeData.fixHistory = [
+    ...(treeData.fixHistory || []),
+    {
+      time: new Date().toISOString(),
+      category: 'Duplicate merge',
+      subject: primary.id,
+      problem: `Duplicate records merged: ${people.slice(1).map((person) => person.id).join(', ')}`,
+      fix: `Kept ${primary.name} (${primary.id}) and merged notes, family links, and missing facts from duplicate records.`,
+    },
+  ];
+  treeData.validationReport = analyzeTreeData(treeData);
+  saveTreeData();
+  renderReportPage();
+  setReportStatus(`Merged ${people.length - 1} duplicate record(s) into ${primary.name}.`, 'success');
+}
+
+function renderDuplicateMergeAction(issue) {
+  const ids = getDuplicatePersonIds(issue);
+  if (ids.length < 2) return '';
+
+  return `<button type="button" class="btn-secondary issue-guidance-button" data-merge-duplicate-ids="${escapeHtml(ids.join(','))}">Merge Duplicate Records</button>`;
+}
+
+function updateIssueReviewStatus(issueKey, status) {
+  if (!issueKey || !['needs-review', 'fixed', 'ignored'].includes(status)) return;
+
+  treeData.issueReviewStatuses = {
+    ...(treeData.issueReviewStatuses || {}),
+    [issueKey]: status,
+  };
+  saveTreeData();
+  renderReportPage();
+  setReportStatus(`Issue marked ${status.replace('-', ' ')}.`, 'success');
+}
+
+function getRepairSuggestion(issue) {
+  const text = `${issue.category} ${issue.message} ${issue.suggestion || ''}`.toLowerCase();
+
+  if (text.includes('death year') || text.includes('birth year') || text.includes('date')) {
+    return 'Repair suggestion: open the source GEDCOM record, compare the birth/death dates against the original document, then correct the wrong date before re-uploading.';
+  }
+
+  if (text.includes('birth place') || text.includes('death place') || text.includes('place')) {
+    return 'Repair suggestion: add the most specific verified place available, using city/county/state/country when known.';
+  }
+
+  if (text.includes('duplicate')) {
+    return 'Repair suggestion: compare both people side by side in your GEDCOM editor, merge only confirmed duplicates, and keep all source notes.';
+  }
+
+  if (text.includes('relationship') || text.includes('family') || text.includes('parent') || text.includes('child') || text.includes('spouse')) {
+    return issue.autoFix
+      ? 'Repair suggestion: review the listed relationship, then use the safe automatic fix if removing the broken reference is correct.'
+      : 'Repair suggestion: verify the parent/child/spouse links in the source tree and reconnect the correct people manually.';
+  }
+
+  return 'Repair suggestion: review the original record, confirm the correct value from a source, then update the GEDCOM and re-upload.';
+}
+
+function renderIssueStatusControls(issue) {
+  const issueKey = getIssueKey(issue);
+  const currentStatus = treeData.issueReviewStatuses?.[issueKey] || 'needs-review';
+  const statuses = [
+    ['needs-review', 'Needs Review'],
+    ['fixed', 'Fixed'],
+    ['ignored', 'Ignored'],
+  ];
+
+  return `
+    <div class="issue-status-controls" aria-label="Issue review status">
+      ${statuses.map(([value, label]) => `<button type="button" class="layout-button ${currentStatus === value ? 'active' : ''}" data-issue-key="${escapeHtml(issueKey)}" data-issue-status="${value}">${label}</button>`).join('')}
+    </div>
+  `;
+}
+
+function markReportReviewed() {
+  treeData.reportReviewedAt = new Date().toISOString();
+  saveTreeData();
+  renderReportPage();
+  setReportStatus('Marked this error report as reviewed.', 'success');
+}
+
+function downloadErrorReport() {
+  downloadFile('tree-error-report.txt', buildErrorReportText(), 'text/plain');
+  setReportStatus('Downloaded the Tree Error Report.', 'success');
+}
+
+function buildErrorReportText() {
+  const report = treeData.validationReport || createEmptyValidationReport();
+  const repairIssues = getAllIssues().filter((issue) => issue.category !== 'No issues found');
+  const lines = [
+    'Tree Error Report',
+    `Generated: ${new Date().toLocaleString()}`,
+    `People: ${treeData.people.length}`,
+    `Families: ${treeData.families.length}`,
+    `Relationships: ${treeData.relationships.length}`,
+    `Errors: ${report.errors.length}`,
+    `Warnings: ${report.warnings.length}`,
+    `Notes: ${report.info.length}`,
+    `To fix: ${repairIssues.filter((issue) => (treeData.issueReviewStatuses?.[getIssueKey(issue)] || 'needs-review') === 'needs-review').length}`,
+    `Marked fixed: ${repairIssues.filter((issue) => treeData.issueReviewStatuses?.[getIssueKey(issue)] === 'fixed').length}`,
+    `Automatic fixes logged: ${(treeData.fixHistory || []).length}`,
+    '',
+  ];
+
+  for (const [title, issues] of [['Errors', report.errors], ['Warnings', report.warnings], ['Notes', report.info]]) {
+    lines.push(title);
+    if (!issues.length) {
+      lines.push('- None');
+    } else {
+      issues.forEach((issue, index) => {
+        lines.push(`${index + 1}. ${issue.category}: ${issue.message}`);
+        if (issue.subject) lines.push(`   Subject: ${issue.subject}`);
+        const status = treeData.issueReviewStatuses?.[getIssueKey(issue)] || 'needs-review';
+        lines.push(`   Status: ${status.replace('-', ' ')}`);
+        if (issue.suggestion) lines.push(`   Guidance: ${issue.suggestion}`);
+        lines.push(`   Repair: ${getRepairSuggestion(issue)}`);
+      });
+    }
+    lines.push('');
+  }
+
+  return lines.join('\n');
+}
+
 function renderValidationReport() {
   const report = treeData.validationReport || createEmptyValidationReport();
   const total = report.errors.length + report.warnings.length + report.info.length;
   if (!total) return '';
+
+  const safeFixCount = getAutomaticFixIssues().length;
+  const reviewedLabel = treeData.reportReviewedAt
+    ? `<span>Reviewed ${escapeHtml(new Date(treeData.reportReviewedAt).toLocaleString())}</span>`
+    : '';
 
   return `
     <section class="validation-report">
       <div class="report-heading">
         <h3>Tree Error Report</h3>
         <span>${report.errors.length} errors · ${report.warnings.length} warnings · ${report.info.length} notes</span>
+        ${reviewedLabel}
       </div>
       <div class="report-actions">
-        <button type="button" class="btn-secondary" data-apply-auto-fixes>Apply Safe Automatic Fixes</button>
+        ${safeFixCount ? `<button type="button" class="btn-secondary" data-apply-auto-fixes>Apply ${safeFixCount} Safe Automatic Fix${safeFixCount === 1 ? '' : 'es'}</button>` : '<span class="manual-fix-note">No safe automatic fixes are available for this report.</span>'}
         <button type="button" class="btn-secondary" data-show-manual-fixes>Show Manual Fix Guidance</button>
+        <button type="button" class="btn-secondary" data-mark-report-reviewed>Mark Report Reviewed</button>
+        <button type="button" class="btn-secondary" data-download-report>Download Report</button>
       </div>
+      <p id="treeReportStatus" class="status-message report-status" aria-live="polite"></p>
       ${renderIssueGroup('Errors', report.errors, 'error')}
       ${renderIssueGroup('Warnings', report.warnings, 'warning')}
       ${renderIssueGroup('Notes', report.info, 'info')}
@@ -1503,7 +1846,7 @@ function renderIssueGroup(title, issues, type) {
     <div class="issue-group ${type}">
       <h4>${title}</h4>
       <ul>
-        ${issues.map((issue) => `<li><strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(issue.message)}${issue.subject ? ` <span>${escapeHtml(issue.subject)}</span>` : ''}${issue.suggestion ? `<p class="fix-suggestion">${escapeHtml(issue.suggestion)}</p>` : ''}</li>`).join('')}
+        ${issues.map((issue) => `<li><strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(issue.message)}${issue.subject ? ` <span>${escapeHtml(issue.subject)}</span>` : ''}${issue.suggestion ? `<p class="fix-suggestion">${escapeHtml(issue.suggestion)}</p>` : ''}<p class="repair-suggestion">${escapeHtml(getRepairSuggestion(issue))}</p>${!issue.autoFix ? `<button type="button" class="btn-secondary issue-guidance-button" data-issue-guidance="${escapeHtml(getRepairSuggestion(issue))}">Use This Repair Suggestion</button>` : ''}${renderDuplicateMergeAction(issue)}${renderIssueStatusControls(issue)}</li>`).join('')}
       </ul>
     </div>
   `;
@@ -1616,8 +1959,20 @@ function removeMember(id) {
 }
 
 function setStatus(message, type) {
+  if (!uploadStatus) return;
   uploadStatus.textContent = message;
   uploadStatus.className = `status-message ${type || ''}`.trim();
+}
+
+function setReportStatus(message, type) {
+  const reportStatus = document.getElementById('treeReportStatus');
+  if (!reportStatus) {
+    setStatus(message, type);
+    return;
+  }
+
+  reportStatus.textContent = message;
+  reportStatus.className = `status-message report-status ${type || ''}`.trim();
 }
 
 function escapeHtml(value = '') {
@@ -1631,11 +1986,16 @@ function escapeHtml(value = '') {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  if (reportPageDiv) {
+    renderReportPage();
+    return;
+  }
+
   applyCheckoutReturn();
   updateLayoutButtons();
   updateBillingButtons();
   renderSubscriptionPlans();
   loadSubscriptionConfig();
   loadSubscriptionStatusFromCustomer();
-  renderFamilyTree();
+  if (familyTreeDiv) renderFamilyTree();
 });
