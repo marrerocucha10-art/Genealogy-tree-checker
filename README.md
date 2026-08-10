@@ -137,6 +137,10 @@ npm install -g vercel
 vercel
 ```
 
+### GitHub Pages
+The GitHub Pages workflow publishes the standalone client app from `public/`. The
+GEDCOM importer runs in the browser, so it works on Pages without the Express API.
+
 ### Render
 1. Connect your GitHub repository
 2. Set start command: `npm start`

@@ -962,6 +962,51 @@ input[type="file"] {
   margin-bottom: 12px;
 }
 
+.error-workspace main {
+  min-height: 360px;
+}
+
+.error-batch,
+.batch-complete {
+  background: #ffffff;
+  border: 1px solid #f6ad55;
+  border-radius: 12px;
+  padding: 22px;
+}
+
+.batch-complete {
+  text-align: center;
+}
+
+.batch-complete h2,
+.error-batch h2 {
+  color: #2d3748;
+  margin-bottom: 10px;
+}
+
+.batch-help {
+  color: #4a5568;
+  margin-bottom: 18px;
+}
+
+.error-batch-list {
+  display: grid;
+  gap: 12px;
+  list-style-position: inside;
+}
+
+.error-batch-list li {
+  background: #fff5f5;
+  border: 1px solid #fc8181;
+  border-radius: 10px;
+  color: #742a2a;
+  padding: 14px;
+}
+
+.error-batch-list .btn-secondary {
+  margin-top: 10px;
+}
+
 .fix-suggestion {
   background: rgba(255, 255, 255, 0.65);
   border-radius: 8px;
