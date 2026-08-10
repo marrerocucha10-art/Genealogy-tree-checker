@@ -1003,6 +1003,18 @@ input[type="file"] {
   padding: 14px;
 }
 
+.person-error-list {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  margin-top: 12px;
+}
+
+.person-error-list li {
+  background: rgba(255, 255, 255, 0.65);
+  border-color: #feb2b2;
+}
+
 .error-batch-list .btn-secondary {
   margin-top: 10px;
 }

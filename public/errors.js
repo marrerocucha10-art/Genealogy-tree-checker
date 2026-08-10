@@ -20,10 +20,11 @@ function getProgress() {
     const progress = JSON.parse(localStorage.getItem(ERROR_PROGRESS_STORAGE_KEY) || '{}');
     return {
       completedIssueIds: Array.isArray(progress.completedIssueIds) ? progress.completedIssueIds : [],
-      activeIssueIds: Array.isArray(progress.activeIssueIds) ? progress.activeIssueIds : [],
+      activeGroupIds: progress.batchMode === 'people' && Array.isArray(progress.activeGroupIds) ? progress.activeGroupIds : [],
+      batchMode: 'people',
     };
   } catch (error) {
-    return { completedIssueIds: [], activeIssueIds: [] };
+    return { completedIssueIds: [], activeGroupIds: [], batchMode: 'people' };
   }
 }
 
@@ -41,19 +42,43 @@ function escapeHtml(value = '') {
   }[char]));
 }
 
-function getActiveIssues(errors, progress) {
-  const errorsById = new Map(errors.map((issue) => [getIssueId(issue), issue]));
-  const completed = new Set(progress.completedIssueIds);
-  const activeIds = progress.activeIssueIds.filter((id) => errorsById.has(id));
+function getIssueGroupId(issue) {
+  return issue.subject ? `record:${issue.subject}` : `issue:${getIssueId(issue)}`;
+}
 
-  if (activeIds.length) {
-    return activeIds.map((id) => errorsById.get(id));
+function getIssueGroups(errors) {
+  const groups = new Map();
+
+  for (const issue of errors) {
+    const id = getIssueGroupId(issue);
+    if (!groups.has(id)) {
+      groups.set(id, {
+        id,
+        label: issue.subject || 'General validation',
+        issues: [],
+      });
+    }
+    groups.get(id).issues.push(issue);
   }
 
-  const nextIssues = errors.filter((issue) => !completed.has(getIssueId(issue))).slice(0, ERROR_BATCH_SIZE);
-  progress.activeIssueIds = nextIssues.map(getIssueId);
+  return Array.from(groups.values());
+}
+
+function getActiveIssueGroups(errors, progress) {
+  const groupsById = new Map(getIssueGroups(errors).map((group) => [group.id, group]));
+  const completed = new Set(progress.completedIssueIds);
+  const activeIds = progress.activeGroupIds.filter((id) => groupsById.has(id));
+
+  if (activeIds.length) {
+    return activeIds.map((id) => groupsById.get(id));
+  }
+
+  const nextGroups = getIssueGroups(errors)
+    .filter((group) => group.issues.some((issue) => !completed.has(getIssueId(issue))))
+    .slice(0, ERROR_BATCH_SIZE);
+  progress.activeGroupIds = nextGroups.map((group) => group.id);
   saveProgress(progress);
-  return nextIssues;
+  return nextGroups;
 }
 
 function renderWorkspace() {
@@ -71,18 +96,21 @@ function renderWorkspace() {
   }
 
   const progress = getProgress();
-  const activeIssues = getActiveIssues(errors, progress);
+  const activeGroups = getActiveIssueGroups(errors, progress);
   const completed = new Set(progress.completedIssueIds);
-  const activeIds = new Set(progress.activeIssueIds);
-  const activeDone = activeIssues.length === 0 || [...activeIds].every((id) => completed.has(id));
-  const remainingErrors = errors.filter((issue) => !completed.has(getIssueId(issue))).length;
+  const activeDone = activeGroups.length === 0 || activeGroups.every((group) => (
+    group.issues.every((issue) => completed.has(getIssueId(issue)))
+  ));
+  const remainingGroups = getIssueGroups(errors).filter((group) => (
+    group.issues.some((issue) => !completed.has(getIssueId(issue)))
+  )).length;
 
-  if (activeDone && remainingErrors) {
+  if (activeDone && remainingGroups) {
     workspace.innerHTML = `
       <section class="batch-complete">
         <h2>Batch complete</h2>
-        <p>You solved this batch. ${remainingErrors} error${remainingErrors === 1 ? '' : 's'} remain.</p>
-        <button id="loadNextBatch" type="button" class="btn-add">Load next ${Math.min(ERROR_BATCH_SIZE, remainingErrors)} errors</button>
+        <p>You solved this group. ${remainingGroups} person${remainingGroups === 1 ? '' : 's'} or record${remainingGroups === 1 ? '' : 's'} remain.</p>
+        <button id="loadNextBatch" type="button" class="btn-add">Load next ${Math.min(ERROR_BATCH_SIZE, remainingGroups)} people</button>
       </section>
     `;
     return;
@@ -96,20 +124,28 @@ function renderWorkspace() {
   workspace.innerHTML = `
     <section class="error-batch">
       <div class="report-heading">
-        <h2>Current error batch</h2>
-        <span>${activeIssues.length} of ${ERROR_BATCH_SIZE} selected</span>
+        <h2>Current people batch</h2>
+        <span>${activeGroups.length} of ${ERROR_BATCH_SIZE} selected</span>
       </div>
-      <p class="batch-help">Mark an error solved only after correcting it in the source GEDCOM or completing its recommended fix. The next batch stays locked until this batch is complete.</p>
+      <p class="batch-help">Each person includes all of their unresolved errors. Mark an error solved only after correcting it in the source GEDCOM or completing its recommended fix. The next batch stays locked until this batch is complete.</p>
       <ol class="error-batch-list">
-        ${activeIssues.map((issue) => {
-          const issueId = getIssueId(issue);
-          const isCompleted = completed.has(issueId);
+        ${activeGroups.map((group) => {
           return `
             <li>
-              <strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(issue.message)}
-              ${issue.subject ? ` <span class="person-id">${escapeHtml(issue.subject)}</span>` : ''}
-              ${issue.suggestion ? `<p class="fix-suggestion">${escapeHtml(issue.suggestion)}</p>` : ''}
-              <button type="button" class="btn-secondary" data-resolve-issue="${encodeURIComponent(issueId)}" ${isCompleted ? 'disabled' : ''}>${isCompleted ? 'Solved' : 'Mark solved'}</button>
+              <strong>${escapeHtml(group.label)}</strong>
+              <ul class="person-error-list">
+                ${group.issues.map((issue) => {
+                  const issueId = getIssueId(issue);
+                  const isCompleted = completed.has(issueId);
+                  return `
+                    <li>
+                      <strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(issue.message)}
+                      ${issue.suggestion ? `<p class="fix-suggestion">${escapeHtml(issue.suggestion)}</p>` : ''}
+                      <button type="button" class="btn-secondary" data-resolve-issue="${encodeURIComponent(issueId)}" ${isCompleted ? 'disabled' : ''}>${isCompleted ? 'Solved' : 'Mark solved'}</button>
+                    </li>
+                  `;
+                }).join('')}
+              </ul>
             </li>
           `;
         }).join('')}
@@ -133,7 +169,7 @@ workspace.addEventListener('click', (event) => {
 
   if (event.target.closest('#loadNextBatch')) {
     const progress = getProgress();
-    progress.activeIssueIds = [];
+    progress.activeGroupIds = [];
     saveProgress(progress);
     renderWorkspace();
   }
