@@ -14,15 +14,43 @@
     </header>
 
     <main>
+      <section class="options-section">
+        <h2>Application Options</h2>
+        <div class="option-grid">
+          <a href="#subscriptionWorkflows" class="option-button">Choose Subscription</a>
+          <a href="/store" class="option-button featured-option" target="_blank" rel="noopener">Access Store Products</a>
+          <a href="#gedcomForm" class="option-button">Upload GEDCOM</a>
+          <a href="#familyForm" class="option-button">Add Manually</a>
+          <a href="#familyTree" class="option-button">Preview Tree</a>
+        </div>
+      </section>
+
+      <section id="subscriptionWorkflows" class="subscription-section">
+        <div class="subscription-header">
+          <div>
+            <h2>Subscription Workflows</h2>
+            <p>Start free, then unlock printing, exports, automatic fixes, and client workflows as needed.</p>
+          </div>
+          <button id="manageBilling" type="button" class="btn-secondary">Manage Billing</button>
+        </div>
+        <div class="billing-toggle" aria-label="Billing interval">
+          <button id="monthlyBilling" type="button" class="layout-button active" data-billing-interval="monthly">Monthly</button>
+          <button id="annualBilling" type="button" class="layout-button" data-billing-interval="annual">Annual</button>
+        </div>
+        <div id="subscriptionStatus" class="subscription-status">Current plan: Free</div>
+        <div id="subscriptionPlans" class="subscription-plans" aria-live="polite"></div>
+      </section>
+
       <section class="form-section">
         <h2>Upload GEDCOM</h2>
         <form id="gedcomForm">
           <div class="form-group">
             <label for="gedcomFile">GEDCOM file:</label>
-            <input type="file" id="gedcomFile" accept=".ged,.gedcom,.txt,text/plain,application/x-gedcom" required>
+            <input type="file" id="gedcomFile" accept=".ged,.gedcom,.ged.txt,.txt,.zip,.gedzip,application/x-gedcom,application/zip,text/plain,application/octet-stream" required>
           </div>
           <button type="submit" class="btn-add">Parse GEDCOM</button>
         </form>
+        <p class="help-text">Supports .ged, .gedcom, text GEDCOM downloads, and .zip files containing a GEDCOM file.</p>
         <p id="uploadStatus" class="status-message" aria-live="polite"></p>
       </section>
 
@@ -62,7 +90,17 @@
       <section class="tree-section">
         <div class="section-header">
           <h2>Family Tree</h2>
-          <button id="clearTree" type="button" class="btn-secondary">Clear Tree</button>
+          <div class="tree-actions">
+            <div class="layout-toggle" aria-label="Tree layout">
+              <button id="verticalLayout" type="button" class="layout-button active" data-layout="vertical">Vertical</button>
+              <button id="horizontalLayout" type="button" class="layout-button" data-layout="horizontal">Horizontal</button>
+            </div>
+            <button id="printTree" type="button" class="btn-secondary">Print Tree</button>
+            <button id="exportJson" type="button" class="btn-secondary">Export JSON</button>
+            <button id="exportCsv" type="button" class="btn-secondary">Export CSV</button>
+            <button id="copySummary" type="button" class="btn-secondary">Copy Summary</button>
+            <button id="clearTree" type="button" class="btn-secondary">Clear Tree</button>
+          </div>
         </div>
         <div id="familyTree" class="family-tree">
           <p class="empty-message">No family members added yet. Upload a GEDCOM file or add someone manually.</p>
@@ -75,6 +113,6 @@
     </footer>
   </div>
 
-  <script src="script.js"></script>
+  <script src="script.js?v=browser-gedcom-diagnostics"></script>
 </body>
 </html>
