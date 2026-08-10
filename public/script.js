@@ -1498,7 +1498,7 @@ function renderValidationReport() {
         <button type="button" class="btn-secondary" data-apply-auto-fixes>Apply Safe Automatic Fixes</button>
         <button type="button" class="btn-secondary" data-show-manual-fixes>Show Manual Fix Guidance</button>
       </div>
-      ${renderIssueGroup('Errors', report.errors, 'error')}
+      ${report.errors.length ? '<p class="muted">Errors are shown in the Error Workspace, where they can be resolved in batches of 10.</p>' : ''}
       ${renderIssueGroup('Warnings', report.warnings, 'warning')}
       ${renderIssueGroup('Notes', report.info, 'info')}
     </section>
