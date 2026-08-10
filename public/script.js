@@ -4,6 +4,7 @@ const SUBSCRIPTION_STORAGE_KEY = 'familyTreeSubscriptionTier';
 const BILLING_INTERVAL_STORAGE_KEY = 'familyTreeBillingInterval';
 const STRIPE_CUSTOMER_STORAGE_KEY = 'familyTreeStripeCustomerId';
 const MAX_GEDCOM_FILE_BYTES = 150 * 1024 * 1024;
+const BLOB_UPLOAD_THRESHOLD_BYTES = 4.5 * 1024 * 1024;
 
 let treeData = loadTreeData();
 let treeLayout = localStorage.getItem(LAYOUT_STORAGE_KEY) || 'vertical';
@@ -156,19 +157,43 @@ gedcomForm.addEventListener('submit', async (event) => {
   const previousTreeData = treeData;
   treeData = createEmptyTreeData();
   renderFamilyTree();
-  setStatus('Reading GEDCOM file...', 'info');
 
   try {
-    const gedcom = await readGedcomFile(file);
-    const cleanup = cleanupRepeatedGedcomRecords(gedcom);
-    const parsed = parseGedcomInBrowser(cleanup.gedcom);
-    const result = {
-      success: true,
-      parsed,
-      cleanup: {
-        repeatedRecordsRemoved: cleanup.repeatedRecordsRemoved,
-      },
-    };
+    let result;
+
+    if (file.size > BLOB_UPLOAD_THRESHOLD_BYTES) {
+      setStatus('Uploading GEDCOM file to storage...', 'info');
+      const blobUrl = await uploadGedcomToBlob(file);
+
+      setStatus('Parsing GEDCOM file...', 'info');
+      let parseError;
+      try {
+        const response = await fetch('/api/parse-gedcom-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: blobUrl }),
+        });
+        result = await response.json();
+        if (!result.success) throw new Error(result.error || 'Server could not parse this GEDCOM file.');
+      } catch (err) {
+        parseError = err;
+      } finally {
+        deleteBlob(blobUrl).catch(() => {});
+      }
+      if (parseError) throw parseError;
+    } else {
+      setStatus('Reading GEDCOM file...', 'info');
+      const gedcom = await readGedcomFile(file);
+      const cleanup = cleanupRepeatedGedcomRecords(gedcom);
+      const parsed = parseGedcomInBrowser(cleanup.gedcom);
+      result = {
+        success: true,
+        parsed,
+        cleanup: {
+          repeatedRecordsRemoved: cleanup.repeatedRecordsRemoved,
+        },
+      };
+    }
 
     treeData = normalizeParsedGedcom(result.parsed);
     const savedLocally = saveTreeData();
@@ -484,6 +509,60 @@ function formatGedcomLoadError(error) {
     return 'Safari could not decode this file format. If this is a ZIP, extract the .ged file and upload the .ged file directly. If it is already a .ged file, export it as GEDCOM 5.5 or 5.5.1 plain text and try again.';
   }
   return message;
+}
+
+async function uploadGedcomToBlob(file) {
+  const tokenRes = await fetch('/api/blob/upload', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      type: 'blob.generate-client-token',
+      payload: {
+        pathname: file.name,
+        callbackUrl: `${window.location.origin}/api/blob/upload`,
+        clientPayload: null,
+        multipart: false,
+      },
+    }),
+  });
+
+  if (!tokenRes.ok) {
+    const err = await tokenRes.json().catch(() => ({}));
+    throw new Error(err.error || 'Could not get a Vercel Blob upload token. Add BLOB_READ_WRITE_TOKEN in Vercel Environment Variables.');
+  }
+
+  const { clientToken } = await tokenRes.json();
+  if (!clientToken) {
+    throw new Error('Server did not return a Vercel Blob client token.');
+  }
+
+  const params = new URLSearchParams({ pathname: file.name });
+  const uploadRes = await fetch(`https://blob.vercel-storage.com/?${params}`, {
+    method: 'PUT',
+    headers: {
+      authorization: 'Bearer ' + clientToken,
+      'x-api-version': '12',
+      'x-content-type': file.type || 'application/octet-stream',
+      'x-add-random-suffix': '1',
+      'x-content-length': String(file.size),
+    },
+    body: file,
+  });
+
+  if (!uploadRes.ok) {
+    throw new Error('Could not upload GEDCOM file to Vercel Blob storage.');
+  }
+
+  const blob = await uploadRes.json();
+  return blob.url;
+}
+
+async function deleteBlob(url) {
+  await fetch('/api/blob/delete', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ url }),
+  });
 }
 
 async function readGedcomFile(file) {

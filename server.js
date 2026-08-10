@@ -3,6 +3,8 @@ const net = require('net');
 const path = require('path');
 const crypto = require('crypto');
 const { parseGedcom } = require('./gedcomParser');
+const { del: blobDel } = require('@vercel/blob');
+const { handleUpload } = require('@vercel/blob/client');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -512,6 +514,47 @@ app.post('/api/create-portal-session', async (req, res) => {
     res.json({ success: true, url: session.url });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/blob/upload', async (req, res) => {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    return res.status(503).json({ error: 'Vercel Blob is not configured. Add BLOB_READ_WRITE_TOKEN in Vercel Environment Variables.' });
+  }
+
+  try {
+    const jsonResponse = await handleUpload({
+      body: req.body,
+      request: req,
+      onBeforeGenerateToken: async () => ({
+        allowedContentTypes: [
+          'text/plain',
+          'application/x-gedcom',
+          'application/octet-stream',
+          'application/zip',
+        ],
+        maximumSizeInBytes: MAX_GEDCOM_BYTES,
+        addRandomSuffix: true,
+      }),
+      onUploadCompleted: async () => {},
+    });
+    return res.json(jsonResponse);
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
+  }
+});
+
+app.post('/api/blob/delete', async (req, res) => {
+  try {
+    const blobUrl = req.body?.url;
+    if (!blobUrl || typeof blobUrl !== 'string') {
+      return res.status(400).json({ error: 'Blob URL is required.' });
+    }
+
+    await blobDel(blobUrl);
+    return res.json({ success: true });
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
   }
 });
 
