@@ -517,6 +517,8 @@ app.post('/api/create-portal-session', async (req, res) => {
   }
 });
 
+const VERCEL_BLOB_API_VERSION = '12';
+
 app.post('/api/blob/upload', async (req, res) => {
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
     return res.status(503).json({ error: 'Vercel Blob is not configured. Add BLOB_READ_WRITE_TOKEN in Vercel Environment Variables.' });
@@ -538,6 +540,12 @@ app.post('/api/blob/upload', async (req, res) => {
       }),
       onUploadCompleted: async () => {},
     });
+
+    // Include the Vercel Blob REST API version so the browser upload
+    // uses the same version as the installed @vercel/blob package.
+    if (jsonResponse && jsonResponse.type === 'blob.generate-client-token') {
+      return res.json({ ...jsonResponse, blobApiVersion: VERCEL_BLOB_API_VERSION });
+    }
     return res.json(jsonResponse);
   } catch (error) {
     return res.status(400).json({ error: error.message });
@@ -545,10 +553,25 @@ app.post('/api/blob/upload', async (req, res) => {
 });
 
 app.post('/api/blob/delete', async (req, res) => {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    return res.status(503).json({ error: 'Vercel Blob is not configured.' });
+  }
+
   try {
     const blobUrl = req.body?.url;
     if (!blobUrl || typeof blobUrl !== 'string') {
       return res.status(400).json({ error: 'Blob URL is required.' });
+    }
+
+    let parsedUrl;
+    try {
+      parsedUrl = new URL(blobUrl);
+    } catch {
+      return res.status(400).json({ error: 'Invalid blob URL.' });
+    }
+
+    if (!parsedUrl.hostname.endsWith('.blob.vercel-storage.com')) {
+      return res.status(400).json({ error: 'URL is not a Vercel Blob URL.' });
     }
 
     await blobDel(blobUrl);

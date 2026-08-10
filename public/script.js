@@ -531,7 +531,7 @@ async function uploadGedcomToBlob(file) {
     throw new Error(err.error || 'Could not get a Vercel Blob upload token. Add BLOB_READ_WRITE_TOKEN in Vercel Environment Variables.');
   }
 
-  const { clientToken } = await tokenRes.json();
+  const { clientToken, blobApiVersion } = await tokenRes.json();
   if (!clientToken) {
     throw new Error('Server did not return a Vercel Blob client token.');
   }
@@ -541,7 +541,7 @@ async function uploadGedcomToBlob(file) {
     method: 'PUT',
     headers: {
       authorization: 'Bearer ' + clientToken,
-      'x-api-version': '12',
+      'x-api-version': blobApiVersion || '12',
       'x-content-type': file.type || 'application/octet-stream',
       'x-add-random-suffix': '1',
       'x-content-length': String(file.size),
