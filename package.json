@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --check server.js && node --check gedcomParser.js && node --check public/script.js && node --check public/errors.js"
   },
   "author": "",
   "license": "ISC",
