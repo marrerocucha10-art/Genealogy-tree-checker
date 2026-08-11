@@ -63,6 +63,8 @@ const SUBSCRIPTION_TIERS = {
   },
 };
 
+const BASIC_ASSISTANCE_PRICE = 9.99;
+
 function getBaseUrl(req) {
   if (process.env.PUBLIC_APP_URL) return process.env.PUBLIC_APP_URL.replace(/\/$/, '');
 
@@ -128,6 +130,39 @@ async function createStripeCheckoutSession(req, tierId, interval = 'monthly') {
   const payload = await response.json();
   if (!response.ok) {
     throw new Error(payload.error?.message || 'Could not create Stripe Checkout session.');
+  }
+
+  return payload;
+}
+
+async function createBasicAssistanceCheckoutSession(req) {
+  if (!process.env.STRIPE_SECRET_KEY) throw new Error('Stripe is not configured yet. Add STRIPE_SECRET_KEY in Vercel Environment Variables.');
+
+  const baseUrl = getBaseUrl(req);
+  const params = new URLSearchParams({
+    mode: 'payment',
+    success_url: `${baseUrl}/errors.html?assistance=success&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${baseUrl}/errors.html?assistance=cancelled`,
+    'line_items[0][price_data][currency]': 'usd',
+    'line_items[0][price_data][product_data][name]': 'Genealogy Error Correction & Research Assistance',
+    'line_items[0][price_data][product_data][description]': 'One-time assistance request for reviewing additional family-tree errors and research leads.',
+    'line_items[0][price_data][unit_amount]': String(Math.round(BASIC_ASSISTANCE_PRICE * 100)),
+    'line_items[0][quantity]': '1',
+    'metadata[request_type]': 'basic_assistance',
+    'payment_intent_data[metadata][request_type]': 'basic_assistance',
+  });
+  const response = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: params,
+  });
+  const payload = await response.json();
+
+  if (!response.ok) {
+    throw new Error(payload.error?.message || 'Could not create the assistance checkout session.');
   }
 
   return payload;
@@ -471,6 +506,15 @@ app.get('/api/subscription/config', (req, res) => {
 app.post('/api/create-checkout-session', async (req, res) => {
   try {
     const session = await createStripeCheckoutSession(req, req.body?.tier, req.body?.interval);
+    res.json({ success: true, url: session.url, id: session.id });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/create-basic-assistance-session', async (req, res) => {
+  try {
+    const session = await createBasicAssistanceCheckoutSession(req);
     res.json({ success: true, url: session.url, id: session.id });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });

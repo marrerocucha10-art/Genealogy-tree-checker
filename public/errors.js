@@ -1,11 +1,29 @@
 const STORAGE_KEY = 'familyTreeData';
 const ERROR_PROGRESS_STORAGE_KEY = 'familyTreeErrorProgress';
+const DUPLICATE_MERGE_UNDO_STORAGE_KEY = 'familyTreeDuplicateMergeUndo';
+const SUBSCRIPTION_STORAGE_KEY = 'familyTreeSubscriptionTier';
 const ERROR_BATCH_SIZE = 10;
 const workspace = document.getElementById('errorWorkspace');
 
 function getTreeData() {
   try {
     return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+  } catch (error) {
+    return null;
+  }
+}
+
+function saveTreeData(treeData) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(treeData));
+}
+
+function saveDuplicateMergeUndo(treeData, progress) {
+  localStorage.setItem(DUPLICATE_MERGE_UNDO_STORAGE_KEY, JSON.stringify({ treeData, progress }));
+}
+
+function getDuplicateMergeUndo() {
+  try {
+    return JSON.parse(localStorage.getItem(DUPLICATE_MERGE_UNDO_STORAGE_KEY) || 'null');
   } catch (error) {
     return null;
   }
@@ -32,6 +50,27 @@ function saveProgress(progress) {
   localStorage.setItem(ERROR_PROGRESS_STORAGE_KEY, JSON.stringify(progress));
 }
 
+function getCurrentTier() {
+  return localStorage.getItem(SUBSCRIPTION_STORAGE_KEY) || 'free';
+}
+
+function canUseAutomaticFixes() {
+  return ['pro', 'business'].includes(getCurrentTier());
+}
+
+function renderBasicAssistanceOptions() {
+  if (getCurrentTier() !== 'free') return '';
+
+  return `
+    <section class="assistance-options">
+      <h2>Need more help?</h2>
+      <p>Request additional error-correction and research assistance for a one-time $9.99 fee, or upgrade for automatic fixes and deeper review tools.</p>
+      <button type="button" class="btn-secondary" data-request-assistance>Request Assistance - $9.99</button>
+      <a class="btn-secondary assistance-upgrade-link" href="index.html#subscriptionWorkflows">Compare plans and upgrade</a>
+    </section>
+  `;
+}
+
 function escapeHtml(value = '') {
   return String(value).replace(/[&<>"']/g, (char) => ({
     '&': '&amp;',
@@ -42,8 +81,103 @@ function escapeHtml(value = '') {
   }[char]));
 }
 
+function printProgressChart(groups, completed) {
+  const rows = groups.flatMap((group) => group.issues.map((issue) => {
+    const status = completed.has(getIssueId(issue)) ? 'Solved' : 'Open';
+    return `
+      <tr>
+        <td>${escapeHtml(group.label)}</td>
+        <td>${escapeHtml(issue.category)}: ${escapeHtml(issue.message)}</td>
+        <td>${escapeHtml(issue.suggestion || 'Review this record.')}</td>
+        <td><div class="note-lines"></div><span>${status}</span></td>
+      </tr>
+    `;
+  })).join('');
+  const printWindow = window.open('', 'error-progress-chart');
+
+  if (!printWindow) {
+    alert('Allow pop-ups for this site to print the progress chart.');
+    return;
+  }
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <title>Error Progress Chart</title>
+      <style>
+        body { color: #111827; font-family: Arial, sans-serif; margin: 0.5in; }
+        h1 { font-size: 18pt; margin: 0 0 8px; }
+        p { margin: 0 0 18px; }
+        table { border-collapse: collapse; font-size: 9pt; width: 100%; }
+        th, td { border: 1px solid #374151; padding: 8px; text-align: left; vertical-align: top; }
+        th { background: #e5e7eb; }
+        td:first-child { width: 13%; }
+        td:nth-child(2) { width: 31%; }
+        td:nth-child(3) { width: 28%; }
+        td:last-child { width: 28%; }
+        .note-lines { border-bottom: 1px solid #9ca3af; height: 48px; margin-bottom: 6px; }
+        @media print { @page { margin: 0.4in; size: landscape; } }
+      </style>
+    </head>
+    <body>
+      <h1>Family Tree Error Progress Chart</h1>
+      <p>Current people batch: ${groups.length} record${groups.length === 1 ? '' : 's'}</p>
+      <table>
+        <thead><tr><th>Person or Record</th><th>Issue</th><th>Recommended Fix</th><th>Progress Notes</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
+}
+
 function getIssueGroupId(issue) {
   return issue.subject ? `record:${issue.subject}` : `issue:${getIssueId(issue)}`;
+}
+
+function mergeDuplicatePeople(treeData, fix) {
+  const survivor = treeData.people.find((person) => person.id === fix.survivorId);
+  const duplicateIds = new Set(fix.duplicateIds);
+  const duplicates = treeData.people.filter((person) => duplicateIds.has(person.id));
+
+  if (!survivor || !duplicates.length) {
+    throw new Error('The duplicate records are no longer available to merge.');
+  }
+
+  for (const duplicate of duplicates) {
+    for (const field of ['sex', 'birthDate', 'birthPlace', 'deathDate', 'deathPlace']) {
+      if (!survivor[field] && duplicate[field]) survivor[field] = duplicate[field];
+    }
+
+    survivor.notes = [...new Set([...(survivor.notes || []), ...(duplicate.notes || [])])];
+    survivor.familyAsChild = [...new Set([...(survivor.familyAsChild || []), ...(duplicate.familyAsChild || [])])];
+    survivor.familyAsSpouse = [...new Set([...(survivor.familyAsSpouse || []), ...(duplicate.familyAsSpouse || [])])];
+  }
+
+  for (const family of treeData.families || []) {
+    if (duplicateIds.has(family.husbandId)) family.husbandId = survivor.id;
+    if (duplicateIds.has(family.wifeId)) family.wifeId = survivor.id;
+    family.childrenIds = [...new Set((family.childrenIds || []).map((id) => (
+      duplicateIds.has(id) ? survivor.id : id
+    )))];
+
+    if (family.husbandId === family.wifeId) family.wifeId = null;
+  }
+
+  treeData.relationships = Array.from(new Map((treeData.relationships || []).map((relationship) => {
+    const normalized = {
+      ...relationship,
+      personId: duplicateIds.has(relationship.personId) ? survivor.id : relationship.personId,
+      relatedPersonId: duplicateIds.has(relationship.relatedPersonId) ? survivor.id : relationship.relatedPersonId,
+    };
+    return [`${normalized.type}|${normalized.personId}|${normalized.relatedPersonId}|${normalized.familyId || ''}`, normalized];
+  })).values());
+  treeData.people = treeData.people.filter((person) => !duplicateIds.has(person.id));
 }
 
 function getIssueGroups(errors) {
@@ -83,7 +217,14 @@ function getActiveIssueGroups(errors, progress) {
 
 function renderWorkspace() {
   const treeData = getTreeData();
-  const errors = treeData?.validationReport?.errors || [];
+  const errors = [
+    ...(treeData?.validationReport?.errors || []),
+    ...(treeData?.validationReport?.warnings || []).filter((issue) => issue.autoFix?.type === 'mergeDuplicatePeople'),
+  ];
+  const progress = getProgress();
+  const canUndoDuplicateMerge = Boolean(getDuplicateMergeUndo());
+  const undoButton = canUndoDuplicateMerge ? '<button id="undoDuplicateMerge" type="button" class="btn-secondary">Undo Last Duplicate Merge</button>' : '';
+  const assistanceOptions = renderBasicAssistanceOptions();
 
   if (!treeData?.people?.length) {
     workspace.innerHTML = '<p class="empty-message">Upload a GEDCOM file before opening the error workspace.</p>';
@@ -91,11 +232,10 @@ function renderWorkspace() {
   }
 
   if (!errors.length) {
-    workspace.innerHTML = '<p class="empty-message">No validation errors are currently available. Return to the family tree to review warnings and notes.</p>';
+    workspace.innerHTML = `<p class="empty-message">No validation errors are currently available. Return to the family tree to review warnings and notes.</p>${undoButton}${assistanceOptions}`;
     return;
   }
 
-  const progress = getProgress();
   const activeGroups = getActiveIssueGroups(errors, progress);
   const completed = new Set(progress.completedIssueIds);
   const activeDone = activeGroups.length === 0 || activeGroups.every((group) => (
@@ -111,13 +251,15 @@ function renderWorkspace() {
         <h2>Batch complete</h2>
         <p>You solved this group. ${remainingGroups} person${remainingGroups === 1 ? '' : 's'} or record${remainingGroups === 1 ? '' : 's'} remain.</p>
         <button id="loadNextBatch" type="button" class="btn-add">Load next ${Math.min(ERROR_BATCH_SIZE, remainingGroups)} people</button>
+        ${undoButton}
+        ${assistanceOptions}
       </section>
     `;
     return;
   }
 
   if (activeDone) {
-    workspace.innerHTML = '<section class="batch-complete"><h2>All errors completed</h2><p>No more validation errors remain in this workspace.</p></section>';
+    workspace.innerHTML = `<section class="batch-complete"><h2>All errors completed</h2><p>No more validation errors remain in this workspace.</p>${undoButton}</section>${assistanceOptions}`;
     return;
   }
 
@@ -128,6 +270,9 @@ function renderWorkspace() {
         <span>${activeGroups.length} of ${ERROR_BATCH_SIZE} selected</span>
       </div>
       <p class="batch-help">Each person includes all of their unresolved errors. Mark an error solved only after correcting it in the source GEDCOM or completing its recommended fix. The next batch stays locked until this batch is complete.</p>
+      <button id="printProgressChart" type="button" class="btn-secondary">Print Progress Chart</button>
+      ${undoButton}
+      ${assistanceOptions}
       <ol class="error-batch-list">
         ${activeGroups.map((group) => {
           return `
@@ -141,6 +286,7 @@ function renderWorkspace() {
                     <li>
                       <strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(issue.message)}
                       ${issue.suggestion ? `<p class="fix-suggestion">${escapeHtml(issue.suggestion)}</p>` : ''}
+                      ${issue.autoFix?.type === 'mergeDuplicatePeople' && canUseAutomaticFixes() ? `<button type="button" class="btn-secondary" data-merge-duplicates="${encodeURIComponent(JSON.stringify(issue.autoFix))}">Approve &amp; Merge Duplicate People</button>` : ''}
                       <button type="button" class="btn-secondary" data-resolve-issue="${encodeURIComponent(issueId)}" ${isCompleted ? 'disabled' : ''}>${isCompleted ? 'Solved' : 'Mark solved'}</button>
                     </li>
                   `;
@@ -155,6 +301,66 @@ function renderWorkspace() {
 }
 
 workspace.addEventListener('click', (event) => {
+  if (event.target.closest('[data-request-assistance]')) {
+    requestBasicAssistance();
+    return;
+  }
+
+  if (event.target.closest('#undoDuplicateMerge')) {
+    const undoState = getDuplicateMergeUndo();
+    if (!undoState?.treeData || !undoState?.progress) {
+      alert('There is no duplicate merge available to undo.');
+      return;
+    }
+
+    if (!confirm('Undo the last duplicate merge and restore the previous family tree?')) {
+      return;
+    }
+
+    saveTreeData(undoState.treeData);
+    saveProgress(undoState.progress);
+    localStorage.removeItem(DUPLICATE_MERGE_UNDO_STORAGE_KEY);
+    renderWorkspace();
+    return;
+  }
+
+  const mergeButton = event.target.closest('[data-merge-duplicates]');
+  if (mergeButton) {
+    const treeData = getTreeData();
+    const fix = JSON.parse(decodeURIComponent(mergeButton.dataset.mergeDuplicates));
+    const survivor = treeData?.people?.find((person) => person.id === fix.survivorId);
+    const duplicates = treeData?.people?.filter((person) => fix.duplicateIds.includes(person.id)) || [];
+
+    if (!survivor || !duplicates.length) {
+      alert('The duplicate records are no longer available. Reload the tree and try again.');
+      return;
+    }
+
+    const names = [survivor, ...duplicates].map((person) => `${person.name} (${person.id})`).join(', ');
+    if (!confirm(`Merge these records into ${survivor.name} (${survivor.id})?\n\n${names}\n\nThis updates family references and removes the duplicate records.`)) {
+      return;
+    }
+
+    try {
+      const progress = getProgress();
+      saveDuplicateMergeUndo(JSON.parse(JSON.stringify(treeData)), progress);
+      mergeDuplicatePeople(treeData, fix);
+      const mergedIssueId = getIssueId({
+        category: 'Possible duplicate',
+        message: `${duplicates.length + 1} people share the same name and birth year: ${[survivor, ...duplicates].map((person) => `${person.name} (${person.id})`).join(', ')}.`,
+        subject: survivor.id,
+      });
+      if (!progress.completedIssueIds.includes(mergedIssueId)) progress.completedIssueIds.push(mergedIssueId);
+      treeData.validationReport.warnings = (treeData.validationReport.warnings || []).filter((issue) => getIssueId(issue) !== mergedIssueId);
+      saveTreeData(treeData);
+      saveProgress(progress);
+      renderWorkspace();
+    } catch (error) {
+      alert(error.message || 'Could not merge the duplicate people.');
+    }
+    return;
+  }
+
   const resolveButton = event.target.closest('[data-resolve-issue]');
   if (resolveButton) {
     const issueId = decodeURIComponent(resolveButton.dataset.resolveIssue);
@@ -172,7 +378,30 @@ workspace.addEventListener('click', (event) => {
     progress.activeGroupIds = [];
     saveProgress(progress);
     renderWorkspace();
+    return;
+  }
+
+  if (event.target.closest('#printProgressChart')) {
+    const treeData = getTreeData();
+    const progress = getProgress();
+    const activeGroups = getActiveIssueGroups(treeData?.validationReport?.errors || [], progress);
+    printProgressChart(activeGroups, new Set(progress.completedIssueIds));
   }
 });
+
+async function requestBasicAssistance() {
+  try {
+    const response = await fetch('/api/create-basic-assistance-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) throw new Error(result.error || 'Could not start the assistance checkout.');
+    window.location.href = result.url;
+  } catch (error) {
+    alert(error.message || 'Could not start the assistance checkout.');
+  }
+}
 
 renderWorkspace();

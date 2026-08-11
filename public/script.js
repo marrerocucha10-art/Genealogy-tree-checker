@@ -1111,12 +1111,14 @@ function analyzeTreeData(data) {
 
   for (const matches of duplicateGroups.values()) {
     if (matches.length > 1) {
+      const [survivor, ...duplicates] = matches;
       addIssue(
         report.warnings,
         'Possible duplicate',
         `${matches.length} people share the same name and birth year: ${matches.map((person) => `${person.name} (${person.id})`).join(', ')}.`,
-        '',
-        'Manual fix: compare sources, merge duplicate people in your GEDCOM editor, then re-upload the corrected file.'
+        survivor.id,
+        'Review the records, then merge the duplicate people when you are confident they refer to the same person.',
+        { type: 'mergeDuplicatePeople', survivorId: survivor.id, duplicateIds: duplicates.map((person) => person.id) }
       );
     }
   }
