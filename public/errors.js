@@ -1,5 +1,6 @@
 const STORAGE_KEY = 'familyTreeData';
 const ERROR_PROGRESS_STORAGE_KEY = 'familyTreeErrorProgress';
+const DUPLICATE_MERGE_UNDO_STORAGE_KEY = 'familyTreeDuplicateMergeUndo';
 const ERROR_BATCH_SIZE = 10;
 const workspace = document.getElementById('errorWorkspace');
 
@@ -13,6 +14,18 @@ function getTreeData() {
 
 function saveTreeData(treeData) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(treeData));
+}
+
+function saveDuplicateMergeUndo(treeData, progress) {
+  localStorage.setItem(DUPLICATE_MERGE_UNDO_STORAGE_KEY, JSON.stringify({ treeData, progress }));
+}
+
+function getDuplicateMergeUndo() {
+  try {
+    return JSON.parse(localStorage.getItem(DUPLICATE_MERGE_UNDO_STORAGE_KEY) || 'null');
+  } catch (error) {
+    return null;
+  }
 }
 
 function getIssueId(issue) {
@@ -186,6 +199,9 @@ function renderWorkspace() {
     ...(treeData?.validationReport?.errors || []),
     ...(treeData?.validationReport?.warnings || []).filter((issue) => issue.autoFix?.type === 'mergeDuplicatePeople'),
   ];
+  const progress = getProgress();
+  const canUndoDuplicateMerge = Boolean(getDuplicateMergeUndo());
+  const undoButton = canUndoDuplicateMerge ? '<button id="undoDuplicateMerge" type="button" class="btn-secondary">Undo Last Duplicate Merge</button>' : '';
 
   if (!treeData?.people?.length) {
     workspace.innerHTML = '<p class="empty-message">Upload a GEDCOM file before opening the error workspace.</p>';
@@ -193,11 +209,10 @@ function renderWorkspace() {
   }
 
   if (!errors.length) {
-    workspace.innerHTML = '<p class="empty-message">No validation errors are currently available. Return to the family tree to review warnings and notes.</p>';
+    workspace.innerHTML = `<p class="empty-message">No validation errors are currently available. Return to the family tree to review warnings and notes.</p>${undoButton}`;
     return;
   }
 
-  const progress = getProgress();
   const activeGroups = getActiveIssueGroups(errors, progress);
   const completed = new Set(progress.completedIssueIds);
   const activeDone = activeGroups.length === 0 || activeGroups.every((group) => (
@@ -213,13 +228,14 @@ function renderWorkspace() {
         <h2>Batch complete</h2>
         <p>You solved this group. ${remainingGroups} person${remainingGroups === 1 ? '' : 's'} or record${remainingGroups === 1 ? '' : 's'} remain.</p>
         <button id="loadNextBatch" type="button" class="btn-add">Load next ${Math.min(ERROR_BATCH_SIZE, remainingGroups)} people</button>
+        ${undoButton}
       </section>
     `;
     return;
   }
 
   if (activeDone) {
-    workspace.innerHTML = '<section class="batch-complete"><h2>All errors completed</h2><p>No more validation errors remain in this workspace.</p></section>';
+    workspace.innerHTML = `<section class="batch-complete"><h2>All errors completed</h2><p>No more validation errors remain in this workspace.</p>${undoButton}</section>`;
     return;
   }
 
@@ -231,6 +247,7 @@ function renderWorkspace() {
       </div>
       <p class="batch-help">Each person includes all of their unresolved errors. Mark an error solved only after correcting it in the source GEDCOM or completing its recommended fix. The next batch stays locked until this batch is complete.</p>
       <button id="printProgressChart" type="button" class="btn-secondary">Print Progress Chart</button>
+      ${undoButton}
       <ol class="error-batch-list">
         ${activeGroups.map((group) => {
           return `
@@ -244,7 +261,7 @@ function renderWorkspace() {
                     <li>
                       <strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(issue.message)}
                       ${issue.suggestion ? `<p class="fix-suggestion">${escapeHtml(issue.suggestion)}</p>` : ''}
-                      ${issue.autoFix?.type === 'mergeDuplicatePeople' ? `<button type="button" class="btn-secondary" data-merge-duplicates="${encodeURIComponent(JSON.stringify(issue.autoFix))}">Merge duplicate people</button>` : ''}
+                      ${issue.autoFix?.type === 'mergeDuplicatePeople' ? `<button type="button" class="btn-secondary" data-merge-duplicates="${encodeURIComponent(JSON.stringify(issue.autoFix))}">Approve &amp; Merge Duplicate People</button>` : ''}
                       <button type="button" class="btn-secondary" data-resolve-issue="${encodeURIComponent(issueId)}" ${isCompleted ? 'disabled' : ''}>${isCompleted ? 'Solved' : 'Mark solved'}</button>
                     </li>
                   `;
@@ -259,6 +276,24 @@ function renderWorkspace() {
 }
 
 workspace.addEventListener('click', (event) => {
+  if (event.target.closest('#undoDuplicateMerge')) {
+    const undoState = getDuplicateMergeUndo();
+    if (!undoState?.treeData || !undoState?.progress) {
+      alert('There is no duplicate merge available to undo.');
+      return;
+    }
+
+    if (!confirm('Undo the last duplicate merge and restore the previous family tree?')) {
+      return;
+    }
+
+    saveTreeData(undoState.treeData);
+    saveProgress(undoState.progress);
+    localStorage.removeItem(DUPLICATE_MERGE_UNDO_STORAGE_KEY);
+    renderWorkspace();
+    return;
+  }
+
   const mergeButton = event.target.closest('[data-merge-duplicates]');
   if (mergeButton) {
     const treeData = getTreeData();
@@ -277,13 +312,14 @@ workspace.addEventListener('click', (event) => {
     }
 
     try {
+      const progress = getProgress();
+      saveDuplicateMergeUndo(JSON.parse(JSON.stringify(treeData)), progress);
       mergeDuplicatePeople(treeData, fix);
       const mergedIssueId = getIssueId({
         category: 'Possible duplicate',
         message: `${duplicates.length + 1} people share the same name and birth year: ${[survivor, ...duplicates].map((person) => `${person.name} (${person.id})`).join(', ')}.`,
         subject: survivor.id,
       });
-      const progress = getProgress();
       if (!progress.completedIssueIds.includes(mergedIssueId)) progress.completedIssueIds.push(mergedIssueId);
       treeData.validationReport.warnings = (treeData.validationReport.warnings || []).filter((issue) => getIssueId(issue) !== mergedIssueId);
       saveTreeData(treeData);
