@@ -11,6 +11,10 @@ function getTreeData() {
   }
 }
 
+function saveTreeData(treeData) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(treeData));
+}
+
 function getIssueId(issue) {
   return JSON.stringify([issue.category || '', issue.message || '', issue.subject || '']);
 }
@@ -101,6 +105,46 @@ function getIssueGroupId(issue) {
   return issue.subject ? `record:${issue.subject}` : `issue:${getIssueId(issue)}`;
 }
 
+function mergeDuplicatePeople(treeData, fix) {
+  const survivor = treeData.people.find((person) => person.id === fix.survivorId);
+  const duplicateIds = new Set(fix.duplicateIds);
+  const duplicates = treeData.people.filter((person) => duplicateIds.has(person.id));
+
+  if (!survivor || !duplicates.length) {
+    throw new Error('The duplicate records are no longer available to merge.');
+  }
+
+  for (const duplicate of duplicates) {
+    for (const field of ['sex', 'birthDate', 'birthPlace', 'deathDate', 'deathPlace']) {
+      if (!survivor[field] && duplicate[field]) survivor[field] = duplicate[field];
+    }
+
+    survivor.notes = [...new Set([...(survivor.notes || []), ...(duplicate.notes || [])])];
+    survivor.familyAsChild = [...new Set([...(survivor.familyAsChild || []), ...(duplicate.familyAsChild || [])])];
+    survivor.familyAsSpouse = [...new Set([...(survivor.familyAsSpouse || []), ...(duplicate.familyAsSpouse || [])])];
+  }
+
+  for (const family of treeData.families || []) {
+    if (duplicateIds.has(family.husbandId)) family.husbandId = survivor.id;
+    if (duplicateIds.has(family.wifeId)) family.wifeId = survivor.id;
+    family.childrenIds = [...new Set((family.childrenIds || []).map((id) => (
+      duplicateIds.has(id) ? survivor.id : id
+    )))];
+
+    if (family.husbandId === family.wifeId) family.wifeId = null;
+  }
+
+  treeData.relationships = Array.from(new Map((treeData.relationships || []).map((relationship) => {
+    const normalized = {
+      ...relationship,
+      personId: duplicateIds.has(relationship.personId) ? survivor.id : relationship.personId,
+      relatedPersonId: duplicateIds.has(relationship.relatedPersonId) ? survivor.id : relationship.relatedPersonId,
+    };
+    return [`${normalized.type}|${normalized.personId}|${normalized.relatedPersonId}|${normalized.familyId || ''}`, normalized];
+  })).values());
+  treeData.people = treeData.people.filter((person) => !duplicateIds.has(person.id));
+}
+
 function getIssueGroups(errors) {
   const groups = new Map();
 
@@ -138,7 +182,10 @@ function getActiveIssueGroups(errors, progress) {
 
 function renderWorkspace() {
   const treeData = getTreeData();
-  const errors = treeData?.validationReport?.errors || [];
+  const errors = [
+    ...(treeData?.validationReport?.errors || []),
+    ...(treeData?.validationReport?.warnings || []).filter((issue) => issue.autoFix?.type === 'mergeDuplicatePeople'),
+  ];
 
   if (!treeData?.people?.length) {
     workspace.innerHTML = '<p class="empty-message">Upload a GEDCOM file before opening the error workspace.</p>';
@@ -197,6 +244,7 @@ function renderWorkspace() {
                     <li>
                       <strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(issue.message)}
                       ${issue.suggestion ? `<p class="fix-suggestion">${escapeHtml(issue.suggestion)}</p>` : ''}
+                      ${issue.autoFix?.type === 'mergeDuplicatePeople' ? `<button type="button" class="btn-secondary" data-merge-duplicates="${encodeURIComponent(JSON.stringify(issue.autoFix))}">Merge duplicate people</button>` : ''}
                       <button type="button" class="btn-secondary" data-resolve-issue="${encodeURIComponent(issueId)}" ${isCompleted ? 'disabled' : ''}>${isCompleted ? 'Solved' : 'Mark solved'}</button>
                     </li>
                   `;
@@ -211,6 +259,42 @@ function renderWorkspace() {
 }
 
 workspace.addEventListener('click', (event) => {
+  const mergeButton = event.target.closest('[data-merge-duplicates]');
+  if (mergeButton) {
+    const treeData = getTreeData();
+    const fix = JSON.parse(decodeURIComponent(mergeButton.dataset.mergeDuplicates));
+    const survivor = treeData?.people?.find((person) => person.id === fix.survivorId);
+    const duplicates = treeData?.people?.filter((person) => fix.duplicateIds.includes(person.id)) || [];
+
+    if (!survivor || !duplicates.length) {
+      alert('The duplicate records are no longer available. Reload the tree and try again.');
+      return;
+    }
+
+    const names = [survivor, ...duplicates].map((person) => `${person.name} (${person.id})`).join(', ');
+    if (!confirm(`Merge these records into ${survivor.name} (${survivor.id})?\n\n${names}\n\nThis updates family references and removes the duplicate records.`)) {
+      return;
+    }
+
+    try {
+      mergeDuplicatePeople(treeData, fix);
+      const mergedIssueId = getIssueId({
+        category: 'Possible duplicate',
+        message: `${duplicates.length + 1} people share the same name and birth year: ${[survivor, ...duplicates].map((person) => `${person.name} (${person.id})`).join(', ')}.`,
+        subject: survivor.id,
+      });
+      const progress = getProgress();
+      if (!progress.completedIssueIds.includes(mergedIssueId)) progress.completedIssueIds.push(mergedIssueId);
+      treeData.validationReport.warnings = (treeData.validationReport.warnings || []).filter((issue) => getIssueId(issue) !== mergedIssueId);
+      saveTreeData(treeData);
+      saveProgress(progress);
+      renderWorkspace();
+    } catch (error) {
+      alert(error.message || 'Could not merge the duplicate people.');
+    }
+    return;
+  }
+
   const resolveButton = event.target.closest('[data-resolve-issue]');
   if (resolveButton) {
     const issueId = decodeURIComponent(resolveButton.dataset.resolveIssue);
