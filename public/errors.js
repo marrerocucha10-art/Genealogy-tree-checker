@@ -1,6 +1,7 @@
 const STORAGE_KEY = 'familyTreeData';
 const ERROR_PROGRESS_STORAGE_KEY = 'familyTreeErrorProgress';
 const DUPLICATE_MERGE_UNDO_STORAGE_KEY = 'familyTreeDuplicateMergeUndo';
+const SUBSCRIPTION_STORAGE_KEY = 'familyTreeSubscriptionTier';
 const ERROR_BATCH_SIZE = 10;
 const workspace = document.getElementById('errorWorkspace');
 
@@ -47,6 +48,27 @@ function getProgress() {
 
 function saveProgress(progress) {
   localStorage.setItem(ERROR_PROGRESS_STORAGE_KEY, JSON.stringify(progress));
+}
+
+function getCurrentTier() {
+  return localStorage.getItem(SUBSCRIPTION_STORAGE_KEY) || 'free';
+}
+
+function canUseAutomaticFixes() {
+  return ['pro', 'business'].includes(getCurrentTier());
+}
+
+function renderBasicAssistanceOptions() {
+  if (getCurrentTier() !== 'free') return '';
+
+  return `
+    <section class="assistance-options">
+      <h2>Need more help?</h2>
+      <p>Request additional error-correction and research assistance for a one-time $9.99 fee, or upgrade for automatic fixes and deeper review tools.</p>
+      <button type="button" class="btn-secondary" data-request-assistance>Request Assistance - $9.99</button>
+      <a class="btn-secondary assistance-upgrade-link" href="index.html#subscriptionWorkflows">Compare plans and upgrade</a>
+    </section>
+  `;
 }
 
 function escapeHtml(value = '') {
@@ -202,6 +224,7 @@ function renderWorkspace() {
   const progress = getProgress();
   const canUndoDuplicateMerge = Boolean(getDuplicateMergeUndo());
   const undoButton = canUndoDuplicateMerge ? '<button id="undoDuplicateMerge" type="button" class="btn-secondary">Undo Last Duplicate Merge</button>' : '';
+  const assistanceOptions = renderBasicAssistanceOptions();
 
   if (!treeData?.people?.length) {
     workspace.innerHTML = '<p class="empty-message">Upload a GEDCOM file before opening the error workspace.</p>';
@@ -209,7 +232,7 @@ function renderWorkspace() {
   }
 
   if (!errors.length) {
-    workspace.innerHTML = `<p class="empty-message">No validation errors are currently available. Return to the family tree to review warnings and notes.</p>${undoButton}`;
+    workspace.innerHTML = `<p class="empty-message">No validation errors are currently available. Return to the family tree to review warnings and notes.</p>${undoButton}${assistanceOptions}`;
     return;
   }
 
@@ -229,13 +252,14 @@ function renderWorkspace() {
         <p>You solved this group. ${remainingGroups} person${remainingGroups === 1 ? '' : 's'} or record${remainingGroups === 1 ? '' : 's'} remain.</p>
         <button id="loadNextBatch" type="button" class="btn-add">Load next ${Math.min(ERROR_BATCH_SIZE, remainingGroups)} people</button>
         ${undoButton}
+        ${assistanceOptions}
       </section>
     `;
     return;
   }
 
   if (activeDone) {
-    workspace.innerHTML = `<section class="batch-complete"><h2>All errors completed</h2><p>No more validation errors remain in this workspace.</p>${undoButton}</section>`;
+    workspace.innerHTML = `<section class="batch-complete"><h2>All errors completed</h2><p>No more validation errors remain in this workspace.</p>${undoButton}</section>${assistanceOptions}`;
     return;
   }
 
@@ -248,6 +272,7 @@ function renderWorkspace() {
       <p class="batch-help">Each person includes all of their unresolved errors. Mark an error solved only after correcting it in the source GEDCOM or completing its recommended fix. The next batch stays locked until this batch is complete.</p>
       <button id="printProgressChart" type="button" class="btn-secondary">Print Progress Chart</button>
       ${undoButton}
+      ${assistanceOptions}
       <ol class="error-batch-list">
         ${activeGroups.map((group) => {
           return `
@@ -261,7 +286,7 @@ function renderWorkspace() {
                     <li>
                       <strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(issue.message)}
                       ${issue.suggestion ? `<p class="fix-suggestion">${escapeHtml(issue.suggestion)}</p>` : ''}
-                      ${issue.autoFix?.type === 'mergeDuplicatePeople' ? `<button type="button" class="btn-secondary" data-merge-duplicates="${encodeURIComponent(JSON.stringify(issue.autoFix))}">Approve &amp; Merge Duplicate People</button>` : ''}
+                      ${issue.autoFix?.type === 'mergeDuplicatePeople' && canUseAutomaticFixes() ? `<button type="button" class="btn-secondary" data-merge-duplicates="${encodeURIComponent(JSON.stringify(issue.autoFix))}">Approve &amp; Merge Duplicate People</button>` : ''}
                       <button type="button" class="btn-secondary" data-resolve-issue="${encodeURIComponent(issueId)}" ${isCompleted ? 'disabled' : ''}>${isCompleted ? 'Solved' : 'Mark solved'}</button>
                     </li>
                   `;
@@ -276,6 +301,11 @@ function renderWorkspace() {
 }
 
 workspace.addEventListener('click', (event) => {
+  if (event.target.closest('[data-request-assistance]')) {
+    requestBasicAssistance();
+    return;
+  }
+
   if (event.target.closest('#undoDuplicateMerge')) {
     const undoState = getDuplicateMergeUndo();
     if (!undoState?.treeData || !undoState?.progress) {
@@ -358,5 +388,20 @@ workspace.addEventListener('click', (event) => {
     printProgressChart(activeGroups, new Set(progress.completedIssueIds));
   }
 });
+
+async function requestBasicAssistance() {
+  try {
+    const response = await fetch('/api/create-basic-assistance-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) throw new Error(result.error || 'Could not start the assistance checkout.');
+    window.location.href = result.url;
+  } catch (error) {
+    alert(error.message || 'Could not start the assistance checkout.');
+  }
+}
 
 renderWorkspace();
