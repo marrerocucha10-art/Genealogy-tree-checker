@@ -42,6 +42,61 @@ function escapeHtml(value = '') {
   }[char]));
 }
 
+function printProgressChart(groups, completed) {
+  const rows = groups.flatMap((group) => group.issues.map((issue) => {
+    const status = completed.has(getIssueId(issue)) ? 'Solved' : 'Open';
+    return `
+      <tr>
+        <td>${escapeHtml(group.label)}</td>
+        <td>${escapeHtml(issue.category)}: ${escapeHtml(issue.message)}</td>
+        <td>${escapeHtml(issue.suggestion || 'Review this record.')}</td>
+        <td><div class="note-lines"></div><span>${status}</span></td>
+      </tr>
+    `;
+  })).join('');
+  const printWindow = window.open('', 'error-progress-chart');
+
+  if (!printWindow) {
+    alert('Allow pop-ups for this site to print the progress chart.');
+    return;
+  }
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <title>Error Progress Chart</title>
+      <style>
+        body { color: #111827; font-family: Arial, sans-serif; margin: 0.5in; }
+        h1 { font-size: 18pt; margin: 0 0 8px; }
+        p { margin: 0 0 18px; }
+        table { border-collapse: collapse; font-size: 9pt; width: 100%; }
+        th, td { border: 1px solid #374151; padding: 8px; text-align: left; vertical-align: top; }
+        th { background: #e5e7eb; }
+        td:first-child { width: 13%; }
+        td:nth-child(2) { width: 31%; }
+        td:nth-child(3) { width: 28%; }
+        td:last-child { width: 28%; }
+        .note-lines { border-bottom: 1px solid #9ca3af; height: 48px; margin-bottom: 6px; }
+        @media print { @page { margin: 0.4in; size: landscape; } }
+      </style>
+    </head>
+    <body>
+      <h1>Family Tree Error Progress Chart</h1>
+      <p>Current people batch: ${groups.length} record${groups.length === 1 ? '' : 's'}</p>
+      <table>
+        <thead><tr><th>Person or Record</th><th>Issue</th><th>Recommended Fix</th><th>Progress Notes</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
+}
+
 function getIssueGroupId(issue) {
   return issue.subject ? `record:${issue.subject}` : `issue:${getIssueId(issue)}`;
 }
@@ -128,6 +183,7 @@ function renderWorkspace() {
         <span>${activeGroups.length} of ${ERROR_BATCH_SIZE} selected</span>
       </div>
       <p class="batch-help">Each person includes all of their unresolved errors. Mark an error solved only after correcting it in the source GEDCOM or completing its recommended fix. The next batch stays locked until this batch is complete.</p>
+      <button id="printProgressChart" type="button" class="btn-secondary">Print Progress Chart</button>
       <ol class="error-batch-list">
         ${activeGroups.map((group) => {
           return `
@@ -172,6 +228,14 @@ workspace.addEventListener('click', (event) => {
     progress.activeGroupIds = [];
     saveProgress(progress);
     renderWorkspace();
+    return;
+  }
+
+  if (event.target.closest('#printProgressChart')) {
+    const treeData = getTreeData();
+    const progress = getProgress();
+    const activeGroups = getActiveIssueGroups(treeData?.validationReport?.errors || [], progress);
+    printProgressChart(activeGroups, new Set(progress.completedIssueIds));
   }
 });
 
