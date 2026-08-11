@@ -60,6 +60,7 @@ const ACTION_REQUIREMENTS = {
 const gedcomForm = document.getElementById('gedcomForm');
 const gedcomFileInput = document.getElementById('gedcomFile');
 const uploadStatus = document.getElementById('uploadStatus');
+const reviewInitialTreeButton = document.getElementById('reviewInitialTree');
 const familyForm = document.getElementById('familyForm');
 const nameInput = document.getElementById('name');
 const relationInput = document.getElementById('relation');
@@ -198,6 +199,17 @@ gedcomForm.addEventListener('submit', async (event) => {
       ? ' Previous tree restored; no new GEDCOM was imported.'
       : ' No GEDCOM was imported.';
     setStatus(`${formatGedcomLoadError(error)}${restoreText}`, 'error');
+  }
+});
+
+reviewInitialTreeButton.addEventListener('click', () => {
+  if (!ensureTreeHasPeople('reviewing the initial family tree')) return;
+
+  document.querySelector('.tree-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  if (confirm('Review the initial family tree below. Would you like to print this version for comparison?')) {
+    if (!requireTier('print')) return;
+    window.print();
   }
 });
 
