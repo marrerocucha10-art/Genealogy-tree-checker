@@ -3,6 +3,7 @@ const LAYOUT_STORAGE_KEY = 'familyTreeLayout';
 const SUBSCRIPTION_STORAGE_KEY = 'familyTreeSubscriptionTier';
 const BILLING_INTERVAL_STORAGE_KEY = 'familyTreeBillingInterval';
 const STRIPE_CUSTOMER_STORAGE_KEY = 'familyTreeStripeCustomerId';
+const ERROR_PROGRESS_STORAGE_KEY = 'familyTreeErrorProgress';
 const MAX_GEDCOM_FILE_BYTES = 150 * 1024 * 1024;
 
 let treeData = loadTreeData();
@@ -144,6 +145,11 @@ familyTreeDiv.addEventListener('click', (event) => {
 
   if (manualFixButton) {
     showManualFixes();
+    return;
+  }
+
+  if (event.target.closest('[data-open-error-workspace]')) {
+    window.open('errors.html', '_blank', 'noopener');
   }
 });
 
@@ -171,6 +177,7 @@ gedcomForm.addEventListener('submit', async (event) => {
     };
 
     treeData = normalizeParsedGedcom(result.parsed);
+    localStorage.removeItem(ERROR_PROGRESS_STORAGE_KEY);
     const savedLocally = saveTreeData();
     renderFamilyTree();
 
@@ -253,6 +260,7 @@ copySummaryButton.addEventListener('click', async () => {
 clearTreeButton.addEventListener('click', () => {
   if (!treeData.people.length || confirm('Clear the current family tree?')) {
     treeData = createEmptyTreeData();
+    localStorage.removeItem(ERROR_PROGRESS_STORAGE_KEY);
     saveTreeData();
     renderFamilyTree();
     setStatus('', 'info');
@@ -1486,10 +1494,11 @@ function renderValidationReport() {
         <span>${report.errors.length} errors · ${report.warnings.length} warnings · ${report.info.length} notes</span>
       </div>
       <div class="report-actions">
+        ${report.errors.length ? '<button type="button" class="btn-secondary" data-open-error-workspace>Work Through Errors</button>' : ''}
         <button type="button" class="btn-secondary" data-apply-auto-fixes>Apply Safe Automatic Fixes</button>
         <button type="button" class="btn-secondary" data-show-manual-fixes>Show Manual Fix Guidance</button>
       </div>
-      ${renderIssueGroup('Errors', report.errors, 'error')}
+      ${report.errors.length ? '<p class="muted">Errors are shown in the Error Workspace, where they can be resolved in batches of 10.</p>' : ''}
       ${renderIssueGroup('Warnings', report.warnings, 'warning')}
       ${renderIssueGroup('Notes', report.info, 'info')}
     </section>
