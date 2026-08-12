@@ -5,6 +5,9 @@ const BILLING_INTERVAL_STORAGE_KEY = 'familyTreeBillingInterval';
 const STRIPE_CUSTOMER_STORAGE_KEY = 'familyTreeStripeCustomerId';
 const ERROR_PROGRESS_STORAGE_KEY = 'familyTreeErrorProgress';
 const TREE_THEME_STORAGE_KEY = 'familyTreePresentationTheme';
+const GEDCOM_BACKUP_DATABASE = 'genealogyTreeCheckerBackups';
+const GEDCOM_BACKUP_STORE = 'gedcomFiles';
+const GEDCOM_BACKUP_ID = 'latest';
 const MAX_GEDCOM_FILE_BYTES = 150 * 1024 * 1024;
 
 let treeData = loadTreeData();
@@ -74,6 +77,8 @@ const printTreeButton = document.getElementById('printTree');
 const exportJsonButton = document.getElementById('exportJson');
 const exportCsvButton = document.getElementById('exportCsv');
 const copySummaryButton = document.getElementById('copySummary');
+const downloadGedcomBackupButton = document.getElementById('downloadGedcomBackup');
+const restoreGedcomBackupButton = document.getElementById('restoreGedcomBackup');
 const layoutButtons = document.querySelectorAll('[data-layout]');
 const billingButtons = document.querySelectorAll('[data-billing-interval]');
 const subscriptionPlansDiv = document.getElementById('subscriptionPlans');
@@ -101,6 +106,9 @@ if (goToStoreButton) {
     window.open(storeUrl, '_blank', 'noopener');
   });
 }
+
+downloadGedcomBackupButton.addEventListener('click', downloadSavedGedcomBackup);
+restoreGedcomBackupButton.addEventListener('click', restoreSavedGedcomBackup);
 
 billingButtons.forEach((button) => {
   button.addEventListener('click', () => {
@@ -210,30 +218,14 @@ gedcomForm.addEventListener('submit', async (event) => {
 
   try {
     const gedcom = await readGedcomFile(file);
-    const cleanup = cleanupRepeatedGedcomRecords(gedcom);
-    const parsed = parseGedcomInBrowser(cleanup.gedcom);
-    const result = {
-      success: true,
-      parsed,
-      cleanup: {
-        repeatedRecordsRemoved: cleanup.repeatedRecordsRemoved,
-      },
-    };
-
-    treeData = normalizeParsedGedcom(result.parsed);
-    localStorage.removeItem(ERROR_PROGRESS_STORAGE_KEY);
-    const savedLocally = saveTreeData();
-    renderFamilyTree();
-
-    const { people, families, relationships } = result.parsed.stats;
-    const warningText = result.parsed.warnings.length
-      ? ` ${result.parsed.warnings.length} warning(s) found.`
-      : '';
-    const cleanupText = result.cleanup?.repeatedRecordsRemoved
-      ? ` Removed ${result.cleanup.repeatedRecordsRemoved} repeated GEDCOM record(s) before parsing.`
-      : '';
+    const result = parseGedcomText(gedcom);
+    const savedLocally = applyGedcomResult(result);
+    const backupSaved = await saveGedcomBackup(gedcom, getGedcomBackupFileName(file.name));
     const storageText = savedLocally ? '' : ' This tree is too large for browser storage, so it will stay available only until this tab is refreshed.';
-    setStatus(`Imported ${people} people, ${families} families, and ${relationships} relationships.${warningText}${cleanupText}${storageText}`, 'success');
+    const backupText = backupSaved
+      ? ' A local GEDCOM backup is ready to download or restore from this browser.'
+      : ' The GEDCOM backup could not be saved in this browser.';
+    setStatus(`${formatGedcomImportStatus(result)}${storageText}${backupText}`, 'success');
     gedcomForm.reset();
   } catch (error) {
     treeData = previousTreeData;
@@ -244,6 +236,127 @@ gedcomForm.addEventListener('submit', async (event) => {
     setStatus(`${formatGedcomLoadError(error)}${restoreText}`, 'error');
   }
 });
+
+function parseGedcomText(gedcom) {
+  const cleanup = cleanupRepeatedGedcomRecords(gedcom);
+  const parsed = parseGedcomInBrowser(cleanup.gedcom);
+  return {
+    success: true,
+    parsed,
+    cleanup: {
+      repeatedRecordsRemoved: cleanup.repeatedRecordsRemoved,
+    },
+  };
+}
+
+function applyGedcomResult(result) {
+  treeData = normalizeParsedGedcom(result.parsed);
+  localStorage.removeItem(ERROR_PROGRESS_STORAGE_KEY);
+  const savedLocally = saveTreeData();
+  renderFamilyTree();
+  return savedLocally;
+}
+
+function formatGedcomImportStatus(result) {
+  const { people, families, relationships } = result.parsed.stats;
+  const warningText = result.parsed.warnings.length
+    ? ` ${result.parsed.warnings.length} warning(s) found.`
+    : '';
+  const cleanupText = result.cleanup?.repeatedRecordsRemoved
+    ? ` Removed ${result.cleanup.repeatedRecordsRemoved} repeated GEDCOM record(s) before parsing.`
+    : '';
+  return `Imported ${people} people, ${families} families, and ${relationships} relationships.${warningText}${cleanupText}`;
+}
+
+function getGedcomBackupFileName(fileName = 'family-tree.ged') {
+  const baseName = fileName.replace(/\.(zip|gedzip)$/i, '').replace(/\.(ged|gedcom|ged\.txt|txt)$/i, '');
+  return `${baseName || 'family-tree'}-backup.ged`;
+}
+
+function openGedcomBackupDatabase() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(GEDCOM_BACKUP_DATABASE, 1);
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains(GEDCOM_BACKUP_STORE)) {
+        request.result.createObjectStore(GEDCOM_BACKUP_STORE, { keyPath: 'id' });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error('Could not open local GEDCOM backup storage.'));
+  });
+}
+
+async function saveGedcomBackup(gedcom, fileName) {
+  try {
+    const database = await openGedcomBackupDatabase();
+    await new Promise((resolve, reject) => {
+      const transaction = database.transaction(GEDCOM_BACKUP_STORE, 'readwrite');
+      transaction.objectStore(GEDCOM_BACKUP_STORE).put({
+        id: GEDCOM_BACKUP_ID,
+        fileName,
+        gedcom,
+        savedAt: new Date().toISOString(),
+      });
+      transaction.oncomplete = resolve;
+      transaction.onerror = () => reject(transaction.error);
+      transaction.onabort = () => reject(transaction.error);
+    });
+    database.close();
+    return true;
+  } catch (error) {
+    console.warn('Could not save local GEDCOM backup:', error);
+    return false;
+  }
+}
+
+async function getGedcomBackup() {
+  const database = await openGedcomBackupDatabase();
+  try {
+    return await new Promise((resolve, reject) => {
+      const request = database.transaction(GEDCOM_BACKUP_STORE, 'readonly')
+        .objectStore(GEDCOM_BACKUP_STORE)
+        .get(GEDCOM_BACKUP_ID);
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(request.error);
+    });
+  } finally {
+    database.close();
+  }
+}
+
+async function downloadSavedGedcomBackup() {
+  try {
+    const backup = await getGedcomBackup();
+    if (!backup) {
+      setStatus('No local GEDCOM backup is available in this browser yet. Upload a GEDCOM file first.', 'info');
+      return;
+    }
+    downloadFile(backup.fileName, backup.gedcom, 'application/x-gedcom');
+    setStatus(`Downloaded the GEDCOM backup saved ${new Date(backup.savedAt).toLocaleString()}.`, 'success');
+  } catch (error) {
+    setStatus('Could not access the local GEDCOM backup.', 'error');
+  }
+}
+
+async function restoreSavedGedcomBackup() {
+  const previousTreeData = treeData;
+  treeData = createEmptyTreeData();
+  renderFamilyTree();
+  setStatus('Restoring local GEDCOM backup...', 'info');
+
+  try {
+    const backup = await getGedcomBackup();
+    if (!backup) throw new Error('No local GEDCOM backup is available in this browser yet.');
+    const result = parseGedcomText(backup.gedcom);
+    const savedLocally = applyGedcomResult(result);
+    const storageText = savedLocally ? '' : ' This tree is too large for browser storage, so it will stay available only until this tab is refreshed.';
+    setStatus(`Restored ${backup.fileName}. ${formatGedcomImportStatus(result)}${storageText}`, 'success');
+  } catch (error) {
+    treeData = previousTreeData;
+    renderFamilyTree();
+    setStatus(error.message || 'Could not restore the local GEDCOM backup.', 'error');
+  }
+}
 
 reviewInitialTreeButton.addEventListener('click', () => {
   if (!ensureTreeHasPeople('reviewing the initial family tree')) return;

@@ -107,6 +107,17 @@ select:focus {
   transform: translateY(0);
 }
 
+.gedcom-backup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.gedcom-backup-actions .btn-secondary {
+  flex: 1 1 240px;
+}
+
 .family-tree {
   background: #f8f9fa;
   padding: 20px;
