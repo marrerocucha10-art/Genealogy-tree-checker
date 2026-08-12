@@ -148,11 +148,11 @@ GEDCOM importer runs in the browser, so it works on Pages without the Express AP
 
 ## 🛍️ Physical Product Launch
 
-The app can create a print-ready 18x24 portrait family-tree poster as an SVG. To launch the first physical product without maintaining a Shopify storefront:
+The app can create a flattened, print-ready 18x24 portrait family-tree poster as a PNG. To launch the first physical product without maintaining a Shopify storefront:
 
 1. Create the 18x24 portrait poster product in Printify's Free plan.
-2. In the app, open a completed family tree and select **Download 18x24 Poster Artwork** from **Celebrate Your Updated Tree**.
-3. Upload the SVG to the matching Printify product and create its mockups.
+2. In the app, open a completed family tree and select **Download 18x24 Poster PNG** from **Celebrate Your Updated Tree**.
+3. Upload the PNG to the matching Printify product and create its mockups.
 4. Add the product to Big Cartel, connect Big Cartel to your existing Stripe account, and test a real checkout.
 5. Fulfill the first orders manually in Printify until your sales volume makes further storefront automation worthwhile.
 

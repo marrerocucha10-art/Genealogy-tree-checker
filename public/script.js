@@ -1407,7 +1407,7 @@ function renderTreePresentation() {
       ${canPrintUpdatedTree
         ? `<div class="presentation-print-actions">
             <button type="button" class="btn-add presentation-print-button" data-print-updated-tree>Print Your Personalized Tree</button>
-            <button type="button" class="btn-secondary" data-download-poster-artwork>Download 18x24 Poster Artwork</button>
+            <button type="button" class="btn-secondary" data-download-poster-artwork>Download 18x24 Poster PNG</button>
           </div>`
         : '<p class="presentation-upgrade">Family Builder unlocks personalized tree printing, unlimited fixes, and research worksheets. <a href="#subscriptionWorkflows">Upgrade to Family Builder</a>.</p>'}
       <div class="keepsake-offer">
@@ -1452,7 +1452,7 @@ function shortenPosterText(value, maxLength = 34) {
   return text.length > maxLength ? `${text.slice(0, maxLength - 3)}...` : text;
 }
 
-function downloadPosterArtwork() {
+async function downloadPosterArtwork() {
   if (!requireTier('print')) return;
   if (!ensureTreeHasPeople('creating poster artwork')) return;
 
@@ -1513,8 +1513,49 @@ function downloadPosterArtwork() {
     <text x="2700" y="6930" text-anchor="middle" fill="${colors.text}" font-family="Arial, sans-serif" font-size="30">Created with Genealogy Tree Checker</text>
   </svg>`;
 
-  downloadFile('family-tree-poster-18x24.svg', svg, 'image/svg+xml');
-  setStatus('Downloaded 18x24 portrait poster artwork. Upload the SVG to your matching Printify poster product.', 'success');
+  try {
+    const png = await rasterizePosterSvg(svg, width, height);
+    downloadFile('family-tree-poster-18x24.png', png, 'image/png');
+    setStatus('Downloaded flattened 18x24 portrait poster PNG. Upload it to your matching Printify poster product.', 'success');
+  } catch (error) {
+    setStatus(error.message || 'Could not create the poster PNG. Please try again in a current desktop browser.', 'error');
+  }
+}
+
+function rasterizePosterSvg(svg, width, height) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const svgUrl = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
+
+    image.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext('2d');
+      URL.revokeObjectURL(svgUrl);
+
+      if (!context) {
+        reject(new Error('Your browser could not create the poster image.'));
+        return;
+      }
+
+      context.drawImage(image, 0, 0, width, height);
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          reject(new Error('Your browser could not export the poster image.'));
+          return;
+        }
+        resolve(blob);
+      }, 'image/png');
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(svgUrl);
+      reject(new Error('Your browser could not prepare the poster image.'));
+    };
+
+    image.src = svgUrl;
+  });
 }
 
 const WORLD_HISTORY_EVENTS = [
