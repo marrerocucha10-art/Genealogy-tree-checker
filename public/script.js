@@ -8,6 +8,7 @@ const TREE_THEME_STORAGE_KEY = 'familyTreePresentationTheme';
 const POSTER_LAYOUT_STORAGE_KEY = 'familyTreePosterLayout';
 const POSTER_BACKGROUND_STORAGE_KEY = 'familyTreePosterBackground';
 const POSTER_FOCUS_PERSON_STORAGE_KEY = 'familyTreePosterFocusPerson';
+const POSTER_FAMILY_STORAGE_KEY = 'familyTreePosterFamily';
 const GEDCOM_BACKUP_DATABASE = 'genealogyTreeCheckerBackups';
 const GEDCOM_BACKUP_STORE = 'gedcomFiles';
 const GEDCOM_BACKUP_ID = 'latest';
@@ -16,9 +17,10 @@ const MAX_GEDCOM_FILE_BYTES = 150 * 1024 * 1024;
 let treeData = loadTreeData();
 let treeLayout = localStorage.getItem(LAYOUT_STORAGE_KEY) || 'vertical';
 let treeTheme = localStorage.getItem(TREE_THEME_STORAGE_KEY) || 'classic';
-let posterLayout = localStorage.getItem(POSTER_LAYOUT_STORAGE_KEY) || 'generation';
+let posterLayout = localStorage.getItem(POSTER_LAYOUT_STORAGE_KEY) || 'family';
 let posterBackground = localStorage.getItem(POSTER_BACKGROUND_STORAGE_KEY) || 'parchment';
 let posterFocusPersonId = localStorage.getItem(POSTER_FOCUS_PERSON_STORAGE_KEY) || '';
+let posterFamilyId = localStorage.getItem(POSTER_FAMILY_STORAGE_KEY) || '';
 let currentTier = localStorage.getItem(SUBSCRIPTION_STORAGE_KEY) || 'free';
 let billingInterval = localStorage.getItem(BILLING_INTERVAL_STORAGE_KEY) || 'monthly';
 let stripeConfig = null;
@@ -229,10 +231,17 @@ familyTreeDiv.addEventListener('click', (event) => {
 
 familyTreeDiv.addEventListener('change', (event) => {
   const focusPersonSelect = event.target.closest('[data-poster-focus-person]');
-  if (!focusPersonSelect) return;
+  const familySelect = event.target.closest('[data-poster-family]');
+  if (!focusPersonSelect && !familySelect) return;
 
-  posterFocusPersonId = focusPersonSelect.value;
-  localStorage.setItem(POSTER_FOCUS_PERSON_STORAGE_KEY, posterFocusPersonId);
+  if (focusPersonSelect) {
+    posterFocusPersonId = focusPersonSelect.value;
+    localStorage.setItem(POSTER_FOCUS_PERSON_STORAGE_KEY, posterFocusPersonId);
+  }
+  if (familySelect) {
+    posterFamilyId = familySelect.value;
+    localStorage.setItem(POSTER_FAMILY_STORAGE_KEY, posterFamilyId);
+  }
   renderFamilyTree();
 });
 
@@ -1531,6 +1540,20 @@ function renderTreePresentation(generationData, peopleById) {
         .join('')}
     </select>
   ` : '';
+  const familySelector = posterLayout === 'family' ? `
+    <label class="poster-focus-label" for="posterFamily">Family group for this poster</label>
+    <select id="posterFamily" data-poster-family>
+      ${treeData.families.map((family) => {
+        const people = [family.husbandId, family.wifeId]
+          .map((id) => peopleById.get(id))
+          .filter(Boolean)
+          .map((person) => person.name || person.id)
+          .join(' and ');
+        const selected = family.id === (posterFamilyId || treeData.families[0]?.id);
+        return `<option value="${escapeHtml(family.id)}" ${selected ? 'selected' : ''}>${escapeHtml(people || family.id)}</option>`;
+      }).join('')}
+    </select>
+  ` : '';
 
   return `
     <section id="treePresentation" class="tree-presentation">
@@ -1560,10 +1583,11 @@ function renderTreePresentation(generationData, peopleById) {
         <div>
           <h4>Choose a poster layout</h4>
           <div class="presentation-buttons">
+            <button type="button" class="btn-secondary ${posterLayout === 'family' ? 'active-presentation' : ''}" data-poster-layout="family">Family Tree</button>
             <button type="button" class="btn-secondary ${posterLayout === 'generation' ? 'active-presentation' : ''}" data-poster-layout="generation">Generation Chart</button>
             <button type="button" class="btn-secondary ${posterLayout === 'ancestor' ? 'active-presentation' : ''}" data-poster-layout="ancestor">Ancestor Chart</button>
           </div>
-          ${focusSelector}
+          ${focusSelector}${familySelector}
         </div>
         <div>
           <h4>Poster background</h4>
@@ -1622,6 +1646,26 @@ function buildAncestorLevels(focusPersonId, peopleById) {
   }
 
   return levels.reverse();
+}
+
+function buildFamilyTreePoster(family, peopleById, colors) {
+  if (!family) return '<text x="2700" y="2700" text-anchor="middle" fill="#451a03" font-size="56">Choose a family group to create this poster.</text>';
+  const parents = [family.husbandId, family.wifeId].map((id) => peopleById.get(id)).filter(Boolean);
+  const children = (family.childrenIds || []).map((id) => peopleById.get(id)).filter(Boolean).slice(0, 8);
+  const card = (person, x, y) => `
+    <rect x="${x}" y="${y}" width="1400" height="220" rx="30" fill="${colors.card}" stroke="${colors.accent}" stroke-width="8"/>
+    <text x="${x + 55}" y="${y + 88}" fill="${colors.text}" font-family="Georgia, serif" font-size="50" font-weight="700">${escapeSvg(shortenPosterText(person.name || person.id))}</text>
+    <text x="${x + 55}" y="${y + 154}" fill="${colors.text}" font-family="Arial, sans-serif" font-size="34">${escapeSvg(shortenPosterText([extractYear(person.birthDate), person.birthPlace].filter(Boolean).join(' · '), 54))}</text>
+  `;
+  const parentCards = parents.map((person, index) => card(person, parents.length === 1 ? 2000 : 650 + index * 2100, 1850)).join('');
+  const childCards = children.map((person, index) => card(person, 350 + (index % 3) * 1700, 3850 + Math.floor(index / 3) * 360)).join('');
+  const childCenter = children.length ? 2700 : 0;
+  return `
+    <text x="2700" y="1350" text-anchor="middle" fill="${colors.accent}" font-family="Arial, sans-serif" font-size="56" font-weight="700">FAMILY TREE</text>
+    ${parentCards}
+    ${parents.length && children.length ? `<line x1="2700" y1="2070" x2="2700" y2="3500" stroke="${colors.accent}" stroke-width="12"/><line x1="700" y1="3500" x2="4700" y2="3500" stroke="${colors.accent}" stroke-width="12"/><line x1="${childCenter}" y1="3500" x2="${childCenter}" y2="3850" stroke="${colors.accent}" stroke-width="12"/>` : ''}
+    ${childCards}
+  `;
 }
 
 function posterBackgroundMarkup(colors) {
@@ -1695,7 +1739,9 @@ async function downloadPosterArtwork() {
   const rowGap = 55;
   const maxRows = Math.max(1, Math.floor((bandHeight - 250) / (cardHeight + rowGap)));
   const maxPeoplePerGeneration = columns * maxRows;
-  const cards = generations.map((generation, index) => {
+  const cards = posterLayout === 'family'
+    ? buildFamilyTreePoster(treeData.families.find((family) => family.id === (posterFamilyId || treeData.families[0]?.id)), peopleById, colors)
+    : generations.map((generation, index) => {
     const people = groups.get(generation) || [];
     const visiblePeople = people.slice(0, maxPeoplePerGeneration);
     const y = 1120 + index * bandHeight;
@@ -1712,7 +1758,7 @@ async function downloadPosterArtwork() {
         <text x="${x + 55}" y="${cardY + 78}" fill="${colors.text}" font-family="Georgia, serif" font-size="48" font-weight="700">${escapeSvg(shortenPosterText(person.name || person.id))}</text>
         <text x="${x + 55}" y="${cardY + 138}" fill="${colors.text}" font-family="Arial, sans-serif" font-size="34">${escapeSvg(shortenPosterText([lifeDates, person.birthPlace].filter(Boolean).join(' · '), 54))}</text>
       `;
-    }).join('');
+      }).join('');
     const remaining = people.length - visiblePeople.length;
     return `
       <line x1="300" y1="${y}" x2="5100" y2="${y}" stroke="${colors.accent}" stroke-width="8"/>
