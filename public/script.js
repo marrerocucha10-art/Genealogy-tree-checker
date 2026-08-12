@@ -4,10 +4,12 @@ const SUBSCRIPTION_STORAGE_KEY = 'familyTreeSubscriptionTier';
 const BILLING_INTERVAL_STORAGE_KEY = 'familyTreeBillingInterval';
 const STRIPE_CUSTOMER_STORAGE_KEY = 'familyTreeStripeCustomerId';
 const ERROR_PROGRESS_STORAGE_KEY = 'familyTreeErrorProgress';
+const TREE_THEME_STORAGE_KEY = 'familyTreePresentationTheme';
 const MAX_GEDCOM_FILE_BYTES = 150 * 1024 * 1024;
 
 let treeData = loadTreeData();
 let treeLayout = localStorage.getItem(LAYOUT_STORAGE_KEY) || 'vertical';
+let treeTheme = localStorage.getItem(TREE_THEME_STORAGE_KEY) || 'classic';
 let currentTier = localStorage.getItem(SUBSCRIPTION_STORAGE_KEY) || 'free';
 let billingInterval = localStorage.getItem(BILLING_INTERVAL_STORAGE_KEY) || 'monthly';
 let stripeConfig = null;
@@ -16,20 +18,20 @@ let stripeCustomerId = localStorage.getItem(STRIPE_CUSTOMER_STORAGE_KEY) || '';
 
 const SUBSCRIPTION_TIERS = {
   free: {
-    name: 'Free',
+    name: 'Basic',
     rank: 0,
-    description: 'Try the GEDCOM parser with basic preview and basic issue report.',
+    description: 'Review your tree, fix up to 20 validation errors, and merge duplicate people for free.',
     monthlyPrice: 0,
     annualPrice: 0,
-    features: ['Small GEDCOM upload', 'Basic tree preview', 'Basic error report'],
+    features: ['Small GEDCOM upload', 'Basic tree preview', '20 non-duplicate error fixes', 'Free duplicate person merges', 'Printable progress chart', 'Ancestor Discovery research prompts'],
   },
   personal: {
-    name: 'Personal',
+    name: 'Family Builder',
     rank: 1,
-    description: 'For one family tree with print and export tools.',
+    description: 'For organizing one family tree with unlimited error review, charts, and research worksheets.',
     monthlyPrice: 19.99,
     annualPrice: 19.99,
-    features: ['ZIP uploads', 'Print tree', 'Export JSON/CSV', 'Local fix records'],
+    features: ['Unlimited manual error fixes', 'Generation and family organizer', 'Progress messages and charts', 'Downloadable research worksheets', 'Ancestor Discovery research prompts', 'ZIP uploads', 'Print tree', 'Export JSON/CSV', 'Local fix records'],
   },
   pro: {
     name: 'Pro / Researcher',
@@ -37,7 +39,7 @@ const SUBSCRIPTION_TIERS = {
     description: 'For deeper genealogy cleanup, reporting, and the Genealogy Pro Package included free with subscription.',
     monthlyPrice: 29.99,
     annualPrice: 29.99,
-    features: ['Safe automatic fixes', 'Full correction report', 'Advanced validation workflow', 'Free Genealogy Pro Package included', 'Digital report package', 'Printed tree and chart package', 'Researcher review service package', 'Memory keepsake package', 'Research journals and worksheets'],
+    features: ['Safe automatic fixes', 'Full correction report', 'Advanced validation workflow', 'Ancestor Discovery research prompts', 'Free Genealogy Pro Package included', 'Digital report package', 'Printed tree and chart package', 'Researcher review service package', 'Memory keepsake package', 'Research journals and worksheets'],
   },
   business: {
     name: 'Business / Genealogist',
@@ -45,7 +47,7 @@ const SUBSCRIPTION_TIERS = {
     description: 'For client-facing genealogy workflows.',
     monthlyPrice: 39.99,
     annualPrice: 39.99,
-    features: ['Client tree workflow', 'Branded reports roadmap', 'Higher limits roadmap'],
+    features: ['Client tree workflow', 'Ancestor Discovery research prompts', 'Branded reports roadmap', 'Higher limits roadmap'],
   },
 };
 
@@ -54,6 +56,7 @@ const ACTION_REQUIREMENTS = {
   exportJson: 'personal',
   exportCsv: 'personal',
   copySummary: 'personal',
+  familyBuilder: 'personal',
   autoFix: 'pro',
 };
 
@@ -151,6 +154,46 @@ familyTreeDiv.addEventListener('click', (event) => {
 
   if (event.target.closest('[data-open-error-workspace]')) {
     window.open('errors.html', '_blank', 'noopener');
+    return;
+  }
+
+  if (event.target.closest('[data-open-family-builder]')) {
+    openFamilyBuilder();
+    return;
+  }
+
+  const worksheetButton = event.target.closest('[data-download-worksheet]');
+  if (worksheetButton) {
+    downloadFamilyBuilderWorksheet(worksheetButton.dataset.downloadWorksheet);
+    return;
+  }
+
+  const themeButton = event.target.closest('[data-tree-theme]');
+  if (themeButton) {
+    treeTheme = themeButton.dataset.treeTheme;
+    localStorage.setItem(TREE_THEME_STORAGE_KEY, treeTheme);
+    renderFamilyTree();
+    setStatus(`Your ${treeTheme} tree edition is ready to preview.`, 'success');
+    return;
+  }
+
+  const viewButton = event.target.closest('[data-tree-layout-choice]');
+  if (viewButton) {
+    treeLayout = viewButton.dataset.treeLayoutChoice;
+    localStorage.setItem(LAYOUT_STORAGE_KEY, treeLayout);
+    updateLayoutButtons();
+    renderFamilyTree();
+    setStatus(`Showing the ${treeLayout} family-tree view.`, 'success');
+    return;
+  }
+
+  if (event.target.closest('[data-print-updated-tree]')) {
+    printUpdatedTree();
+    return;
+  }
+
+  if (event.target.closest('[data-download-poster-artwork]')) {
+    downloadPosterArtwork();
   }
 });
 
@@ -1301,13 +1344,18 @@ function renderFamilyTree() {
 
   familyTreeDiv.classList.toggle('horizontal-layout', treeLayout === 'horizontal');
   familyTreeDiv.classList.toggle('vertical-layout', treeLayout !== 'horizontal');
+  familyTreeDiv.classList.remove('theme-classic', 'theme-heritage', 'theme-garden');
+  familyTreeDiv.classList.add(`theme-${treeTheme}`);
 
   familyTreeDiv.innerHTML = `
     ${renderSummary(generationData)}
+    ${renderTreePresentation()}
+    ${renderAncestorDiscovery()}
     ${renderGedcomInfo()}
     ${treeData.warnings.length ? renderWarnings() : ''}
     ${renderValidationReport()}
     ${renderFixHistory()}
+    ${renderFamilyBuilderTools(generationData, peopleById)}
     ${renderGenerationSections(generationData, peopleById)}
     ${!treeData.families.length ? `<section class="tree-chart standalone-people"><h3>People</h3><div class="children-row">${unconnectedPeople.map(renderPersonNode).join('')}</div></section>` : ''}
     ${treeData.families.length && unconnectedPeople.length ? `<section class="tree-chart standalone-people"><h3>Unconnected People</h3><div class="children-row">${unconnectedPeople.map(renderPersonNode).join('')}</div></section>` : ''}
@@ -1324,6 +1372,233 @@ function renderSummary(generationData = null) {
       <span><strong>${treeData.relationships.length}</strong> relationships</span>
       ${generationCount ? `<span><strong>${generationCount}</strong> generation group${generationCount === 1 ? '' : 's'}</span>` : ''}
     </div>
+  `;
+}
+
+function renderTreePresentation() {
+  const canPrintUpdatedTree = hasTier('personal');
+
+  return `
+    <section id="treePresentation" class="tree-presentation">
+      <div class="report-heading">
+        <div>
+          <h3>Celebrate Your Updated Tree</h3>
+          <p class="muted">Your research deserves a presentation that feels as personal as the story it preserves.</p>
+        </div>
+        <span>${canPrintUpdatedTree ? 'Ready to personalize and print' : 'Personalization available with Family Builder'}</span>
+      </div>
+      <div class="presentation-options">
+        <div>
+          <h4>Choose a special edition</h4>
+          <div class="presentation-buttons">
+            <button type="button" class="btn-secondary ${treeTheme === 'classic' ? 'active-presentation' : ''}" data-tree-theme="classic">Classic Edition</button>
+            <button type="button" class="btn-secondary ${treeTheme === 'heritage' ? 'active-presentation' : ''}" data-tree-theme="heritage">Heritage Edition</button>
+            <button type="button" class="btn-secondary ${treeTheme === 'garden' ? 'active-presentation' : ''}" data-tree-theme="garden">Garden Edition</button>
+          </div>
+        </div>
+        <div>
+          <h4>Choose a family-tree view</h4>
+          <div class="presentation-buttons">
+            <button type="button" class="btn-secondary ${treeLayout === 'vertical' ? 'active-presentation' : ''}" data-tree-layout-choice="vertical">Generation View</button>
+            <button type="button" class="btn-secondary ${treeLayout === 'horizontal' ? 'active-presentation' : ''}" data-tree-layout-choice="horizontal">Family Flow View</button>
+          </div>
+        </div>
+      </div>
+      ${canPrintUpdatedTree
+        ? `<div class="presentation-print-actions">
+            <button type="button" class="btn-add presentation-print-button" data-print-updated-tree>Print Your Personalized Tree</button>
+            <button type="button" class="btn-secondary" data-download-poster-artwork>Download 18x24 Poster Artwork</button>
+          </div>`
+        : '<p class="presentation-upgrade">Family Builder unlocks personalized tree printing, unlimited fixes, and research worksheets. <a href="#subscriptionWorkflows">Upgrade to Family Builder</a>.</p>'}
+      <div class="keepsake-offer">
+        <h4>Turn your updated tree into a keepsake</h4>
+        <p>Explore personalized posters, family-history diaries, phone covers, journals, booklets, and memory keepsakes made from your new tree.</p>
+        <a class="btn-secondary" href="/store#customKeepsakes">Explore posters and keepsakes</a>
+      </div>
+    </section>
+  `;
+}
+
+function printUpdatedTree() {
+  if (!requireTier('print')) return;
+  if (!ensureTreeHasPeople('printing your updated tree')) return;
+
+  setStatus('Your personalized family tree is ready to print or save as a PDF.', 'success');
+  window.print();
+}
+
+function posterThemeColors() {
+  if (treeTheme === 'heritage') {
+    return { background: '#fff8e7', accent: '#92400e', card: '#fffbeb', text: '#451a03' };
+  }
+  if (treeTheme === 'garden') {
+    return { background: '#f0fdf4', accent: '#166534', card: '#f7fee7', text: '#14532d' };
+  }
+  return { background: '#f5f3ff', accent: '#5b21b6', card: '#faf5ff', text: '#2e1065' };
+}
+
+function escapeSvg(value = '') {
+  return String(value).replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&apos;',
+  }[character]));
+}
+
+function shortenPosterText(value, maxLength = 34) {
+  const text = String(value || '');
+  return text.length > maxLength ? `${text.slice(0, maxLength - 3)}...` : text;
+}
+
+function downloadPosterArtwork() {
+  if (!requireTier('print')) return;
+  if (!ensureTreeHasPeople('creating poster artwork')) return;
+
+  const width = 5400;
+  const height = 7200;
+  const colors = posterThemeColors();
+  const peopleById = new Map(treeData.people.map((person) => [person.id, person]));
+  const generationData = buildGenerationData(peopleById);
+  const groups = new Map();
+
+  for (const person of treeData.people) {
+    const generation = generationData.generationByPerson.get(person.id) || 1;
+    if (!groups.has(generation)) groups.set(generation, []);
+    groups.get(generation).push(person);
+  }
+
+  const generations = [...groups.keys()].sort((first, second) => first - second).slice(0, 7);
+  const familyTitle = treeData.metadata?.header?.source?.name || 'Our Family Tree';
+  const bandHeight = Math.floor(5400 / Math.max(generations.length, 1));
+  const columns = 3;
+  const cardHeight = 190;
+  const rowGap = 55;
+  const maxRows = Math.max(1, Math.floor((bandHeight - 250) / (cardHeight + rowGap)));
+  const maxPeoplePerGeneration = columns * maxRows;
+  const cards = generations.map((generation, index) => {
+    const people = groups.get(generation) || [];
+    const visiblePeople = people.slice(0, maxPeoplePerGeneration);
+    const y = 1120 + index * bandHeight;
+    const cardWidth = 1480;
+    const cardGap = 100;
+    const nodes = visiblePeople.map((person, personIndex) => {
+      const column = personIndex % columns;
+      const row = Math.floor(personIndex / columns);
+      const x = 360 + column * (cardWidth + cardGap);
+      const cardY = y + 125 + row * (cardHeight + rowGap);
+      const lifeDates = [extractYear(person.birthDate), extractYear(person.deathDate)].filter(Boolean).join(' - ');
+      return `
+        <rect x="${x}" y="${cardY}" width="${cardWidth}" height="${cardHeight}" rx="28" fill="${colors.card}" stroke="${colors.accent}" stroke-width="7"/>
+        <text x="${x + 55}" y="${cardY + 78}" fill="${colors.text}" font-family="Georgia, serif" font-size="48" font-weight="700">${escapeSvg(shortenPosterText(person.name || person.id))}</text>
+        <text x="${x + 55}" y="${cardY + 138}" fill="${colors.text}" font-family="Arial, sans-serif" font-size="34">${escapeSvg(shortenPosterText([lifeDates, person.birthPlace].filter(Boolean).join(' · '), 54))}</text>
+      `;
+    }).join('');
+    const remaining = people.length - visiblePeople.length;
+    return `
+      <line x1="300" y1="${y}" x2="5100" y2="${y}" stroke="${colors.accent}" stroke-width="8"/>
+      <text x="300" y="${y + 74}" fill="${colors.accent}" font-family="Arial, sans-serif" font-size="46" font-weight="700">GENERATION ${generation}</text>
+      ${nodes}
+      ${remaining > 0 ? `<text x="300" y="${y + bandHeight - 30}" fill="${colors.text}" font-family="Arial, sans-serif" font-size="32">+ ${remaining} additional person${remaining === 1 ? '' : 's'} in this generation</text>` : ''}
+    `;
+  }).join('');
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+    <rect width="100%" height="100%" fill="${colors.background}"/>
+    <rect x="150" y="150" width="5100" height="6900" rx="45" fill="none" stroke="${colors.accent}" stroke-width="12"/>
+    <text x="2700" y="470" text-anchor="middle" fill="${colors.accent}" font-family="Georgia, serif" font-size="132" font-weight="700">${escapeSvg(shortenPosterText(familyTitle, 48))}</text>
+    <text x="2700" y="590" text-anchor="middle" fill="${colors.text}" font-family="Arial, sans-serif" font-size="46">A personalized family history chart</text>
+    <text x="2700" y="690" text-anchor="middle" fill="${colors.text}" font-family="Arial, sans-serif" font-size="36">${treeData.people.length} people · ${treeData.families.length} families · ${generations.length} generations shown</text>
+    ${cards}
+    <text x="2700" y="6930" text-anchor="middle" fill="${colors.text}" font-family="Arial, sans-serif" font-size="30">Created with Genealogy Tree Checker</text>
+  </svg>`;
+
+  downloadFile('family-tree-poster-18x24.svg', svg, 'image/svg+xml');
+  setStatus('Downloaded 18x24 portrait poster artwork. Upload the SVG to your matching Printify poster product.', 'success');
+}
+
+const WORLD_HISTORY_EVENTS = [
+  { year: 1776, label: 'American Declaration of Independence', detail: 'A turning point in the political history of the Atlantic world.' },
+  { year: 1861, label: 'American Civil War begins', detail: 'A major conflict with lasting social and migration effects.' },
+  { year: 1914, label: 'First World War begins', detail: 'A global conflict that reshaped many families, borders, and records.' },
+  { year: 1918, label: 'Influenza pandemic', detail: 'A worldwide public-health event that may appear in local records and family stories.' },
+  { year: 1929, label: 'Great Depression begins', detail: 'An economic crisis that influenced work, housing, and migration.' },
+  { year: 1939, label: 'Second World War begins', detail: 'A global conflict that affected communities, service records, and movement.' },
+  { year: 1969, label: 'First Moon landing', detail: 'A landmark moment in modern global history.' },
+  { year: 1989, label: 'Fall of the Berlin Wall', detail: 'A major moment in late twentieth-century political history.' },
+];
+
+function getAncestorResearchPrompt(person) {
+  const birthPlace = person.birthPlace ? `Start with local histories, newspapers, and civil records for ${person.birthPlace}.` : 'Start by identifying a birth place, then search local histories, newspapers, and civil records.';
+  const hasLifeDates = extractYear(person.birthDate) || extractYear(person.deathDate);
+  const lifeDates = hasLifeDates
+    ? ' Compare the documented years with local events, occupations, migration routes, and family stories.'
+    : '';
+  return `${birthPlace}${lifeDates}`;
+}
+
+function getWorldContext(person) {
+  const birthYear = extractYear(person.birthDate);
+  const deathYear = extractYear(person.deathDate);
+  if (!birthYear) return [];
+
+  const endYear = deathYear && deathYear >= birthYear ? deathYear : birthYear + 20;
+  return WORLD_HISTORY_EVENTS.filter((event) => event.year >= birthYear && event.year <= endYear).slice(0, 3);
+}
+
+function getAncestorSearchLinks(person) {
+  const searchTerms = [person.name || person.id, person.birthPlace, 'family history'].filter(Boolean).join(' ');
+  const placeTerms = person.birthPlace || `${person.name || person.id} family history`;
+  return {
+    youtube: `https://www.youtube.com/results?search_query=${encodeURIComponent(`${placeTerms} history`)}`,
+    wikipedia: `https://en.wikipedia.org/w/index.php?search=${encodeURIComponent(placeTerms)}`,
+    archive: `https://archive.org/search?query=${encodeURIComponent(searchTerms)}`,
+  };
+}
+
+function renderAncestorDiscovery() {
+  const people = treeData.people
+    .filter((person) => person.birthPlace || person.birthDate || person.deathDate)
+    .slice(0, 6);
+
+  if (!people.length) return '';
+
+  return `
+    <section class="ancestor-discovery">
+      <div class="report-heading">
+        <div>
+          <h3>Ancestor Discovery</h3>
+          <p class="muted">Follow one focused research lead at a time. Historical context is for exploration, not a claim about an individual ancestor's experience.</p>
+        </div>
+        <span>Included with every plan</span>
+      </div>
+      <p class="ancestor-discovery-intro">A little context can make names and dates feel more connected. Explore a place, compare documented years with major world events, and save what you verify in your research notes.</p>
+      <div class="ancestor-discovery-grid">
+        ${people.map((person) => {
+          const context = getWorldContext(person);
+          const links = getAncestorSearchLinks(person);
+          const lifeYears = [extractYear(person.birthDate), extractYear(person.deathDate)].filter(Boolean).join(' - ');
+          return `
+            <article class="ancestor-card">
+              <h4>${escapeHtml(person.name || person.id)}</h4>
+              <p class="ancestor-meta">${escapeHtml([person.birthPlace, lifeYears].filter(Boolean).join(' · ') || 'Add a place or life date to tailor this research lead.')}</p>
+              <p>${escapeHtml(getAncestorResearchPrompt(person))}</p>
+              ${context.length ? `
+                <details>
+                  <summary>View historical context</summary>
+                  <ul>${context.map((event) => `<li><strong>${event.year} - ${escapeHtml(event.label)}:</strong> ${escapeHtml(event.detail)}</li>`).join('')}</ul>
+                </details>
+              ` : '<p class="muted">Add a birth year to compare this ancestor’s documented lifetime with historical events.</p>'}
+              <div class="ancestor-resource-links">
+                <a class="btn-secondary" href="${links.youtube}" target="_blank" rel="noopener">Explore on YouTube</a>
+                <a class="btn-secondary" href="${links.wikipedia}" target="_blank" rel="noopener">Search Wikipedia</a>
+                <a class="btn-secondary" href="${links.archive}" target="_blank" rel="noopener">Search Internet Archive</a>
+              </div>
+            </article>
+          `;
+        }).join('')}
+      </div>
+    </section>
   `;
 }
 
@@ -1509,6 +1784,7 @@ function renderValidationReport() {
       </div>
       <div class="report-actions">
         ${report.errors.length ? '<button type="button" class="btn-secondary" data-open-error-workspace>Work Through Errors</button>' : ''}
+        <button type="button" class="btn-secondary" data-open-family-builder>Open Family Builder</button>
         <button type="button" class="btn-secondary" data-apply-auto-fixes>Apply Safe Automatic Fixes</button>
         <button type="button" class="btn-secondary" data-show-manual-fixes>Show Manual Fix Guidance</button>
       </div>
@@ -1517,6 +1793,158 @@ function renderValidationReport() {
       ${renderIssueGroup('Notes', report.info, 'info')}
     </section>
   `;
+}
+
+const FAMILY_BUILDER_WORKSHEETS = {
+  ancestral: {
+    title: 'Ancestral Chart',
+    description: 'Track your direct ancestors, document complete family units, and see where research remains.',
+  },
+  calendar: {
+    title: 'Research Calendar',
+    description: 'Record every source searched, where it was found, and the next follow-up needed.',
+  },
+  extract: {
+    title: 'Research Extract',
+    description: 'Capture the details and evidence taken from each record source for a family or ancestor.',
+  },
+  correspondence: {
+    title: 'Correspondence Record',
+    description: 'Track who you contacted, why you wrote, and whether a response has been received.',
+  },
+  family: {
+    title: 'Family Group Sheet',
+    description: 'Organize each ancestor, spouse, children, and supporting family information together.',
+  },
+  source: {
+    title: 'Source Summary',
+    description: 'Keep a quick reference to information found for each family group and its sources.',
+  },
+};
+
+function openFamilyBuilder() {
+  if (!requireTier('familyBuilder')) return;
+
+  const tools = document.getElementById('familyBuilderTools');
+  if (!tools) {
+    setStatus('Upload a family tree before opening Family Builder tools.', 'info');
+    return;
+  }
+
+  tools.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  tools.classList.add('highlighted');
+  window.setTimeout(() => tools.classList.remove('highlighted'), 1600);
+  setStatus('Family Builder is ready. Browse family groups, jump to a generation, or download a research worksheet.', 'success');
+}
+
+function renderFamilyBuilderTools(generationData, peopleById) {
+  if (!hasTier('personal')) return '';
+
+  const familyGroups = generationData.familyRows;
+  const generations = generationData.generations;
+  const approvedFixes = treeData.fixHistory?.length || 0;
+  const welcomeMessage = approvedFixes
+    ? `You have approved ${approvedFixes} change${approvedFixes === 1 ? '' : 's'} so far. Your organized tree and worksheets are ready for the next research step.`
+    : 'Start by reviewing one family group or generation. Each detail you confirm helps turn names into a connected family story.';
+
+  return `
+    <section id="familyBuilderTools" class="family-builder-tools">
+      <div class="report-heading">
+        <div>
+          <h3>Family Builder</h3>
+          <p class="muted">${welcomeMessage}</p>
+        </div>
+        <span>${approvedFixes} approved automatic change${approvedFixes === 1 ? '' : 's'}</span>
+      </div>
+      <div class="family-builder-summary">
+        <span><strong>${generations.length}</strong> generations</span>
+        <span><strong>${familyGroups.length}</strong> family groups</span>
+        <span><strong>${treeData.people.length}</strong> people to organize</span>
+      </div>
+      <div class="family-builder-actions">
+        ${generations.map((generation) => `<a class="btn-secondary" href="#generation-${generation}">View generation ${generation}</a>`).join('')}
+      </div>
+      <div class="worksheet-grid">
+        ${Object.entries(FAMILY_BUILDER_WORKSHEETS).map(([id, worksheet]) => `
+          <article class="worksheet-card">
+            <h4>${escapeHtml(worksheet.title)}</h4>
+            <p>${escapeHtml(worksheet.description)}</p>
+            <button type="button" class="btn-secondary" data-download-worksheet="${id}">Download form</button>
+          </article>
+        `).join('')}
+      </div>
+      <p class="ancestry-forms-note">These are original worksheets generated from your tree. Similar blank forms are also available through Ancestry Forms.</p>
+    </section>
+  `;
+}
+
+function getWorksheetRows(type) {
+  const peopleById = new Map(treeData.people.map((person) => [person.id, person]));
+
+  if (type === 'ancestral') {
+    const generationData = buildGenerationData(peopleById);
+    return generationData.familyRows.map((row) => {
+      const parents = [row.family.husbandId, row.family.wifeId]
+        .map((id) => peopleById.get(id))
+        .filter(Boolean)
+        .map((person) => person.name || person.id)
+        .join(' and ');
+      return [`Generation ${row.generation}`, parents || row.family.id, 'Research status: ________________________'];
+    });
+  }
+
+  if (type === 'family') {
+    return treeData.families.map((family) => {
+      const parents = [family.husbandId, family.wifeId]
+        .map((id) => peopleById.get(id))
+        .filter(Boolean)
+        .map((person) => person.name || person.id)
+        .join(' and ');
+      const children = (family.childrenIds || [])
+        .map((id) => peopleById.get(id))
+        .filter(Boolean)
+        .map((person) => person.name || person.id)
+        .join(', ');
+      return [family.id, parents || 'Not recorded', children || 'No children recorded'];
+    });
+  }
+
+  const headings = {
+    calendar: ['Date searched', 'Source or repository', 'Result and next step'],
+    extract: ['Person or family', 'Source citation', 'Extracted information'],
+    correspondence: ['Contact and date', 'Reason for writing', 'Response and follow-up'],
+    source: ['Family group', 'Source citation', 'Information found'],
+  };
+  return Array.from({ length: 12 }, () => headings[type].map(() => ''));
+}
+
+function downloadFamilyBuilderWorksheet(type) {
+  if (!requireTier('familyBuilder')) return;
+
+  const worksheet = FAMILY_BUILDER_WORKSHEETS[type];
+  if (!worksheet) return;
+
+  const headings = {
+    ancestral: ['Generation', 'Direct ancestors', 'Progress notes'],
+    calendar: ['Date searched', 'Source or repository', 'Result and next step'],
+    extract: ['Person or family', 'Source citation', 'Extracted information'],
+    correspondence: ['Contact and date', 'Reason for writing', 'Response and follow-up'],
+    family: ['Family group', 'Parents or spouses', 'Children'],
+    source: ['Family group', 'Source citation', 'Information found'],
+  }[type];
+  const rows = getWorksheetRows(type);
+  const documentHtml = `<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><title>${escapeHtml(worksheet.title)}</title>
+<style>body{color:#1f2937;font-family:Arial,sans-serif;margin:.6in}h1{margin:0 0 8px}p{margin:0 0 18px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #64748b;min-height:26px;padding:8px;text-align:left;vertical-align:top}th{background:#e2e8f0}@media print{@page{margin:.45in}}</style>
+</head><body><h1>${escapeHtml(worksheet.title)}</h1><p>${escapeHtml(worksheet.description)}</p><table><thead><tr>${headings.map((heading) => `<th>${escapeHtml(heading)}</th>`).join('')}</tr></thead><tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table></body></html>`;
+  const fileName = `${type}-worksheet.html`;
+  const url = URL.createObjectURL(new Blob([documentHtml], { type: 'text/html' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
+  setStatus(`Downloaded ${worksheet.title}. Open it in a browser to print or save it as a PDF.`, 'success');
 }
 
 function renderIssueGroup(title, issues, type) {

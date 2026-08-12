@@ -3,6 +3,7 @@ const ERROR_PROGRESS_STORAGE_KEY = 'familyTreeErrorProgress';
 const DUPLICATE_MERGE_UNDO_STORAGE_KEY = 'familyTreeDuplicateMergeUndo';
 const SUBSCRIPTION_STORAGE_KEY = 'familyTreeSubscriptionTier';
 const ERROR_BATCH_SIZE = 10;
+const BASIC_ERROR_FIX_LIMIT = 20;
 const workspace = document.getElementById('errorWorkspace');
 
 function getTreeData() {
@@ -38,11 +39,19 @@ function getProgress() {
     const progress = JSON.parse(localStorage.getItem(ERROR_PROGRESS_STORAGE_KEY) || '{}');
     return {
       completedIssueIds: Array.isArray(progress.completedIssueIds) ? progress.completedIssueIds : [],
+      completedNonDuplicateIssueIds: Array.isArray(progress.completedNonDuplicateIssueIds)
+        ? progress.completedNonDuplicateIssueIds
+        : [],
       activeGroupIds: progress.batchMode === 'people' && Array.isArray(progress.activeGroupIds) ? progress.activeGroupIds : [],
       batchMode: 'people',
     };
   } catch (error) {
-    return { completedIssueIds: [], activeGroupIds: [], batchMode: 'people' };
+    return {
+      completedIssueIds: [],
+      completedNonDuplicateIssueIds: [],
+      activeGroupIds: [],
+      batchMode: 'people',
+    };
   }
 }
 
@@ -54,19 +63,78 @@ function getCurrentTier() {
   return localStorage.getItem(SUBSCRIPTION_STORAGE_KEY) || 'free';
 }
 
-function canUseAutomaticFixes() {
-  return ['pro', 'business'].includes(getCurrentTier());
+function isDuplicateIssue(issue) {
+  return issue.autoFix?.type === 'mergeDuplicatePeople';
 }
 
-function renderBasicAssistanceOptions() {
+function canUseUnlimitedErrorFixes() {
+  return ['personal', 'pro', 'business'].includes(getCurrentTier());
+}
+
+function getCompletedNonDuplicateIssueCount(errors, progress) {
+  const completedNonDuplicateIds = new Set(progress.completedNonDuplicateIssueIds);
+  const completed = new Set(progress.completedIssueIds);
+  errors
+    .filter((issue) => !isDuplicateIssue(issue) && completed.has(getIssueId(issue)))
+    .forEach((issue) => completedNonDuplicateIds.add(getIssueId(issue)));
+  return completedNonDuplicateIds.size;
+}
+
+function renderBasicPlanOptions(errors, progress) {
   if (getCurrentTier() !== 'free') return '';
+
+  const fixedCount = getCompletedNonDuplicateIssueCount(errors, progress);
+  const remainingFixes = Math.max(BASIC_ERROR_FIX_LIMIT - fixedCount, 0);
+  const limitReached = remainingFixes === 0;
 
   return `
     <section class="assistance-options">
-      <h2>Need more help?</h2>
-      <p>Request additional error-correction and research assistance for a one-time $9.99 fee, or upgrade for automatic fixes and deeper review tools.</p>
-      <button type="button" class="btn-secondary" data-request-assistance>Request Assistance - $9.99</button>
-      <a class="btn-secondary assistance-upgrade-link" href="index.html#subscriptionWorkflows">Compare plans and upgrade</a>
+      <h2>${limitReached ? 'Basic fix limit reached' : 'Basic plan progress'}</h2>
+      <p>${fixedCount} of ${BASIC_ERROR_FIX_LIMIT} non-duplicate error fixes used.${limitReached ? ' Upgrade to Family Builder for unlimited manual fixes.' : ` ${remainingFixes} fix${remainingFixes === 1 ? '' : 'es'} remaining.`} Duplicate person merges are free and do not use this limit.</p>
+      <a class="btn-secondary assistance-upgrade-link" href="index.html#subscriptionWorkflows">Upgrade to Family Builder</a>
+    </section>
+  `;
+}
+
+function renderProgressEncouragement(errors, progress) {
+  const completed = new Set(progress.completedIssueIds);
+  const total = errors.length;
+  const solved = errors.filter((issue) => completed.has(getIssueId(issue))).length;
+  const tier = getCurrentTier();
+  let message = 'Every corrected record makes the next research step clearer.';
+
+  if (!total) {
+    message = 'Your current report is clear. Keep this chart as a record of the careful work you have completed.';
+  } else if (!solved) {
+    message = 'You are off to a great start. Choose one issue, follow the recommendation, and build momentum from there.';
+  } else if (solved === total) {
+    message = 'Wonderful work - this report is complete. Your family story is now one step clearer.';
+  } else if (solved >= Math.ceil(total / 2)) {
+    message = 'You are more than halfway through this report. Keep going - the remaining steps are already in view.';
+  } else {
+    message = `Nice progress - you have solved ${solved} issue${solved === 1 ? '' : 's'} so far.`;
+  }
+
+  const tierMessage = tier === 'personal'
+    ? ' Family Builder gives you room to keep reviewing and organizing without a fix limit.'
+    : tier === 'free'
+      ? ' Duplicate person merges remain free, and Family Builder is ready whenever you want unlimited manual fixes.'
+      : ' Your plan includes the advanced tools needed to keep refining this tree.';
+
+  return `
+    <aside class="progress-encouragement" aria-live="polite">
+      <strong>Keep building your family story</strong>
+      <p>${message}${tierMessage}</p>
+    </aside>
+  `;
+}
+
+function renderUpdatedTreeOffer() {
+  return `
+    <section class="updated-tree-offer">
+      <h2>Your updated tree is ready to celebrate</h2>
+      <p>Personalize a fresh family-tree edition, print it, or explore posters and keepsakes made from the progress you just completed.</p>
+      <a class="btn-add" href="index.html#treePresentation">Personalize and print your updated tree</a>
     </section>
   `;
 }
@@ -81,18 +149,20 @@ function escapeHtml(value = '') {
   }[char]));
 }
 
-function printProgressChart(groups, completed) {
-  const rows = groups.flatMap((group) => group.issues.map((issue) => {
-    const status = completed.has(getIssueId(issue)) ? 'Solved' : 'Open';
-    return `
-      <tr>
-        <td>${escapeHtml(group.label)}</td>
-        <td>${escapeHtml(issue.category)}: ${escapeHtml(issue.message)}</td>
-        <td>${escapeHtml(issue.suggestion || 'Review this record.')}</td>
-        <td><div class="note-lines"></div><span>${status}</span></td>
-      </tr>
-    `;
-  })).join('');
+function printProgressChart(groups, completed, fixedOnly = false) {
+  const rows = groups.flatMap((group) => group.issues
+    .filter((issue) => !fixedOnly || completed.has(getIssueId(issue)))
+    .map((issue) => {
+      const status = completed.has(getIssueId(issue)) ? 'Solved' : 'Open';
+      return `
+        <tr>
+          <td>${escapeHtml(group.label)}</td>
+          <td>${escapeHtml(issue.category)}: ${escapeHtml(issue.message)}</td>
+          <td>${escapeHtml(issue.suggestion || 'Review this record.')}</td>
+          <td><div class="note-lines"></div><span>${status}</span></td>
+        </tr>
+      `;
+    })).join('');
   const printWindow = window.open('', 'error-progress-chart');
 
   if (!printWindow) {
@@ -122,11 +192,11 @@ function printProgressChart(groups, completed) {
       </style>
     </head>
     <body>
-      <h1>Family Tree Error Progress Chart</h1>
-      <p>Current people batch: ${groups.length} record${groups.length === 1 ? '' : 's'}</p>
+      <h1>${fixedOnly ? 'Family Tree Fixed Errors Chart' : 'Family Tree Error Progress Chart'}</h1>
+      <p>${fixedOnly ? 'Errors fixed so far' : `Current people batch: ${groups.length} record${groups.length === 1 ? '' : 's'}`}</p>
       <table>
         <thead><tr><th>Person or Record</th><th>Issue</th><th>Recommended Fix</th><th>Progress Notes</th></tr></thead>
-        <tbody>${rows}</tbody>
+        <tbody>${rows || '<tr><td colspan="4">No errors have been marked solved yet.</td></tr>'}</tbody>
       </table>
     </body>
     </html>
@@ -180,6 +250,17 @@ function mergeDuplicatePeople(treeData, fix) {
   treeData.people = treeData.people.filter((person) => !duplicateIds.has(person.id));
 }
 
+function removeStaleIssuesAfterDuplicateMerge(report, duplicateIds) {
+  const removedIds = [...duplicateIds];
+  const referencesRemovedPerson = (issue) => (
+    removedIds.includes(issue.subject) || removedIds.some((id) => issue.message.includes(id))
+  );
+
+  for (const category of ['errors', 'warnings', 'info']) {
+    report[category] = (report[category] || []).filter((issue) => !referencesRemovedPerson(issue));
+  }
+}
+
 function getIssueGroups(errors) {
   const groups = new Map();
 
@@ -224,7 +305,8 @@ function renderWorkspace() {
   const progress = getProgress();
   const canUndoDuplicateMerge = Boolean(getDuplicateMergeUndo());
   const undoButton = canUndoDuplicateMerge ? '<button id="undoDuplicateMerge" type="button" class="btn-secondary">Undo Last Duplicate Merge</button>' : '';
-  const assistanceOptions = renderBasicAssistanceOptions();
+  const assistanceOptions = renderBasicPlanOptions(errors, progress);
+  const encouragement = renderProgressEncouragement(errors, progress);
 
   if (!treeData?.people?.length) {
     workspace.innerHTML = '<p class="empty-message">Upload a GEDCOM file before opening the error workspace.</p>';
@@ -232,7 +314,7 @@ function renderWorkspace() {
   }
 
   if (!errors.length) {
-    workspace.innerHTML = `<p class="empty-message">No validation errors are currently available. Return to the family tree to review warnings and notes.</p>${undoButton}${assistanceOptions}`;
+    workspace.innerHTML = `${encouragement}<p class="empty-message">No validation errors are currently available. Return to the family tree to review warnings and notes.</p><button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Errors Chart</button>${renderUpdatedTreeOffer()}${undoButton}${assistanceOptions}`;
     return;
   }
 
@@ -249,9 +331,11 @@ function renderWorkspace() {
     workspace.innerHTML = `
       <section class="batch-complete">
         <h2>Batch complete</h2>
-        <p>You solved this group. ${remainingGroups} person${remainingGroups === 1 ? '' : 's'} or record${remainingGroups === 1 ? '' : 's'} remain.</p>
+        <p>Great job - you completed this group. ${remainingGroups} person${remainingGroups === 1 ? '' : 's'} or record${remainingGroups === 1 ? '' : 's'} remain.</p>
         <button id="loadNextBatch" type="button" class="btn-add">Load next ${Math.min(ERROR_BATCH_SIZE, remainingGroups)} people</button>
+        <button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Errors Chart</button>
         ${undoButton}
+        ${encouragement}
         ${assistanceOptions}
       </section>
     `;
@@ -259,7 +343,7 @@ function renderWorkspace() {
   }
 
   if (activeDone) {
-    workspace.innerHTML = `<section class="batch-complete"><h2>All errors completed</h2><p>No more validation errors remain in this workspace.</p>${undoButton}</section>${assistanceOptions}`;
+    workspace.innerHTML = `<section class="batch-complete"><h2>All errors completed</h2><p>You completed every issue in this workspace. Take a moment to print your fixed-errors chart and celebrate the progress.</p><button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Errors Chart</button>${undoButton}</section>${renderUpdatedTreeOffer()}${encouragement}${assistanceOptions}`;
     return;
   }
 
@@ -270,7 +354,9 @@ function renderWorkspace() {
         <span>${activeGroups.length} of ${ERROR_BATCH_SIZE} selected</span>
       </div>
       <p class="batch-help">Each person includes all of their unresolved errors. Mark an error solved only after correcting it in the source GEDCOM or completing its recommended fix. The next batch stays locked until this batch is complete.</p>
+      ${encouragement}
       <button id="printProgressChart" type="button" class="btn-secondary">Print Progress Chart</button>
+      <button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Errors Chart</button>
       ${undoButton}
       ${assistanceOptions}
       <ol class="error-batch-list">
@@ -282,12 +368,13 @@ function renderWorkspace() {
                 ${group.issues.map((issue) => {
                   const issueId = getIssueId(issue);
                   const isCompleted = completed.has(issueId);
+                  const basicLimitReached = !canUseUnlimitedErrorFixes() && !isDuplicateIssue(issue) && getCompletedNonDuplicateIssueCount(errors, progress) >= BASIC_ERROR_FIX_LIMIT;
                   return `
                     <li>
                       <strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(issue.message)}
                       ${issue.suggestion ? `<p class="fix-suggestion">${escapeHtml(issue.suggestion)}</p>` : ''}
-                      ${issue.autoFix?.type === 'mergeDuplicatePeople' && canUseAutomaticFixes() ? `<button type="button" class="btn-secondary" data-merge-duplicates="${encodeURIComponent(JSON.stringify(issue.autoFix))}">Approve &amp; Merge Duplicate People</button>` : ''}
-                      <button type="button" class="btn-secondary" data-resolve-issue="${encodeURIComponent(issueId)}" ${isCompleted ? 'disabled' : ''}>${isCompleted ? 'Solved' : 'Mark solved'}</button>
+                      ${isDuplicateIssue(issue) ? `<button type="button" class="btn-secondary" data-merge-duplicates="${encodeURIComponent(JSON.stringify(issue.autoFix))}">Approve &amp; Merge Duplicate People</button>` : ''}
+                      <button type="button" class="btn-secondary" data-resolve-issue="${encodeURIComponent(issueId)}" data-duplicate-issue="${isDuplicateIssue(issue)}" ${isCompleted || basicLimitReached ? 'disabled' : ''}>${isCompleted ? 'Solved' : basicLimitReached ? 'Upgrade to fix more' : 'Mark solved'}</button>
                     </li>
                   `;
                 }).join('')}
@@ -301,11 +388,6 @@ function renderWorkspace() {
 }
 
 workspace.addEventListener('click', (event) => {
-  if (event.target.closest('[data-request-assistance]')) {
-    requestBasicAssistance();
-    return;
-  }
-
   if (event.target.closest('#undoDuplicateMerge')) {
     const undoState = getDuplicateMergeUndo();
     if (!undoState?.treeData || !undoState?.progress) {
@@ -345,13 +427,13 @@ workspace.addEventListener('click', (event) => {
       const progress = getProgress();
       saveDuplicateMergeUndo(JSON.parse(JSON.stringify(treeData)), progress);
       mergeDuplicatePeople(treeData, fix);
+      removeStaleIssuesAfterDuplicateMerge(treeData.validationReport, fix.duplicateIds);
       const mergedIssueId = getIssueId({
         category: 'Possible duplicate',
         message: `${duplicates.length + 1} people share the same name and birth year: ${[survivor, ...duplicates].map((person) => `${person.name} (${person.id})`).join(', ')}.`,
         subject: survivor.id,
       });
       if (!progress.completedIssueIds.includes(mergedIssueId)) progress.completedIssueIds.push(mergedIssueId);
-      treeData.validationReport.warnings = (treeData.validationReport.warnings || []).filter((issue) => getIssueId(issue) !== mergedIssueId);
       saveTreeData(treeData);
       saveProgress(progress);
       renderWorkspace();
@@ -367,6 +449,9 @@ workspace.addEventListener('click', (event) => {
     const progress = getProgress();
     if (!progress.completedIssueIds.includes(issueId)) {
       progress.completedIssueIds.push(issueId);
+      if (resolveButton.dataset.duplicateIssue !== 'true') {
+        progress.completedNonDuplicateIssueIds.push(issueId);
+      }
       saveProgress(progress);
     }
     renderWorkspace();
@@ -384,24 +469,23 @@ workspace.addEventListener('click', (event) => {
   if (event.target.closest('#printProgressChart')) {
     const treeData = getTreeData();
     const progress = getProgress();
-    const activeGroups = getActiveIssueGroups(treeData?.validationReport?.errors || [], progress);
+    const activeGroups = getActiveIssueGroups([
+      ...(treeData?.validationReport?.errors || []),
+      ...(treeData?.validationReport?.warnings || []).filter(isDuplicateIssue),
+    ], progress);
     printProgressChart(activeGroups, new Set(progress.completedIssueIds));
+    return;
+  }
+
+  if (event.target.closest('#printFixedProgressChart')) {
+    const treeData = getTreeData();
+    const progress = getProgress();
+    const allGroups = getIssueGroups([
+      ...(treeData?.validationReport?.errors || []),
+      ...(treeData?.validationReport?.warnings || []).filter(isDuplicateIssue),
+    ]);
+    printProgressChart(allGroups, new Set(progress.completedIssueIds), true);
   }
 });
-
-async function requestBasicAssistance() {
-  try {
-    const response = await fetch('/api/create-basic-assistance-session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
-    });
-    const result = await response.json();
-    if (!response.ok || !result.success) throw new Error(result.error || 'Could not start the assistance checkout.');
-    window.location.href = result.url;
-  } catch (error) {
-    alert(error.message || 'Could not start the assistance checkout.');
-  }
-}
 
 renderWorkspace();
