@@ -1541,6 +1541,7 @@ function renderSummary(generationData = null) {
 function renderTreePresentation(generationData, peopleById) {
   const canPrintUpdatedTree = hasTier('personal');
   const focusPerson = peopleById.get(posterFocusPersonId) || getDefaultPosterFocusPerson(generationData, peopleById);
+  const ancestorPreview = posterLayout === 'ancestor' && focusPerson ? buildAncestorLevels(focusPerson.id, peopleById) : [];
   const focusSelector = posterLayout === 'ancestor' ? `
     <label class="poster-focus-label" for="posterFocusPerson">Focus person for ancestor chart</label>
     <select id="posterFocusPerson" data-poster-focus-person>
@@ -1550,6 +1551,10 @@ function renderTreePresentation(generationData, peopleById) {
         .join('')}
     </select>
     <p class="muted">Ancestor Chart posters include up to four direct generations to keep the design clear and readable.</p>
+    <details class="ancestor-poster-preview" open>
+      <summary>Four-generation preview</summary>
+      ${ancestorPreview.map((level, index) => `<p><strong>Level ${index + 1}:</strong> ${level.map((person) => escapeHtml(person.name || person.id)).join(', ')}</p>`).join('')}
+    </details>
   ` : '';
   const familySelector = posterLayout === 'family' ? `
     <label class="poster-focus-label" for="posterStartPerson">Start this family tree with a person</label>
