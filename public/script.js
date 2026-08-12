@@ -1549,6 +1549,7 @@ function renderTreePresentation(generationData, peopleById) {
         .map((person) => `<option value="${escapeHtml(person.id)}" ${person.id === focusPerson?.id ? 'selected' : ''}>${escapeHtml(person.name || person.id)}</option>`)
         .join('')}
     </select>
+    <p class="muted">Ancestor Chart posters include up to four direct generations to keep the design clear and readable.</p>
   ` : '';
   const familySelector = posterLayout === 'family' ? `
     <label class="poster-focus-label" for="posterStartPerson">Start this family tree with a person</label>
