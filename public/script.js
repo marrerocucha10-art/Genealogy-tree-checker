@@ -231,15 +231,25 @@ familyTreeDiv.addEventListener('click', (event) => {
 
 familyTreeDiv.addEventListener('change', (event) => {
   const focusPersonSelect = event.target.closest('[data-poster-focus-person]');
-  const familySelect = event.target.closest('[data-poster-family]');
-  if (!focusPersonSelect && !familySelect) return;
+  const startPersonInput = event.target.closest('[data-poster-start-person]');
+  if (!focusPersonSelect && !startPersonInput) return;
 
   if (focusPersonSelect) {
     posterFocusPersonId = focusPersonSelect.value;
     localStorage.setItem(POSTER_FOCUS_PERSON_STORAGE_KEY, posterFocusPersonId);
   }
-  if (familySelect) {
-    posterFamilyId = familySelect.value;
+  if (startPersonInput) {
+    const person = treeData.people.find((item) => (
+      String(item.name || item.id).toLocaleLowerCase() === startPersonInput.value.trim().toLocaleLowerCase()
+    ));
+    const family = treeData.families.find((item) => (
+      item.husbandId === person?.id || item.wifeId === person?.id || (item.childrenIds || []).includes(person?.id)
+    ));
+    if (!person || !family) {
+      setStatus('Choose a person from the suggestions who is connected to a family group.', 'info');
+      return;
+    }
+    posterFamilyId = family.id;
     localStorage.setItem(POSTER_FAMILY_STORAGE_KEY, posterFamilyId);
   }
   renderFamilyTree();
@@ -1541,18 +1551,11 @@ function renderTreePresentation(generationData, peopleById) {
     </select>
   ` : '';
   const familySelector = posterLayout === 'family' ? `
-    <label class="poster-focus-label" for="posterFamily">Family group for this poster</label>
-    <select id="posterFamily" data-poster-family>
-      ${treeData.families.map((family) => {
-        const people = [family.husbandId, family.wifeId]
-          .map((id) => peopleById.get(id))
-          .filter(Boolean)
-          .map((person) => person.name || person.id)
-          .join(' and ');
-        const selected = family.id === (posterFamilyId || treeData.families[0]?.id);
-        return `<option value="${escapeHtml(family.id)}" ${selected ? 'selected' : ''}>${escapeHtml(people || family.id)}</option>`;
-      }).join('')}
-    </select>
+    <label class="poster-focus-label" for="posterStartPerson">Start this family tree with a person</label>
+    <input id="posterStartPerson" type="search" list="posterPeople" data-poster-start-person placeholder="Type a person's name">
+    <datalist id="posterPeople">
+      ${treeData.people.map((person) => `<option value="${escapeHtml(person.name || person.id)}"></option>`).join('')}
+    </datalist>
   ` : '';
 
   return `
