@@ -35,7 +35,7 @@ const MAX_GEDCOM_BYTES = 150 * 1024 * 1024;
 
 const SUBSCRIPTION_TIERS = {
   personal: {
-    name: 'Personal',
+    name: 'Family Builder',
     monthlyPrice: 19.99,
     annualPrice: 19.99,
     prices: {

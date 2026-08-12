@@ -962,6 +962,284 @@ input[type="file"] {
   margin-bottom: 12px;
 }
 
+.ancestor-discovery {
+  background: #fffaf0;
+  border: 1px solid #f6ad55;
+  border-radius: 14px;
+  margin: 20px 0;
+  padding: 20px;
+}
+
+.ancestor-discovery .report-heading p,
+.ancestor-discovery-intro {
+  margin: 6px 0 0;
+}
+
+.tree-presentation {
+  background: #f5f3ff;
+  border: 2px solid #c4b5fd;
+  border-radius: 14px;
+  margin: 20px 0;
+  padding: 20px;
+  scroll-margin-top: 16px;
+}
+
+.tree-presentation .report-heading p {
+  margin: 6px 0 0;
+}
+
+.presentation-options {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 18px 0;
+}
+
+.presentation-options h4,
+.keepsake-offer h4 {
+  color: #5b21b6;
+  margin-bottom: 8px;
+}
+
+.presentation-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.active-presentation {
+  background: #6d28d9 !important;
+  border-color: #6d28d9 !important;
+  color: #fff !important;
+}
+
+.presentation-print-button {
+  max-width: 360px;
+}
+
+.presentation-print-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.presentation-print-actions .btn-secondary {
+  width: auto;
+}
+
+.presentation-upgrade {
+  color: #4c1d95;
+  margin: 16px 0;
+}
+
+.presentation-upgrade a {
+  color: #5b21b6;
+  font-weight: 700;
+}
+
+.keepsake-offer,
+.updated-tree-offer {
+  background: #fff;
+  border: 1px solid #ddd6fe;
+  border-radius: 10px;
+  margin-top: 18px;
+  padding: 16px;
+}
+
+.keepsake-offer p,
+.updated-tree-offer p {
+  color: #4a5568;
+  margin-bottom: 12px;
+}
+
+.keepsake-offer .btn-secondary {
+  display: inline-block;
+  text-decoration: none;
+}
+
+.updated-tree-offer {
+  border-color: #c4b5fd;
+  text-align: center;
+}
+
+.updated-tree-offer h2 {
+  color: #5b21b6;
+  font-size: 1.2em;
+  margin-bottom: 8px;
+}
+
+.updated-tree-offer .btn-add {
+  display: inline-block;
+  max-width: 400px;
+  text-decoration: none;
+}
+
+.family-tree.theme-heritage .tree-chart {
+  background:
+    linear-gradient(#fffbeb, #fffbeb) padding-box,
+    linear-gradient(135deg, #92400e, #b45309) border-box;
+}
+
+.family-tree.theme-heritage .person-node::before {
+  background: linear-gradient(135deg, #92400e, #d97706);
+}
+
+.family-tree.theme-garden .tree-chart {
+  background:
+    linear-gradient(#f0fdf4, #f0fdf4) padding-box,
+    linear-gradient(135deg, #166534, #22c55e) border-box;
+}
+
+.family-tree.theme-garden .person-node::before {
+  background: linear-gradient(135deg, #166534, #22c55e);
+}
+
+@media (max-width: 800px) {
+  .presentation-options {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ancestor-discovery-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 16px;
+}
+
+.ancestor-card {
+  background: #fff;
+  border: 1px solid #fed7aa;
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.ancestor-card h4 {
+  color: #9c4221;
+  margin-bottom: 6px;
+}
+
+.ancestor-card p {
+  color: #4a5568;
+  font-size: 0.92em;
+}
+
+.ancestor-meta {
+  color: #9c4221 !important;
+  font-weight: 700;
+}
+
+.ancestor-card details {
+  color: #4a5568;
+  font-size: 0.9em;
+  margin: 12px 0;
+}
+
+.ancestor-card summary {
+  color: #9c4221;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.ancestor-card ul {
+  display: grid;
+  gap: 7px;
+  margin: 10px 0 0 18px;
+}
+
+.ancestor-resource-links {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.ancestor-resource-links .btn-secondary {
+  text-align: center;
+  text-decoration: none;
+}
+
+@media (max-width: 800px) {
+  .ancestor-discovery-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.family-builder-tools {
+  background: #f8fafc;
+  border: 2px solid #a5b4fc;
+  border-radius: 14px;
+  margin: 20px 0;
+  padding: 20px;
+  scroll-margin-top: 16px;
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.family-builder-tools.highlighted {
+  box-shadow: 0 0 0 5px rgba(99, 102, 241, 0.25);
+  transform: translateY(-2px);
+}
+
+.family-builder-tools .report-heading p {
+  margin: 6px 0 0;
+}
+
+.family-builder-summary,
+.family-builder-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.family-builder-summary span {
+  background: #e0e7ff;
+  border-radius: 999px;
+  color: #3730a3;
+  padding: 7px 11px;
+}
+
+.family-builder-actions .btn-secondary {
+  text-decoration: none;
+}
+
+.worksheet-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.worksheet-card {
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.worksheet-card h4 {
+  color: #312e81;
+  margin-bottom: 7px;
+}
+
+.worksheet-card p,
+.ancestry-forms-note {
+  color: #475569;
+  font-size: 0.92em;
+}
+
+.worksheet-card .btn-secondary {
+  margin-top: 10px;
+}
+
+.ancestry-forms-note {
+  margin: 16px 0 0;
+}
+
+@media (max-width: 800px) {
+  .worksheet-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .error-workspace main {
   min-height: 360px;
 }
@@ -1036,6 +1314,25 @@ input[type="file"] {
 .assistance-options p {
   color: #1e40af;
   margin-bottom: 12px;
+}
+
+.progress-encouragement {
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: 12px;
+  color: #166534;
+  margin: 16px 0;
+  padding: 14px 16px;
+}
+
+.progress-encouragement strong {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.progress-encouragement p {
+  color: #166534;
+  margin: 0;
 }
 
 .assistance-upgrade-link {
@@ -1193,6 +1490,85 @@ input[type="file"] {
 
 .package-section {
   margin-bottom: 40px;
+}
+
+.keepsake-catalog {
+  background: #fff7ed;
+  border: 2px solid #fdba74;
+  border-radius: 14px;
+  margin-bottom: 40px;
+  padding: 22px;
+  scroll-margin-top: 20px;
+}
+
+.keepsake-catalog-heading {
+  align-items: flex-start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.keepsake-catalog-heading h2 {
+  color: #9a3412;
+  margin-bottom: 7px;
+}
+
+.keepsake-catalog-heading p,
+.keepsake-catalog-note {
+  color: #7c2d12;
+}
+
+.keepsake-catalog-heading span,
+.coming-soon-badge {
+  background: #fed7aa;
+  border-radius: 999px;
+  color: #9a3412;
+  font-size: 0.82em;
+  font-weight: 800;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+
+.keepsake-catalog-note {
+  margin: 16px 0;
+}
+
+.keepsake-product-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.keepsake-product-card {
+  background: #fff;
+  border: 1px solid #fed7aa;
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.keepsake-product-card h3 {
+  color: #9a3412;
+  margin-bottom: 8px;
+}
+
+.keepsake-product-card p {
+  color: #4a5568;
+  margin-bottom: 14px;
+}
+
+@media (max-width: 600px) {
+  .keepsake-catalog-heading {
+    display: block;
+  }
+
+  .keepsake-catalog-heading span {
+    display: inline-block;
+    margin-top: 10px;
+  }
+
+  .keepsake-product-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .package-grid {
