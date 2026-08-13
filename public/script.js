@@ -34,7 +34,7 @@ const SUBSCRIPTION_TIERS = {
     description: 'Review your tree, fix up to 20 validation errors, and merge duplicate people for free.',
     monthlyPrice: 0,
     annualPrice: 0,
-    features: ['Small GEDCOM upload', 'Basic tree preview', '20 non-duplicate error fixes', 'Free duplicate person merges', 'Printable progress chart', 'Ancestor Discovery research prompts'],
+    features: ['Small GEDCOM upload', 'Start a family tree manually', '20 non-duplicate error fixes', 'Free duplicate person merges', 'Printable progress chart', 'Ancestor Discovery research prompts'],
   },
   personal: {
     name: 'Family Builder',
@@ -408,7 +408,7 @@ async function restoreSavedGedcomBackup() {
   }
 }
 
-reviewInitialTreeButton.addEventListener('click', () => {
+reviewInitialTreeButton?.addEventListener('click', () => {
   if (!ensureTreeHasPeople('reviewing the initial family tree')) return;
 
   document.querySelector('.tree-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -419,7 +419,7 @@ reviewInitialTreeButton.addEventListener('click', () => {
   }
 });
 
-familyForm.addEventListener('submit', (event) => {
+familyForm?.addEventListener('submit', (event) => {
   event.preventDefault();
   
   const name = nameInput.value.trim();
@@ -439,7 +439,7 @@ familyForm.addEventListener('submit', (event) => {
   nameInput.focus();
 });
 
-printTreeButton.addEventListener('click', () => {
+printTreeButton?.addEventListener('click', () => {
   if (!requireTier('print')) return;
   if (!treeData.people.length) {
     setStatus('Upload or add family members before printing the tree.', 'error');
@@ -449,21 +449,21 @@ printTreeButton.addEventListener('click', () => {
   window.print();
 });
 
-exportJsonButton.addEventListener('click', () => {
+exportJsonButton?.addEventListener('click', () => {
   if (!requireTier('exportJson') || !ensureTreeHasPeople('exporting JSON')) return;
 
   downloadFile('family-tree.json', JSON.stringify(treeData, null, 2), 'application/json');
   setStatus('Downloaded parsed tree JSON.', 'success');
 });
 
-exportCsvButton.addEventListener('click', () => {
+exportCsvButton?.addEventListener('click', () => {
   if (!requireTier('exportCsv') || !ensureTreeHasPeople('exporting CSV')) return;
 
   downloadFile('family-tree-people.csv', buildPeopleCsv(), 'text/csv');
   setStatus('Downloaded people CSV.', 'success');
 });
 
-copySummaryButton.addEventListener('click', async () => {
+copySummaryButton?.addEventListener('click', async () => {
   if (!requireTier('copySummary') || !ensureTreeHasPeople('copying a summary')) return;
 
   const summary = buildTreeSummary();
@@ -475,7 +475,7 @@ copySummaryButton.addEventListener('click', async () => {
   }
 });
 
-clearTreeButton.addEventListener('click', () => {
+clearTreeButton?.addEventListener('click', () => {
   if (!treeData.people.length || confirm('Clear the current family tree?')) {
     treeData = createEmptyTreeData();
     localStorage.removeItem(ERROR_PROGRESS_STORAGE_KEY);
@@ -1495,33 +1495,16 @@ function showManualFixes() {
 
 function renderFamilyTree() {
   if (treeData.people.length === 0) {
-    familyTreeDiv.innerHTML = '<p class="empty-message">No family members added yet. Upload a GEDCOM file or add someone manually.</p>';
+    familyTreeDiv.innerHTML = '<p class="empty-message">Parse a GEDCOM file or start a family tree manually.</p>';
     return;
   }
 
   const peopleById = new Map(treeData.people.map((person) => [person.id, person]));
   const generationData = buildGenerationData(peopleById);
-  const unconnectedPeople = treeData.families.length
-    ? treeData.people.filter((person) => !generationData.connectedIds.has(person.id))
-    : treeData.people;
-
-  familyTreeDiv.classList.toggle('horizontal-layout', treeLayout === 'horizontal');
-  familyTreeDiv.classList.toggle('vertical-layout', treeLayout !== 'horizontal');
-  familyTreeDiv.classList.remove('theme-classic', 'theme-heritage', 'theme-garden');
-  familyTreeDiv.classList.add(`theme-${treeTheme}`);
 
   familyTreeDiv.innerHTML = `
     ${renderSummary(generationData)}
-    ${renderTreePresentation(generationData, peopleById)}
-    ${renderAncestorDiscovery()}
-    ${renderGedcomInfo()}
-    ${treeData.warnings.length ? renderWarnings() : ''}
-    ${renderValidationReport()}
-    ${renderFixHistory()}
-    ${renderFamilyBuilderTools(generationData, peopleById)}
-    ${renderGenerationSections(generationData, peopleById)}
-    ${!treeData.families.length ? `<section class="tree-chart standalone-people"><h3>People</h3><div class="children-row">${unconnectedPeople.map(renderPersonNode).join('')}</div></section>` : ''}
-    ${treeData.families.length && unconnectedPeople.length ? `<section class="tree-chart standalone-people"><h3>Unconnected People</h3><div class="children-row">${unconnectedPeople.map(renderPersonNode).join('')}</div></section>` : ''}
+    ${renderWorkflowOverview()}
   `;
 }
 
@@ -1535,6 +1518,25 @@ function renderSummary(generationData = null) {
       <span><strong>${treeData.relationships.length}</strong> relationships</span>
       ${generationCount ? `<span><strong>${generationCount}</strong> generation group${generationCount === 1 ? '' : 's'}</span>` : ''}
     </div>
+  `;
+}
+
+function renderWorkflowOverview() {
+  const report = treeData.validationReport || createEmptyValidationReport();
+  const issueCount = report.errors.length + report.warnings.filter((issue) => (
+    issue.autoFix?.type === 'mergeDuplicatePeople'
+  )).length;
+
+  return `
+    <section class="workflow-overview">
+      <h3>Choose your next step</h3>
+      <p>Your parsed GED is saved in this browser. Continue with one focused workspace at a time.</p>
+      <div class="workflow-actions">
+        <a class="btn-add" href="errors.html">Fix errors${issueCount ? ` (${issueCount})` : ''}</a>
+        <a class="btn-secondary" href="manual.html">Work on the tree manually</a>
+        <a class="btn-secondary" href="ancestor.html">Open Ancestor Discovery</a>
+      </div>
+    </section>
   `;
 }
 
