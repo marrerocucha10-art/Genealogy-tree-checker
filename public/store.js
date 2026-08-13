@@ -58,12 +58,24 @@ function renderPlans() {
     const checkoutReady = isFree || stripeConfig?.configured && stripeConfig.tiers?.[id]?.[billingInterval]?.configured;
     const price = tier.prices[billingInterval];
     const priceLabel = isFree ? 'Free' : `$${price.toFixed(2)} / month${billingInterval === 'annual' ? ' billed annually' : ''}`;
+    const proPackage = id === 'pro' ? `
+      <aside class="pro-package-highlight">
+        <strong>Genealogy Pro Package included</strong>
+        <p>Digital products, print products, research services, and research journals are included with this plan.</p>
+        <div class="plan-package-actions">
+          <button type="button" data-open-collection="digitalProducts">Digital Products</button>
+          <button type="button" data-open-collection="printProducts">Print Products</button>
+          <button type="button" data-open-collection="researchServices">Research Services</button>
+          <button type="button" data-open-collection="researchJournals">Research Journals</button>
+        </div>
+      </aside>` : '';
     return `
       <article class="subscription-card ${isCurrent ? 'current' : ''}">
         <h3>${escapeHtml(tier.name)}</h3>
         <p class="plan-price">${escapeHtml(priceLabel)}</p>
         <p>${escapeHtml(tier.description)}</p>
         <ul>${tier.features.map((feature) => `<li>${escapeHtml(feature)}</li>`).join('')}</ul>
+        ${proPackage}
         ${isCurrent ? '<span class="plan-badge">Current</span>' : ''}
         ${isFree ? `<button class="btn-add" type="button" data-select-free>Start with Basic</button>` : ''}
         ${!isFree && !isCurrent ? `<button class="btn-add" type="button" data-upgrade-tier="${id}" ${checkoutReady ? '' : 'disabled'}>${checkoutReady ? `Choose ${escapeHtml(tier.name)}` : 'Checkout unavailable'}</button>` : ''}
@@ -101,6 +113,16 @@ async function applyCheckoutReturn() {
 }
 
 subscriptionPlans.addEventListener('click', async (event) => {
+  const collectionButton = event.target.closest('[data-open-collection]');
+  if (collectionButton) {
+    const collection = document.getElementById(collectionButton.dataset.openCollection);
+    if (collection) {
+      collection.open = true;
+      collection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    return;
+  }
+
   if (event.target.closest('[data-select-free]')) {
     currentTier = 'free';
     localStorage.setItem(SUBSCRIPTION_STORAGE_KEY, currentTier);
@@ -117,6 +139,16 @@ subscriptionPlans.addEventListener('click', async (event) => {
     button.disabled = false;
     alert(error.message);
   }
+});
+
+document.querySelector('[data-toggle-coming-soon]')?.addEventListener('click', (event) => {
+  const content = document.getElementById('comingSoonKeepsakes');
+  const isOpen = content.hidden;
+  content.hidden = !isOpen;
+  event.currentTarget.setAttribute('aria-expanded', String(isOpen));
+  event.currentTarget.textContent = isOpen
+    ? 'Hide Personalized Keepsakes'
+    : 'Coming Soon: Explore Personalized Keepsakes';
 });
 
 billingButtons.forEach((button) => button.addEventListener('click', () => {

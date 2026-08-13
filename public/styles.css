@@ -1605,6 +1605,72 @@ input[type="file"] {
   scroll-margin-top: 20px;
 }
 
+.pro-package-collections {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 34px;
+}
+
+.store-collection {
+  background: #ffffff;
+  border: 1px solid #c7d2fe;
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.store-collection summary {
+  color: #3730a3;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.store-collection p {
+  color: #4b5563;
+  line-height: 1.5;
+  margin: 12px 0 4px;
+}
+
+.pro-package-highlight {
+  background: #ede9fe;
+  border: 1px solid #8b5cf6;
+  border-radius: 10px;
+  color: #4c1d95;
+  margin: 14px 0;
+  padding: 12px;
+}
+
+.pro-package-highlight p {
+  margin: 7px 0 10px;
+}
+
+.plan-package-actions {
+  display: grid;
+  gap: 7px;
+}
+
+.plan-package-actions button,
+.coming-soon-button {
+  background: #ffffff;
+  border: 1px solid #7c3aed;
+  border-radius: 7px;
+  color: #5b21b6;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 9px;
+}
+
+.coming-soon-catalog {
+  border-color: #f59e0b;
+}
+
+.coming-soon-button {
+  background: #7c3aed;
+  border: 0;
+  color: #ffffff;
+  margin-top: 14px;
+  width: 100%;
+}
+
 .keepsake-catalog-heading {
   align-items: flex-start;
   display: flex;
