@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "test": "node --check server.js && node --check gedcomParser.js && node --check public/script.js && node --check public/errors.js"
+    "test": "node --check server.js && node --check gedcomParser.js && node --check public/script.js && node --check public/errors.js && node --check public/store.js && node --check public/manual.js && node --check public/ancestor.js"
   },
   "author": "",
   "license": "ISC",

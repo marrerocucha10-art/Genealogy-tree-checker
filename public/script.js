@@ -94,7 +94,7 @@ const subscriptionStatusDiv = document.getElementById('subscriptionStatus');
 const manageBillingButton = document.getElementById('manageBilling');
 const goToStoreButton = document.getElementById('goToStore');
 
-subscriptionPlansDiv.addEventListener('click', (event) => {
+subscriptionPlansDiv?.addEventListener('click', (event) => {
   const upgradeButton = event.target.closest('[data-upgrade-tier]');
   const previewButton = event.target.closest('[data-preview-tier]');
 
@@ -107,7 +107,7 @@ subscriptionPlansDiv.addEventListener('click', (event) => {
   }
 });
 
-manageBillingButton.addEventListener('click', openBillingPortal);
+manageBillingButton?.addEventListener('click', openBillingPortal);
 
 if (goToStoreButton) {
   goToStoreButton.addEventListener('click', () => {
@@ -501,6 +501,8 @@ async function loadSubscriptionConfig() {
 }
 
 function renderSubscriptionPlans() {
+  if (!subscriptionPlansDiv || !subscriptionStatusDiv) return;
+
   const intervalLabel = billingInterval === 'annual' ? 'Annual billing' : 'Monthly billing';
   subscriptionStatusDiv.textContent = `Current plan: ${SUBSCRIPTION_TIERS[currentTier]?.name || 'Free'} · ${intervalLabel}`;
 

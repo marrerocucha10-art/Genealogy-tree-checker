@@ -14,6 +14,22 @@
     </header>
 
     <main>
+      <section id="subscriptions" class="subscription-section">
+        <div class="subscription-header">
+          <div>
+            <h2>Choose a Subscription</h2>
+            <p>Choose the tools that fit your family-tree project, then continue to the products below.</p>
+          </div>
+          <button id="manageBilling" type="button" class="btn-secondary">Manage Billing</button>
+        </div>
+        <div class="billing-toggle" aria-label="Billing interval">
+          <button id="monthlyBilling" type="button" class="layout-button active" data-billing-interval="monthly">Monthly</button>
+          <button id="annualBilling" type="button" class="layout-button" data-billing-interval="annual">Annual</button>
+        </div>
+        <div id="subscriptionStatus" class="subscription-status">Current plan: Basic</div>
+        <div id="subscriptionPlans" class="subscription-plans" aria-live="polite"></div>
+      </section>
+
       <section class="store-hero">
         <h2>Included Free with Pro / Researcher</h2>
         <p>The Genealogy Pro Package is included with the Pro / Researcher subscription. Review the products below, then return to the app to subscribe.</p>
@@ -153,5 +169,6 @@
       <p>© 2026 Genealogy Tree Checker</p>
     </footer>
   </div>
+  <script src="store.js"></script>
 </body>
 </html>
