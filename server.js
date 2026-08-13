@@ -105,8 +105,8 @@ async function createStripeCheckoutSession(req, tierId, interval = 'monthly') {
   const baseUrl = getBaseUrl(req);
   const params = new URLSearchParams({
     mode: 'subscription',
-    success_url: `${baseUrl}/?subscription=${tierId}&interval=${interval}&checkout=success&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${baseUrl}/?checkout=cancelled`,
+    success_url: `${baseUrl}/store?subscription=${tierId}&interval=${interval}&checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${baseUrl}/store?checkout=cancelled`,
     'line_items[0][price_data][currency]': 'usd',
     'line_items[0][price_data][product_data][name]': `${tier.name} ${interval === 'annual' ? 'Annual' : 'Monthly'} Subscription`,
     'line_items[0][price_data][unit_amount]': String(unitAmount),
