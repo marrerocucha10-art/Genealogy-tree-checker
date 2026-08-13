@@ -2,6 +2,7 @@ const STORAGE_KEY = 'familyTreeData';
 const ERROR_PROGRESS_STORAGE_KEY = 'familyTreeErrorProgress';
 const DUPLICATE_MERGE_UNDO_STORAGE_KEY = 'familyTreeDuplicateMergeUndo';
 const SUBSCRIPTION_STORAGE_KEY = 'familyTreeSubscriptionTier';
+const PLAN_SELECTION_STORAGE_KEY = 'familyTreePlanSelected';
 const ERROR_BATCH_SIZE = 10;
 const BASIC_ERROR_FIX_LIMIT = 20;
 const workspace = document.getElementById('errorWorkspace');
@@ -91,7 +92,7 @@ function renderBasicPlanOptions(errors, progress) {
     <section class="assistance-options">
       <h2>${limitReached ? 'Basic fix limit reached' : 'Basic plan progress'}</h2>
       <p>${fixedCount} of ${BASIC_ERROR_FIX_LIMIT} non-duplicate error fixes used.${limitReached ? ' Upgrade to Family Builder for unlimited manual fixes.' : ` ${remainingFixes} fix${remainingFixes === 1 ? '' : 'es'} remaining.`} Duplicate person merges are free and do not use this limit.</p>
-      <a class="btn-secondary assistance-upgrade-link" href="index.html#subscriptionWorkflows">Upgrade to Family Builder</a>
+      <a class="btn-secondary assistance-upgrade-link" href="store.html#subscriptions">Upgrade to Family Builder</a>
     </section>
   `;
 }
@@ -296,6 +297,58 @@ function getActiveIssueGroups(errors, progress) {
   return nextGroups;
 }
 
+function applySafeBatchFixes(treeData, groups, progress) {
+  const appliedIssueIds = [];
+
+  for (const issue of groups.flatMap((group) => group.issues)) {
+    const fix = issue.autoFix;
+    if (!fix || fix.type === 'mergeDuplicatePeople') continue;
+
+    let applied = false;
+    if (fix.type === 'removeMissingFamilyRef') {
+      const person = treeData.people.find((item) => item.id === fix.personId);
+      if (person && Array.isArray(person[fix.field])) {
+        const before = person[fix.field].length;
+        person[fix.field] = person[fix.field].filter((familyId) => familyId !== fix.familyId);
+        applied = person[fix.field].length !== before;
+      }
+    }
+
+    if (fix.type === 'removeMissingPersonFromFamily') {
+      const family = treeData.families.find((item) => item.id === fix.familyId);
+      if (family) {
+        const before = JSON.stringify([family.husbandId, family.wifeId, family.childrenIds || []]);
+        if (family.husbandId === fix.personId) family.husbandId = null;
+        if (family.wifeId === fix.personId) family.wifeId = null;
+        family.childrenIds = (family.childrenIds || []).filter((childId) => childId !== fix.personId);
+        applied = before !== JSON.stringify([family.husbandId, family.wifeId, family.childrenIds || []]);
+      }
+    }
+
+    if (fix.type === 'removeChildFromFamily') {
+      const family = treeData.families.find((item) => item.id === fix.familyId);
+      if (family) {
+        const before = family.childrenIds?.length || 0;
+        family.childrenIds = (family.childrenIds || []).filter((childId) => childId !== fix.childId);
+        applied = family.childrenIds.length !== before;
+      }
+    }
+
+    if (applied) {
+      const issueId = getIssueId(issue);
+      appliedIssueIds.push(issueId);
+      if (!progress.completedIssueIds.includes(issueId)) progress.completedIssueIds.push(issueId);
+      if (!progress.completedNonDuplicateIssueIds.includes(issueId)) progress.completedNonDuplicateIssueIds.push(issueId);
+    }
+  }
+
+  if (appliedIssueIds.length) {
+    saveTreeData(treeData);
+    saveProgress(progress);
+  }
+  return appliedIssueIds.length;
+}
+
 function renderWorkspace() {
   const treeData = getTreeData();
   const errors = [
@@ -310,6 +363,11 @@ function renderWorkspace() {
 
   if (!treeData?.people?.length) {
     workspace.innerHTML = '<p class="empty-message">Upload a GEDCOM file before opening the error workspace.</p>';
+    return;
+  }
+
+  if (!localStorage.getItem(PLAN_SELECTION_STORAGE_KEY)) {
+    workspace.innerHTML = '<p class="empty-message">Choose a subscription plan before starting error fixes. <a href="store.html#subscriptions">Choose a plan in the Store</a>.</p>';
     return;
   }
 
@@ -355,6 +413,10 @@ function renderWorkspace() {
       </div>
       <p class="batch-help">Each person includes all of their unresolved errors. Mark an error solved only after correcting it in the source GEDCOM or completing its recommended fix. The next batch stays locked until this batch is complete.</p>
       ${encouragement}
+      <div class="report-actions">
+        <button id="applySafeBatchFixes" type="button" class="btn-secondary">Apply safe automatic fixes</button>
+        <button id="reviewManualBatchFixes" type="button" class="btn-secondary">Review and fix manually</button>
+      </div>
       <button id="printProgressChart" type="button" class="btn-secondary">Print Progress Chart</button>
       <button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Errors Chart</button>
       ${undoButton}
@@ -388,6 +450,28 @@ function renderWorkspace() {
 }
 
 workspace.addEventListener('click', (event) => {
+  if (event.target.closest('#applySafeBatchFixes')) {
+    if (!['pro', 'business'].includes(getCurrentTier())) {
+      alert('Safe automatic fixes are included with Pro / Researcher. Review and fix this batch manually, or upgrade in the Store.');
+      return;
+    }
+    const treeData = getTreeData();
+    const progress = getProgress();
+    const errors = [
+      ...(treeData?.validationReport?.errors || []),
+      ...(treeData?.validationReport?.warnings || []).filter(isDuplicateIssue),
+    ];
+    const appliedCount = applySafeBatchFixes(treeData, getActiveIssueGroups(errors, progress), progress);
+    alert(appliedCount ? `${appliedCount} safe automatic fix${appliedCount === 1 ? '' : 'es'} applied.` : 'No safe automatic fixes are available in this batch. Review the suggested fixes manually.');
+    renderWorkspace();
+    return;
+  }
+
+  if (event.target.closest('#reviewManualBatchFixes')) {
+    document.querySelector('.error-batch-list')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
   if (event.target.closest('#undoDuplicateMerge')) {
     const undoState = getDuplicateMergeUndo();
     if (!undoState?.treeData || !undoState?.progress) {

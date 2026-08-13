@@ -3,6 +3,7 @@ const LAYOUT_STORAGE_KEY = 'familyTreeLayout';
 const SUBSCRIPTION_STORAGE_KEY = 'familyTreeSubscriptionTier';
 const BILLING_INTERVAL_STORAGE_KEY = 'familyTreeBillingInterval';
 const STRIPE_CUSTOMER_STORAGE_KEY = 'familyTreeStripeCustomerId';
+const PLAN_SELECTION_STORAGE_KEY = 'familyTreePlanSelected';
 const ERROR_PROGRESS_STORAGE_KEY = 'familyTreeErrorProgress';
 const TREE_THEME_STORAGE_KEY = 'familyTreePresentationTheme';
 const POSTER_LAYOUT_STORAGE_KEY = 'familyTreePosterLayout';
@@ -258,6 +259,11 @@ familyTreeDiv.addEventListener('change', (event) => {
 gedcomForm.addEventListener('submit', async (event) => {
   event.preventDefault();
 
+  if (!localStorage.getItem(PLAN_SELECTION_STORAGE_KEY)) {
+    window.location.href = '/store#subscriptions';
+    return;
+  }
+
   const file = gedcomFileInput.files[0];
   if (!file) return;
 
@@ -277,6 +283,7 @@ gedcomForm.addEventListener('submit', async (event) => {
       : ' The GEDCOM backup could not be saved in this browser.';
     setStatus(`${formatGedcomImportStatus(result)}${storageText}${backupText}`, 'success');
     gedcomForm.reset();
+    window.location.href = 'tree.html';
   } catch (error) {
     treeData = previousTreeData;
     renderFamilyTree();
@@ -613,6 +620,7 @@ function applySubscriptionStatus(subscription, showMessage = true) {
     localStorage.setItem(STRIPE_CUSTOMER_STORAGE_KEY, stripeCustomerId);
   }
   localStorage.setItem(SUBSCRIPTION_STORAGE_KEY, currentTier);
+  localStorage.setItem(PLAN_SELECTION_STORAGE_KEY, 'true');
   localStorage.setItem(BILLING_INTERVAL_STORAGE_KEY, billingInterval);
   updateBillingButtons();
   renderSubscriptionPlans();
@@ -2407,4 +2415,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadSubscriptionConfig();
   loadSubscriptionStatusFromCustomer();
   renderFamilyTree();
+  if (new URLSearchParams(window.location.search).get('start') === 'upload') {
+    document.getElementById('gedcomForm')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 });

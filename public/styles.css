@@ -133,6 +133,37 @@ select:focus {
   padding: 20px;
 }
 
+.tree-review-summary,
+.tree-review-list {
+  background: #ffffff;
+  border: 1px solid #c7d2fe;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  padding: 20px;
+}
+
+.tree-review-summary h2,
+.tree-review-list h2,
+.tree-review-family h3 {
+  color: #3730a3;
+}
+
+.tree-review-summary p {
+  color: #4b5563;
+  margin: 10px 0 18px;
+}
+
+.tree-review-family {
+  border-top: 1px solid #e5e7eb;
+  margin-top: 14px;
+  padding-top: 14px;
+}
+
+.tree-review-family p {
+  color: #4b5563;
+  margin-top: 6px;
+}
+
 .workflow-overview h3 {
   color: #3730a3;
   margin-bottom: 8px;

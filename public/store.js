@@ -1,6 +1,7 @@
 const SUBSCRIPTION_STORAGE_KEY = 'familyTreeSubscriptionTier';
 const BILLING_INTERVAL_STORAGE_KEY = 'familyTreeBillingInterval';
 const STRIPE_CUSTOMER_STORAGE_KEY = 'familyTreeStripeCustomerId';
+const PLAN_SELECTION_STORAGE_KEY = 'familyTreePlanSelected';
 const subscriptionPlans = document.getElementById('subscriptionPlans');
 const subscriptionStatus = document.getElementById('subscriptionStatus');
 const manageBillingButton = document.getElementById('manageBilling');
@@ -64,6 +65,7 @@ function renderPlans() {
         <p>${escapeHtml(tier.description)}</p>
         <ul>${tier.features.map((feature) => `<li>${escapeHtml(feature)}</li>`).join('')}</ul>
         ${isCurrent ? '<span class="plan-badge">Current</span>' : ''}
+        ${isFree ? `<button class="btn-add" type="button" data-select-free>Start with Basic</button>` : ''}
         ${!isFree && !isCurrent ? `<button class="btn-add" type="button" data-upgrade-tier="${id}" ${checkoutReady ? '' : 'disabled'}>${checkoutReady ? `Choose ${escapeHtml(tier.name)}` : 'Checkout unavailable'}</button>` : ''}
       </article>
     `;
@@ -93,11 +95,19 @@ async function applyCheckoutReturn() {
   stripeCustomerId = subscription.customerId || '';
   localStorage.setItem(SUBSCRIPTION_STORAGE_KEY, currentTier);
   localStorage.setItem(BILLING_INTERVAL_STORAGE_KEY, billingInterval);
+  localStorage.setItem(PLAN_SELECTION_STORAGE_KEY, 'true');
   if (stripeCustomerId) localStorage.setItem(STRIPE_CUSTOMER_STORAGE_KEY, stripeCustomerId);
-  window.history.replaceState({}, document.title, window.location.pathname);
+  window.location.href = '/?start=upload';
 }
 
 subscriptionPlans.addEventListener('click', async (event) => {
+  if (event.target.closest('[data-select-free]')) {
+    currentTier = 'free';
+    localStorage.setItem(SUBSCRIPTION_STORAGE_KEY, currentTier);
+    localStorage.setItem(PLAN_SELECTION_STORAGE_KEY, 'true');
+    window.location.href = '/?start=upload';
+    return;
+  }
   const button = event.target.closest('[data-upgrade-tier]');
   if (!button) return;
   button.disabled = true;
