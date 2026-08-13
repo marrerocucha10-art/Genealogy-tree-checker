@@ -1611,6 +1611,15 @@ input[type="file"] {
   margin-bottom: 34px;
 }
 
+.store-section-heading h2 {
+  color: #3730a3;
+}
+
+.store-section-heading p {
+  color: #4b5563;
+  margin-top: -4px;
+}
+
 .additional-digital-section {
   background: #eff6ff;
   border: 1px solid #93c5fd;
