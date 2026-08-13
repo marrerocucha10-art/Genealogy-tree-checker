@@ -30,7 +30,7 @@ const tiers = {
     name: 'Business / Genealogist',
     description: 'Support client-facing genealogy workflows.',
     prices: { monthly: 39.99, annual: 39.99 },
-    features: ['Client tree workflow', 'Branded reports roadmap', 'Higher limits roadmap'],
+    features: ['Separate client folders and browser-saved trees', 'Client tree workflow', 'Branded reports roadmap', 'Higher limits roadmap'],
   },
 };
 

@@ -1,6 +1,6 @@
-const STORAGE_KEY = 'familyTreeData';
-const ERROR_PROGRESS_STORAGE_KEY = 'familyTreeErrorProgress';
-const DUPLICATE_MERGE_UNDO_STORAGE_KEY = 'familyTreeDuplicateMergeUndo';
+const STORAGE_KEY = window.familyTreeClientStorage?.getActiveTreeKey() || 'familyTreeData';
+const ERROR_PROGRESS_STORAGE_KEY = `${STORAGE_KEY}:errorProgress`;
+const DUPLICATE_MERGE_UNDO_STORAGE_KEY = `${STORAGE_KEY}:duplicateMergeUndo`;
 const SUBSCRIPTION_STORAGE_KEY = 'familyTreeSubscriptionTier';
 const PLAN_SELECTION_STORAGE_KEY = 'familyTreePlanSelected';
 const ERROR_BATCH_SIZE = 10;

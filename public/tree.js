@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'familyTreeData';
+const STORAGE_KEY = window.familyTreeClientStorage?.getActiveTreeKey() || 'familyTreeData';
 const review = document.getElementById('treeReview');
 
 function getTreeData() {

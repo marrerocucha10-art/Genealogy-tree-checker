@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'familyTreeData';
+const STORAGE_KEY = window.familyTreeClientStorage?.getActiveTreeKey() || 'familyTreeData';
 const workspace = document.getElementById('ancestorDiscovery');
 
 function getTreeData() {

@@ -142,6 +142,64 @@ select:focus {
   padding: 20px;
 }
 
+.client-workspace,
+.client-access-gate {
+  background: #ffffff;
+  border: 1px solid #c7d2fe;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  padding: 20px;
+}
+
+.client-workspace h2,
+.client-access-gate h2,
+.client-card h3 {
+  color: #3730a3;
+}
+
+.client-access-gate p {
+  color: #4b5563;
+  margin: 10px 0 18px;
+}
+
+.client-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.client-card {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  display: flex;
+  justify-content: space-between;
+  padding: 14px;
+}
+
+.client-card.active-client {
+  border-color: #7c3aed;
+}
+
+.client-card p {
+  color: #4b5563;
+  margin-top: 4px;
+}
+
+.client-card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+@media (max-width: 600px) {
+  .client-card {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+}
+
 .tree-review-summary h2,
 .tree-review-list h2,
 .tree-review-family h3 {

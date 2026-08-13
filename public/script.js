@@ -1,10 +1,10 @@
-const STORAGE_KEY = 'familyTreeData';
+const STORAGE_KEY = window.familyTreeClientStorage?.getActiveTreeKey() || 'familyTreeData';
 const LAYOUT_STORAGE_KEY = 'familyTreeLayout';
 const SUBSCRIPTION_STORAGE_KEY = 'familyTreeSubscriptionTier';
 const BILLING_INTERVAL_STORAGE_KEY = 'familyTreeBillingInterval';
 const STRIPE_CUSTOMER_STORAGE_KEY = 'familyTreeStripeCustomerId';
 const PLAN_SELECTION_STORAGE_KEY = 'familyTreePlanSelected';
-const ERROR_PROGRESS_STORAGE_KEY = 'familyTreeErrorProgress';
+const ERROR_PROGRESS_STORAGE_KEY = `${STORAGE_KEY}:errorProgress`;
 const TREE_THEME_STORAGE_KEY = 'familyTreePresentationTheme';
 const POSTER_LAYOUT_STORAGE_KEY = 'familyTreePosterLayout';
 const POSTER_BACKGROUND_STORAGE_KEY = 'familyTreePosterBackground';

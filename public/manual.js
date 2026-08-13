@@ -1,5 +1,5 @@
-const STORAGE_KEY = 'familyTreeData';
-const ERROR_PROGRESS_STORAGE_KEY = 'familyTreeErrorProgress';
+const STORAGE_KEY = window.familyTreeClientStorage?.getActiveTreeKey() || 'familyTreeData';
+const ERROR_PROGRESS_STORAGE_KEY = `${STORAGE_KEY}:errorProgress`;
 const form = document.getElementById('familyForm');
 const peopleList = document.getElementById('peopleList');
 const status = document.getElementById('manualStatus');
