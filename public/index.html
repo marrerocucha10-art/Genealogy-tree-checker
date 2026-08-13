@@ -18,21 +18,20 @@
         <h2>Application Options</h2>
         <div class="option-grid">
           <a href="/store#subscriptions" class="option-button">Choose Subscription</a>
-          <a href="/store" class="option-button featured-option" target="_blank" rel="noopener">Access Store Products</a>
-          <a href="#gedcomForm" class="option-button">Parse Your GED</a>
           <a href="manual.html" class="option-button">Build a Family Tree</a>
           <a href="ancestor.html" class="option-button">Ancestor Discovery</a>
+          <a href="/store" class="option-button featured-option" target="_blank" rel="noopener">Access Store Products</a>
         </div>
       </section>
 
-      <section class="form-section">
-        <h2>Continue with Parse Your GED</h2>
+      <section id="uploadSection" class="form-section" hidden>
+        <h2>Upload Your Family File</h2>
+        <p class="help-text">Your plan is ready. Select your GEDCOM file and we will read it automatically.</p>
         <form id="gedcomForm">
           <div class="form-group">
-            <label for="gedcomFile">GEDCOM file:</label>
+            <label for="gedcomFile">Choose your GEDCOM file</label>
             <input type="file" id="gedcomFile" accept=".ged,.gedcom,.ged.txt,.txt,.zip,.gedzip,application/x-gedcom,application/zip,text/plain,application/octet-stream" required>
           </div>
-          <button type="submit" class="btn-add">Parse Your GED</button>
         </form>
         <p class="help-text">Supports .ged, .gedcom, text GEDCOM downloads, and .zip files containing a GEDCOM file.</p>
         <p id="uploadStatus" class="status-message" aria-live="polite"></p>

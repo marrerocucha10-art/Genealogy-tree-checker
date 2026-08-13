@@ -27,6 +27,7 @@ let billingInterval = localStorage.getItem(BILLING_INTERVAL_STORAGE_KEY) || 'mon
 let stripeConfig = null;
 let storeUrl = '/store';
 let stripeCustomerId = localStorage.getItem(STRIPE_CUSTOMER_STORAGE_KEY) || '';
+let isImportingGedcom = false;
 
 const SUBSCRIPTION_TIERS = {
   free: {
@@ -74,6 +75,7 @@ const ACTION_REQUIREMENTS = {
 
 const gedcomForm = document.getElementById('gedcomForm');
 const gedcomFileInput = document.getElementById('gedcomFile');
+const uploadSection = document.getElementById('uploadSection');
 const uploadStatus = document.getElementById('uploadStatus');
 const reviewInitialTreeButton = document.getElementById('reviewInitialTree');
 const familyForm = document.getElementById('familyForm');
@@ -256,9 +258,8 @@ familyTreeDiv.addEventListener('change', (event) => {
   renderFamilyTree();
 });
 
-gedcomForm.addEventListener('submit', async (event) => {
-  event.preventDefault();
-
+async function importSelectedGedcom() {
+  if (isImportingGedcom) return;
   if (!localStorage.getItem(PLAN_SELECTION_STORAGE_KEY)) {
     window.location.href = '/store#subscriptions';
     return;
@@ -267,10 +268,12 @@ gedcomForm.addEventListener('submit', async (event) => {
   const file = gedcomFileInput.files[0];
   if (!file) return;
 
+  isImportingGedcom = true;
+  gedcomFileInput.disabled = true;
   const previousTreeData = treeData;
   treeData = createEmptyTreeData();
   renderFamilyTree();
-  setStatus('Reading GEDCOM file...', 'info');
+  setStatus('Reading your family file...', 'info');
 
   try {
     const gedcom = await readGedcomFile(file);
@@ -281,9 +284,11 @@ gedcomForm.addEventListener('submit', async (event) => {
     const backupText = backupSaved
       ? ' A local GEDCOM backup is ready to download or restore from this browser.'
       : ' The GEDCOM backup could not be saved in this browser.';
-    setStatus(`${formatGedcomImportStatus(result)}${storageText}${backupText}`, 'success');
+    setStatus(`Your family file is ready. ${formatGedcomImportStatus(result)}${storageText}${backupText}`, 'success');
     gedcomForm.reset();
-    window.location.href = 'tree.html';
+    window.setTimeout(() => {
+      window.location.href = 'tree.html';
+    }, 500);
   } catch (error) {
     treeData = previousTreeData;
     renderFamilyTree();
@@ -291,7 +296,19 @@ gedcomForm.addEventListener('submit', async (event) => {
       ? ' Previous tree restored; no new GEDCOM was imported.'
       : ' No GEDCOM was imported.';
     setStatus(`${formatGedcomLoadError(error)}${restoreText}`, 'error');
+  } finally {
+    isImportingGedcom = false;
+    gedcomFileInput.disabled = false;
   }
+}
+
+gedcomForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  importSelectedGedcom();
+});
+
+gedcomFileInput.addEventListener('change', () => {
+  if (gedcomFileInput.files[0]) importSelectedGedcom();
 });
 
 function parseGedcomText(gedcom) {
@@ -322,7 +339,7 @@ function formatGedcomImportStatus(result) {
   const cleanupText = result.cleanup?.repeatedRecordsRemoved
     ? ` Removed ${result.cleanup.repeatedRecordsRemoved} repeated GEDCOM record(s) before parsing.`
     : '';
-  return `Imported ${people} people, ${families} families, and ${relationships} relationships.${warningText}${cleanupText}`;
+  return `We found ${people} people, ${families} families, and ${relationships} relationships.${warningText}${cleanupText}`;
 }
 
 function getGedcomBackupFileName(fileName = 'family-tree.ged') {
@@ -2416,6 +2433,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadSubscriptionStatusFromCustomer();
   renderFamilyTree();
   if (new URLSearchParams(window.location.search).get('start') === 'upload') {
-    document.getElementById('gedcomForm')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    uploadSection.hidden = false;
+    uploadSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 });
