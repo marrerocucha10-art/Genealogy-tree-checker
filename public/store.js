@@ -63,7 +63,7 @@ function renderPlans() {
         <strong>Genealogy Pro Package included</strong>
         <p>Digital products, print products, research services, and research journals are included with this plan.</p>
         <div class="plan-package-actions">
-          <button type="button" data-open-collection="digitalProducts">Digital Products</button>
+          <button type="button" data-open-collection="digitalProducts">Included Digital Perks</button>
           <button type="button" data-open-collection="printProducts">Print Products</button>
           <button type="button" data-open-collection="researchServices">Research Services</button>
           <button type="button" data-open-collection="researchJournals">Research Journals</button>
@@ -149,6 +149,12 @@ document.querySelector('[data-toggle-coming-soon]')?.addEventListener('click', (
   event.currentTarget.textContent = isOpen
     ? 'Hide Personalized Keepsakes'
     : 'Coming Soon: Explore Personalized Keepsakes';
+});
+
+document.querySelector('[data-open-additional-digital]')?.addEventListener('click', () => {
+  const products = document.getElementById('additionalDigitalProducts');
+  products.open = true;
+  products.scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 
 billingButtons.forEach((button) => button.addEventListener('click', () => {

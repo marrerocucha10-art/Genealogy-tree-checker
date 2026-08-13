@@ -1611,6 +1611,27 @@ input[type="file"] {
   margin-bottom: 34px;
 }
 
+.additional-digital-section {
+  background: #eff6ff;
+  border: 1px solid #93c5fd;
+  border-radius: 12px;
+  margin-bottom: 34px;
+  padding: 20px;
+}
+
+.additional-digital-section h2 {
+  color: #1e3a8a;
+}
+
+.additional-digital-section > p {
+  color: #1e40af;
+  margin: 8px 0 14px;
+}
+
+.additional-digital-section .store-collection {
+  margin-top: 14px;
+}
+
 .store-collection {
   background: #ffffff;
   border: 1px solid #c7d2fe;
