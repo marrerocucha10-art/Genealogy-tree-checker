@@ -1699,6 +1699,79 @@ input[type="file"] {
   margin-top: 14px;
 }
 
+.product-preview-link {
+  display: inline-block;
+  margin-left: 8px;
+  text-decoration: none;
+}
+
+.digital-access-section {
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: 12px;
+  margin-bottom: 34px;
+  padding: 20px;
+}
+
+.digital-access-section h2 {
+  color: #166534;
+}
+
+.digital-access-section > p {
+  color: #166534;
+  margin: 8px 0 14px;
+}
+
+.digital-preview-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.digital-preview-card {
+  background: #f5f3ff;
+  border: 1px solid #c4b5fd;
+  border-radius: 12px;
+  min-height: 190px;
+  padding: 20px;
+}
+
+.digital-preview-card.store-only {
+  background: #eff6ff;
+  border-color: #93c5fd;
+}
+
+.digital-preview-card span {
+  color: #5b21b6;
+  font-size: 0.82em;
+  font-weight: 800;
+}
+
+.digital-preview-card.store-only span {
+  color: #1d4ed8;
+}
+
+.digital-preview-card h2 {
+  color: #312e81;
+  font-size: 1.25em;
+  margin: 12px 0 8px;
+}
+
+.digital-preview-card p {
+  color: #4b5563;
+  line-height: 1.5;
+}
+
+@media (max-width: 600px) {
+  .digital-preview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .product-preview-link {
+    margin: 10px 0 0;
+  }
+}
+
 .memory-keepsakes-promo {
   background: #22193f;
   border: 2px solid #c4b5fd;
