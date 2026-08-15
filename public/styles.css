@@ -222,6 +222,28 @@ select:focus {
   margin-top: 6px;
 }
 
+.primary-person-matches {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 12px;
+}
+
+.primary-person-match {
+  background: #f8fafc;
+  border: 1px solid #c7d2fe;
+  border-radius: 8px;
+  color: #3730a3;
+  cursor: pointer;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.primary-person-match:hover,
+.primary-person-match:focus {
+  background: #eef2ff;
+  border-color: #6366f1;
+}
+
 .workflow-overview h3 {
   color: #3730a3;
   margin-bottom: 8px;

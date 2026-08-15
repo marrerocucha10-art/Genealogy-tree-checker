@@ -117,10 +117,8 @@ function renderGenerations(treeData, peopleById, families) {
       <button class="btn-secondary" type="button" data-open-primary-person-picker>Choose starting person</button>
       <div id="primaryPersonPicker" hidden>
         <label for="primaryPerson">Start this tree with</label>
-        <input id="primaryPerson" type="search" list="primaryPeople" value="${escapeHtml(primaryPerson?.name || primaryPerson?.id || '')}" placeholder="Type a person's name">
-        <datalist id="primaryPeople">
-          ${treeData.people.map((person) => `<option value="${escapeHtml(person.name || person.id)}" label="${escapeHtml(person.id)}"></option>`).join('')}
-        </datalist>
+        <input id="primaryPerson" type="search" value="${escapeHtml(primaryPerson?.name || primaryPerson?.id || '')}" placeholder="Type a person's name" autocomplete="off">
+        <div id="primaryPersonMatches" class="primary-person-matches" aria-live="polite"></div>
         <button class="btn-add" type="button" data-confirm-primary-person>Start tree with this person</button>
       </div>
       <p>Showing generations 1-${displayedThrough} of ${maximumGeneration}, starting with ${escapeHtml(primaryPerson?.name || 'the main person')}.</p>
@@ -163,6 +161,40 @@ function renderTreeReview(treeData = loadedTreeData || getTreeData()) {
   `;
 }
 
+function renderPrimaryPersonMatches(query = '') {
+  const matches = document.getElementById('primaryPersonMatches');
+  if (!matches || !loadedTreeData) return;
+
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  if (!normalizedQuery) {
+    matches.innerHTML = '<p class="muted">Type a name to see matching people.</p>';
+    return;
+  }
+
+  const people = loadedTreeData.people
+    .filter((person) => (
+      String(person.name || person.id).toLocaleLowerCase().includes(normalizedQuery) ||
+      String(person.id).toLocaleLowerCase().includes(normalizedQuery)
+    ))
+    .slice(0, 10);
+
+  matches.innerHTML = people.length
+    ? people.map((person) => `
+      <button type="button" class="primary-person-match" data-select-primary-person="${escapeHtml(person.id)}">
+        ${escapeHtml(person.name || person.id)}
+      </button>
+    `).join('')
+    : '<p class="muted">No matching people found.</p>';
+}
+
+function setPrimaryPerson(personId) {
+  if (!loadedTreeData) return;
+  loadedTreeData.primaryPersonId = personId;
+  visibleGenerationCount = GENERATIONS_PER_PAGE;
+  saveTreeData(loadedTreeData);
+  renderTreeReview();
+}
+
 review.addEventListener('click', (event) => {
   if (event.target.closest('[data-load-more-generations]')) {
     visibleGenerationCount += GENERATIONS_PER_PAGE;
@@ -173,6 +205,13 @@ review.addEventListener('click', (event) => {
   if (event.target.closest('[data-open-primary-person-picker]')) {
     document.getElementById('primaryPersonPicker').hidden = false;
     document.getElementById('primaryPerson').focus();
+    renderPrimaryPersonMatches();
+    return;
+  }
+
+  const selectedPerson = event.target.closest('[data-select-primary-person]');
+  if (selectedPerson) {
+    setPrimaryPerson(selectedPerson.dataset.selectPrimaryPerson);
     return;
   }
 
@@ -193,11 +232,12 @@ review.addEventListener('click', (event) => {
       alert('No person with that name was found in this family tree.');
       return;
     }
-    loadedTreeData.primaryPersonId = selectedPerson.id;
-    visibleGenerationCount = GENERATIONS_PER_PAGE;
-    saveTreeData(loadedTreeData);
-    renderTreeReview();
+    setPrimaryPerson(selectedPerson.id);
   }
+});
+
+review.addEventListener('input', (event) => {
+  if (event.target.id === 'primaryPerson') renderPrimaryPersonMatches(event.target.value);
 });
 
 const storedTreeData = getTreeData();
