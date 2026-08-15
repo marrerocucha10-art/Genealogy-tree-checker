@@ -3,6 +3,7 @@ const review = document.getElementById('treeReview');
 const GENERATIONS_PER_PAGE = 10;
 let visibleGenerationCount = GENERATIONS_PER_PAGE;
 let loadedTreeData = null;
+let matchingPrimaryPersonIds = [];
 
 function getTreeData() {
   try {
@@ -127,7 +128,7 @@ function renderGenerations(treeData, peopleById, families) {
         <label for="primaryPerson">Start this tree with</label>
         <input id="primaryPerson" type="search" value="${escapeHtml(primaryPerson?.name || primaryPerson?.id || '')}" placeholder="Type a person's name" autocomplete="off">
         <div id="primaryPersonMatches" class="primary-person-matches" aria-live="polite"></div>
-        <button class="btn-add" type="button" data-confirm-primary-person>Start tree with this person</button>
+        <button class="btn-add" type="button" data-confirm-primary-person>Start tree with first matching person</button>
       </div>
       <p>Showing generations 1-${displayedThrough} of ${maximumGeneration}, starting with ${escapeHtml(primaryPerson?.name || 'the main person')}.</p>
       ${sections.join('')}
@@ -175,6 +176,7 @@ function renderPrimaryPersonMatches(query = '') {
 
   const normalizedQuery = normalizePersonSearch(query);
   if (!normalizedQuery) {
+    matchingPrimaryPersonIds = [];
     matches.innerHTML = '<p class="muted">Type a name to see matching people.</p>';
     return;
   }
@@ -185,6 +187,7 @@ function renderPrimaryPersonMatches(query = '') {
       normalizePersonSearch(person.id).includes(normalizedQuery)
     ))
     .slice(0, 10);
+  matchingPrimaryPersonIds = people.map((person) => person.id);
 
   matches.innerHTML = people.length
     ? people.map((person) => `
@@ -224,23 +227,12 @@ review.addEventListener('click', (event) => {
   }
 
   if (event.target.closest('[data-confirm-primary-person]') && loadedTreeData) {
-    const enteredName = normalizePersonSearch(document.getElementById('primaryPerson').value);
-    if (!enteredName) {
-      alert('Type a person’s name to start the family tree.');
+    const selectedPersonId = matchingPrimaryPersonIds[0];
+    if (!selectedPersonId) {
+      alert('Type a name, then choose a matching person below.');
       return;
     }
-    const exactPerson = loadedTreeData.people.find((person) => (
-      normalizePersonSearch(person.name || person.id) === enteredName ||
-      normalizePersonSearch(person.id) === enteredName
-    ));
-    const selectedPerson = exactPerson || loadedTreeData.people.find((person) => (
-      normalizePersonSearch(person.name || person.id).includes(enteredName)
-    ));
-    if (!selectedPerson) {
-      alert('No person with that name was found in this family tree.');
-      return;
-    }
-    setPrimaryPerson(selectedPerson.id);
+    setPrimaryPerson(selectedPersonId);
   }
 });
 
