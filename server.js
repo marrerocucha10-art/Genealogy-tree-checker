@@ -75,6 +75,7 @@ function getBaseUrl(req) {
 
 function getStripeConfig() {
   const hasStripeSecret = Boolean(process.env.STRIPE_SECRET_KEY);
+  const previewTestMode = process.env.VERCEL_ENV === 'preview';
   const tiers = Object.fromEntries(Object.entries(SUBSCRIPTION_TIERS).map(([id, tier]) => ([
     id,
     {
@@ -86,7 +87,10 @@ function getStripeConfig() {
 
   return {
     configured: hasStripeSecret,
-    testSubscriptionsEnabled: process.env.ENABLE_TEST_SUBSCRIPTIONS === 'true',
+    testSubscriptionsEnabled: previewTestMode || (
+      process.env.VERCEL_ENV !== 'production' &&
+      process.env.ENABLE_TEST_SUBSCRIPTIONS === 'true'
+    ),
     portalConfigured: Boolean(process.env.STRIPE_CUSTOMER_PORTAL_RETURN_URL || process.env.PUBLIC_APP_URL),
     tiers,
     storeUrl: process.env.PUBLIC_STORE_URL || '/store',
