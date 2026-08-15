@@ -211,18 +211,20 @@ select:focus {
   margin: 10px 0 18px;
 }
 
-.tree-review-family {
+.tree-review-family,
+.tree-review-person {
   border-top: 1px solid #e5e7eb;
   margin-top: 14px;
   padding-top: 14px;
 }
 
-.tree-review-family p {
+.tree-review-family p,
+.tree-review-person p {
   color: #4b5563;
   margin-top: 6px;
 }
 
-.tree-review-starting-person {
+.selected-tree-person {
   background: #eef2ff;
   border: 1px solid #a5b4fc;
   border-radius: 8px;

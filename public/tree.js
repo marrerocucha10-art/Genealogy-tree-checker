@@ -99,27 +99,31 @@ function buildGenerationData(treeData, peopleById, primaryPerson) {
   return generationByPerson;
 }
 
-function renderFamilyGroup(family, index, peopleById, primaryPersonId) {
-  const parentIds = [family.husbandId, family.wifeId]
-    .filter(Boolean)
-    .sort((first, second) => {
-      if (first === primaryPersonId) return -1;
-      if (second === primaryPersonId) return 1;
-      return 0;
-    });
-  const parents = parentIds
+function getPeopleNames(ids, peopleById) {
+  return ids
     .map((id) => peopleById.get(id))
     .filter(Boolean)
     .map((person) => escapeHtml(person.name || person.id));
-  const children = (family.childrenIds || [])
-    .map((id) => peopleById.get(id))
-    .filter(Boolean)
-    .map((person) => escapeHtml(person.name || person.id));
+}
+
+function renderPersonCard(person, families, peopleById, isStartingPerson = false) {
+  const parentFamilies = families.filter((family) => (family.childrenIds || []).includes(person.id));
+  const spouseFamilies = families.filter((family) => family.husbandId === person.id || family.wifeId === person.id);
+  const parentIds = parentFamilies.flatMap((family) => [family.husbandId, family.wifeId]).filter(Boolean);
+  const spouseIds = spouseFamilies.map((family) => (
+    family.husbandId === person.id ? family.wifeId : family.husbandId
+  )).filter(Boolean);
+  const childIds = spouseFamilies.flatMap((family) => family.childrenIds || []);
+  const parents = getPeopleNames([...new Set(parentIds)], peopleById);
+  const spouses = getPeopleNames([...new Set(spouseIds)], peopleById);
+  const children = getPeopleNames([...new Set(childIds)], peopleById);
 
   return `
-    <article class="tree-review-family">
-      <h4>Family ${index + 1}</h4>
+    <article class="tree-review-person ${isStartingPerson ? 'selected-tree-person' : ''}">
+      <h4>${escapeHtml(person.name || person.id)}</h4>
+      ${isStartingPerson ? '<p><strong>Your starting person</strong></p>' : ''}
       <p><strong>Parents:</strong> ${parents.join(' and ') || 'Not recorded'}</p>
+      <p><strong>Spouse:</strong> ${spouses.join(' and ') || 'Not recorded'}</p>
       <p><strong>Children:</strong> ${children.join(', ') || 'Not recorded'}</p>
     </article>
   `;
@@ -133,26 +137,15 @@ function renderGenerations(treeData, peopleById, families) {
   const sections = [];
 
   for (let generation = 1; generation <= displayedThrough; generation += 1) {
-    const familyRows = families
-      .map((family, index) => ({ family, index }))
-      .filter(({ family }) => (
-        [family.husbandId, family.wifeId].some((id) => generationByPerson.get(id) === generation)
-      ));
     const people = treeData.people.filter((person) => generationByPerson.get(person.id) === generation);
-    const startingPerson = generation === 1 ? primaryPerson : null;
 
     sections.push(`
       <section class="tree-review-generation">
         <h3>Generation ${generation}</h3>
         <p class="muted">${people.length} person${people.length === 1 ? '' : 's'}</p>
-        ${startingPerson ? `
-          <article class="tree-review-starting-person">
-            <strong>Your starting person:</strong> ${escapeHtml(startingPerson.name || startingPerson.id)}
-          </article>
-        ` : ''}
-        ${familyRows.length
-          ? familyRows.map(({ family, index }) => renderFamilyGroup(family, index, peopleById, primaryPerson?.id)).join('')
-          : `<article class="tree-review-family"><p>${people.map((person) => escapeHtml(person.name || person.id)).join(' · ') || 'No connected family group recorded.'}</p></article>`}
+        ${people.length
+          ? people.map((person) => renderPersonCard(person, families, peopleById, person.id === primaryPerson?.id)).join('')
+          : '<p class="muted">No people recorded in this generation.</p>'}
       </section>
     `);
   }
