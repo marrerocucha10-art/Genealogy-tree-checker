@@ -279,6 +279,11 @@ select:focus {
   border-color: #818cf8;
 }
 
+.tree-next-step {
+  margin-top: 22px;
+  text-align: center;
+}
+
 .selected-tree-person {
   background: #eef2ff;
   border: 1px solid #a5b4fc;

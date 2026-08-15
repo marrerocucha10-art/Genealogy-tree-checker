@@ -173,6 +173,9 @@ function renderGenerations(treeData, peopleById, families) {
         ${sections.join('')}
       </div>
       ${loadMore}
+      <div class="tree-next-step">
+        <a class="btn-add" href="errors.html">Continue to Fix Errors</a>
+      </div>
     </section>
   `;
 }
@@ -204,7 +207,6 @@ function renderTreeReview(treeData = loadedTreeData || getTreeData()) {
       </div>
       <h2>${issueCount} error${issueCount === 1 ? '' : 's'} to fix</h2>
       <p>Fixing these items helps make your family tree more complete and reliable.</p>
-      <a class="btn-add" href="errors.html">Fix errors in batches of 10</a>
     </section>
     ${renderGenerations(treeData, peopleById, families)}
   `;
