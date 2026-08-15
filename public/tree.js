@@ -1,6 +1,6 @@
 const STORAGE_KEY = window.familyTreeClientStorage?.getActiveTreeKey() || 'familyTreeData';
 const review = document.getElementById('treeReview');
-const GENERATIONS_PER_PAGE = 4;
+const GENERATIONS_PER_PAGE = 10;
 let visibleGenerationCount = GENERATIONS_PER_PAGE;
 
 function getTreeData() {
