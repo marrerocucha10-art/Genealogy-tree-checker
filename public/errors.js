@@ -6,8 +6,10 @@ const PLAN_SELECTION_STORAGE_KEY = 'familyTreePlanSelected';
 const ERROR_BATCH_SIZE = 10;
 const BASIC_ERROR_FIX_LIMIT = 20;
 const workspace = document.getElementById('errorWorkspace');
+let loadedTreeData = null;
 
 function getTreeData() {
+  if (loadedTreeData) return loadedTreeData;
   try {
     return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
   } catch (error) {
@@ -16,7 +18,13 @@ function getTreeData() {
 }
 
 function saveTreeData(treeData) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(treeData));
+  loadedTreeData = treeData;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(treeData));
+    void window.familyTreeClientStorage?.removeTreeFromDatabase?.(STORAGE_KEY);
+  } catch (error) {
+    void window.familyTreeClientStorage?.saveTreeInDatabase?.(STORAGE_KEY, treeData);
+  }
 }
 
 function saveDuplicateMergeUndo(treeData, progress) {
@@ -572,4 +580,17 @@ workspace.addEventListener('click', (event) => {
   }
 });
 
-renderWorkspace();
+const storedTreeData = getTreeData();
+if (storedTreeData?.people?.length) {
+  renderWorkspace();
+} else if (window.familyTreeClientStorage?.loadTreeFromDatabase) {
+  workspace.innerHTML = '<p class="empty-message">Opening your family tree...</p>';
+  window.familyTreeClientStorage.loadTreeFromDatabase(STORAGE_KEY)
+    .then((treeData) => {
+      loadedTreeData = treeData;
+      renderWorkspace();
+    })
+    .catch(() => renderWorkspace());
+} else {
+  renderWorkspace();
+}

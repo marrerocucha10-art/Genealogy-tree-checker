@@ -29,6 +29,7 @@ let stripeConfig = null;
 let storeUrl = '/store';
 let stripeCustomerId = localStorage.getItem(STRIPE_CUSTOMER_STORAGE_KEY) || '';
 let isImportingGedcom = false;
+let pendingTreeDatabaseSave = Promise.resolve(true);
 
 const SUBSCRIPTION_TIERS = {
   free: {
@@ -280,8 +281,11 @@ async function importSelectedGedcom() {
     const gedcom = await readGedcomFile(file);
     const result = parseGedcomText(gedcom);
     const savedLocally = applyGedcomResult(result);
+    const savedForReview = savedLocally || await pendingTreeDatabaseSave;
     const backupSaved = await saveGedcomBackup(gedcom, getGedcomBackupFileName(file.name));
-    const storageText = savedLocally ? '' : ' This tree is too large for browser storage, so it will stay available only until this tab is refreshed.';
+    const storageText = savedForReview
+      ? ''
+      : ' This tree could not be saved in this browser, so it will stay available only until this tab is refreshed.';
     const backupText = backupSaved
       ? ' A local GEDCOM backup is ready to download or restore from this browser.'
       : ' The GEDCOM backup could not be saved in this browser.';
@@ -424,7 +428,10 @@ async function restoreSavedGedcomBackup() {
     if (!backup) throw new Error('No local GEDCOM backup is available in this browser yet.');
     const result = parseGedcomText(backup.gedcom);
     const savedLocally = applyGedcomResult(result);
-    const storageText = savedLocally ? '' : ' This tree is too large for browser storage, so it will stay available only until this tab is refreshed.';
+    const savedForReview = savedLocally || await pendingTreeDatabaseSave;
+    const storageText = savedForReview
+      ? ''
+      : ' This tree could not be saved in this browser, so it will stay available only until this tab is refreshed.';
     setStatus(`Restored ${backup.fileName}. ${formatGedcomImportStatus(result)}${storageText}`, 'success');
   } catch (error) {
     treeData = previousTreeData;
@@ -1250,9 +1257,16 @@ function loadTreeData() {
 function saveTreeData() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(treeData));
+    void window.familyTreeClientStorage?.removeTreeFromDatabase?.(STORAGE_KEY);
+    pendingTreeDatabaseSave = Promise.resolve(true);
     return true;
   } catch (error) {
-    console.warn('Tree is too large to save in browser storage:', error);
+    pendingTreeDatabaseSave = window.familyTreeClientStorage?.saveTreeInDatabase(STORAGE_KEY, treeData)
+      .then(() => true)
+      .catch((databaseError) => {
+        console.warn('Tree is too large to save in browser storage:', error, databaseError);
+        return false;
+      }) || Promise.resolve(false);
     return false;
   }
 }

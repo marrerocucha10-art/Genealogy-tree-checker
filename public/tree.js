@@ -2,6 +2,7 @@ const STORAGE_KEY = window.familyTreeClientStorage?.getActiveTreeKey() || 'famil
 const review = document.getElementById('treeReview');
 const GENERATIONS_PER_PAGE = 10;
 let visibleGenerationCount = GENERATIONS_PER_PAGE;
+let loadedTreeData = null;
 
 function getTreeData() {
   try {
@@ -118,8 +119,8 @@ function renderGenerations(treeData, peopleById, families) {
   `;
 }
 
-function renderTreeReview() {
-  const treeData = getTreeData();
+function renderTreeReview(treeData = loadedTreeData || getTreeData()) {
+  loadedTreeData = treeData;
   if (!treeData?.people?.length) {
     review.innerHTML = `
       <section class="tree-review-summary">
@@ -157,4 +158,14 @@ review.addEventListener('click', (event) => {
   renderTreeReview();
 });
 
-renderTreeReview();
+const storedTreeData = getTreeData();
+if (storedTreeData?.people?.length) {
+  renderTreeReview(storedTreeData);
+} else if (window.familyTreeClientStorage?.loadTreeFromDatabase) {
+  review.innerHTML = '<p class="empty-message">Opening your family tree...</p>';
+  window.familyTreeClientStorage.loadTreeFromDatabase(STORAGE_KEY)
+    .then((treeData) => renderTreeReview(treeData))
+    .catch(() => renderTreeReview());
+} else {
+  renderTreeReview();
+}
