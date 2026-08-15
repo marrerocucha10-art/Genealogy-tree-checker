@@ -155,7 +155,7 @@ function renderGenerations(treeData, peopleById, families) {
   }
 
   const loadMore = displayedThrough < maximumGeneration
-    ? `<button class="btn-secondary" type="button" data-load-more-generations>Load next ${Math.min(GENERATIONS_PER_PAGE, maximumGeneration - displayedThrough)} ancestor generations</button>`
+    ? `<button class="btn-secondary" type="button" data-load-more-generations>View ${Math.min(GENERATIONS_PER_PAGE, maximumGeneration - displayedThrough)} more generations</button>`
     : '';
 
   return `
