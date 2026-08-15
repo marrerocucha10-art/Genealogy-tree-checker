@@ -1522,7 +1522,7 @@ function showManualFixes() {
 
 function renderFamilyTree() {
   if (treeData.people.length === 0) {
-    familyTreeDiv.innerHTML = '<p class="empty-message">Parse a GEDCOM file or start a family tree manually.</p>';
+    familyTreeDiv.innerHTML = '<p class="empty-message">Your family-tree overview will appear here after you upload a family file or create a new tree.</p>';
     return;
   }
 
