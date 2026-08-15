@@ -244,6 +244,10 @@ select:focus {
   border-color: #6366f1;
 }
 
+.upload-complete-actions {
+  margin: 14px 0;
+}
+
 .workflow-overview h3 {
   color: #3730a3;
   margin-bottom: 8px;

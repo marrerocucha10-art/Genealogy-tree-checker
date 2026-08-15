@@ -79,6 +79,8 @@ const gedcomForm = document.getElementById('gedcomForm');
 const gedcomFileInput = document.getElementById('gedcomFile');
 const uploadSection = document.getElementById('uploadSection');
 const uploadStatus = document.getElementById('uploadStatus');
+const uploadCompleteActions = document.getElementById('uploadCompleteActions');
+const continueToTreeReviewButton = document.getElementById('continueToTreeReview');
 const reviewInitialTreeButton = document.getElementById('reviewInitialTree');
 const familyForm = document.getElementById('familyForm');
 const nameInput = document.getElementById('name');
@@ -272,6 +274,7 @@ async function importSelectedGedcom() {
 
   isImportingGedcom = true;
   gedcomFileInput.disabled = true;
+  uploadCompleteActions.hidden = true;
   const previousTreeData = treeData;
   treeData = createEmptyTreeData();
   renderFamilyTree();
@@ -291,9 +294,7 @@ async function importSelectedGedcom() {
       : ' The GEDCOM backup could not be saved in this browser.';
     setStatus(`Your family file is ready. ${formatGedcomImportStatus(result)}${storageText}${backupText}`, 'success');
     gedcomForm.reset();
-    window.setTimeout(() => {
-      window.location.href = 'tree.html';
-    }, 500);
+    uploadCompleteActions.hidden = false;
   } catch (error) {
     treeData = previousTreeData;
     renderFamilyTree();
@@ -314,6 +315,10 @@ gedcomForm.addEventListener('submit', (event) => {
 
 gedcomFileInput.addEventListener('change', () => {
   if (gedcomFileInput.files[0]) importSelectedGedcom();
+});
+
+continueToTreeReviewButton?.addEventListener('click', () => {
+  window.location.href = 'tree.html';
 });
 
 function parseGedcomText(gedcom) {
@@ -433,6 +438,7 @@ async function restoreSavedGedcomBackup() {
       ? ''
       : ' This tree could not be saved in this browser, so it will stay available only until this tab is refreshed.';
     setStatus(`Restored ${backup.fileName}. ${formatGedcomImportStatus(result)}${storageText}`, 'success');
+    uploadCompleteActions.hidden = false;
   } catch (error) {
     treeData = previousTreeData;
     renderFamilyTree();
