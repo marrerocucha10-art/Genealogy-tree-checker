@@ -18,7 +18,13 @@ function escapeHtml(value = '') {
 function renderTreeReview() {
   const treeData = getTreeData();
   if (!treeData?.people?.length) {
-    review.innerHTML = '<p class="empty-message">Select a plan and parse a GEDCOM before reviewing a family tree.</p>';
+    review.innerHTML = `
+      <section class="tree-review-summary">
+        <h2>Upload your family file first</h2>
+        <p>Choose a GEDCOM file to create a family tree for review.</p>
+        <a class="btn-add" href="/?start=upload">Upload Your Family File</a>
+      </section>
+    `;
     return;
   }
   const errors = treeData.validationReport?.errors || [];
