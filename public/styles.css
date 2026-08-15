@@ -228,12 +228,11 @@ select:focus {
   display: grid;
   gap: 30px;
   margin-top: 24px;
-  overflow-x: auto;
   padding: 8px 4px;
 }
 
 .ancestry-generation {
-  min-width: max-content;
+  min-width: 0;
   position: relative;
 }
 
@@ -257,9 +256,9 @@ select:focus {
 }
 
 .ancestry-people {
-  display: flex;
+  display: grid;
   gap: 14px;
-  justify-content: center;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   margin-top: 12px;
 }
 
