@@ -27,8 +27,8 @@ function saveTreeData(treeData) {
   }
 }
 
-function saveDuplicateMergeUndo(treeData, progress) {
-  localStorage.setItem(DUPLICATE_MERGE_UNDO_STORAGE_KEY, JSON.stringify({ treeData, progress }));
+function saveDuplicateMergeUndo(treeData, progress, mergeSummary) {
+  localStorage.setItem(DUPLICATE_MERGE_UNDO_STORAGE_KEY, JSON.stringify({ treeData, progress, mergeSummary }));
 }
 
 function getDuplicateMergeUndo() {
@@ -80,6 +80,10 @@ function canUseUnlimitedErrorFixes() {
   return ['personal', 'pro', 'business'].includes(getCurrentTier());
 }
 
+function canUseSafeAutomaticFixes() {
+  return getCurrentTier() !== 'free';
+}
+
 function getCompletedNonDuplicateIssueCount(errors, progress) {
   const completedNonDuplicateIds = new Set(progress.completedNonDuplicateIssueIds);
   const completed = new Set(progress.completedIssueIds);
@@ -128,7 +132,7 @@ function renderProgressEncouragement(errors, progress) {
     ? ' Family Builder gives you room to keep reviewing and organizing without a fix limit.'
     : tier === 'free'
       ? ' Duplicate person merges remain free, and Family Builder is ready whenever you want unlimited manual fixes.'
-      : ' Your plan includes the advanced tools needed to keep refining this tree.';
+      : ' Your plan includes safe automatic fixes alongside the manual review tools.';
 
   return `
     <aside class="progress-encouragement" aria-live="polite">
@@ -144,6 +148,21 @@ function renderUpdatedTreeOffer() {
       <h2>Your updated tree is ready to celebrate</h2>
       <p>Personalize a fresh family-tree edition, print it, or explore posters and keepsakes made from the progress you just completed.</p>
       <a class="btn-add" href="index.html#treePresentation">Personalize and print your updated tree</a>
+    </section>
+  `;
+}
+
+function renderDuplicateMergeReview() {
+  const undoState = getDuplicateMergeUndo();
+  if (!undoState?.mergeSummary) return '';
+
+  return `
+    <section class="duplicate-merge-review">
+      <h2>Review duplicate merge</h2>
+      <p><strong>${escapeHtml(undoState.mergeSummary.survivorName)}</strong> now includes ${escapeHtml(undoState.mergeSummary.duplicateNames.join(', '))}.</p>
+      <p>Confirm this merge to continue fixing errors, or return to your previous tree.</p>
+      <button id="approveDuplicateMerge" type="button" class="btn-add">Approve Merge and Continue</button>
+      <button id="undoDuplicateMerge" type="button" class="btn-secondary">Return to Previous Tree</button>
     </section>
   `;
 }
@@ -364,8 +383,12 @@ function renderWorkspace() {
     ...(treeData?.validationReport?.warnings || []).filter((issue) => issue.autoFix?.type === 'mergeDuplicatePeople'),
   ];
   const progress = getProgress();
-  const canUndoDuplicateMerge = Boolean(getDuplicateMergeUndo());
-  const undoButton = canUndoDuplicateMerge ? '<button id="undoDuplicateMerge" type="button" class="btn-secondary">Undo Last Duplicate Merge</button>' : '';
+  const duplicateMergeUndo = getDuplicateMergeUndo();
+  const canUndoDuplicateMerge = Boolean(duplicateMergeUndo);
+  const undoButton = canUndoDuplicateMerge && !duplicateMergeUndo.mergeSummary
+    ? '<button id="undoDuplicateMerge" type="button" class="btn-secondary">Return to Previous Tree</button>'
+    : '';
+  const duplicateMergeReview = renderDuplicateMergeReview();
   const assistanceOptions = renderBasicPlanOptions(errors, progress);
   const encouragement = renderProgressEncouragement(errors, progress);
 
@@ -380,7 +403,7 @@ function renderWorkspace() {
   }
 
   if (!errors.length) {
-    workspace.innerHTML = `${encouragement}<p class="empty-message">No validation errors are currently available. Return to the family tree to review warnings and notes.</p><button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Errors Chart</button>${renderUpdatedTreeOffer()}${undoButton}${assistanceOptions}`;
+    workspace.innerHTML = `${duplicateMergeReview}${encouragement}<p class="empty-message">No validation errors are currently available. Return to the family tree to review warnings and notes.</p><button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Errors Chart</button>${renderUpdatedTreeOffer()}${undoButton}${assistanceOptions}`;
     return;
   }
 
@@ -395,6 +418,7 @@ function renderWorkspace() {
 
   if (activeDone && remainingGroups) {
     workspace.innerHTML = `
+      ${duplicateMergeReview}
       <section class="batch-complete">
         <h2>Batch complete</h2>
         <p>Great job - you completed this group. ${remainingGroups} person${remainingGroups === 1 ? '' : 's'} or record${remainingGroups === 1 ? '' : 's'} remain.</p>
@@ -409,7 +433,7 @@ function renderWorkspace() {
   }
 
   if (activeDone) {
-    workspace.innerHTML = `<section class="batch-complete"><h2>All errors completed</h2><p>You completed every issue in this workspace. Take a moment to print your fixed-errors chart and celebrate the progress.</p><button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Errors Chart</button>${undoButton}</section>${renderUpdatedTreeOffer()}${encouragement}${assistanceOptions}`;
+    workspace.innerHTML = `${duplicateMergeReview}<section class="batch-complete"><h2>All errors completed</h2><p>You completed every issue in this workspace. Take a moment to print your fixed-errors chart and celebrate the progress.</p><button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Errors Chart</button>${undoButton}</section>${renderUpdatedTreeOffer()}${encouragement}${assistanceOptions}`;
     return;
   }
 
@@ -420,9 +444,10 @@ function renderWorkspace() {
         <span>${activeGroups.length} of ${ERROR_BATCH_SIZE} selected</span>
       </div>
       <p class="batch-help">Each person includes all of their unresolved errors. Mark an error solved only after correcting it in the source GEDCOM or completing its recommended fix. The next batch stays locked until this batch is complete.</p>
+      ${duplicateMergeReview}
       ${encouragement}
       <div class="report-actions">
-        <button id="applySafeBatchFixes" type="button" class="btn-secondary">Apply safe automatic fixes</button>
+        <button id="applySafeBatchFixes" type="button" class="btn-secondary" ${canUseSafeAutomaticFixes() ? '' : 'disabled'}>${canUseSafeAutomaticFixes() ? 'Apply safe automatic fixes' : 'Safe automatic fixes available with a paid plan'}</button>
         <button id="reviewManualBatchFixes" type="button" class="btn-secondary">Review and fix manually</button>
       </div>
       <button id="printProgressChart" type="button" class="btn-secondary">Print Progress Chart</button>
@@ -443,7 +468,7 @@ function renderWorkspace() {
                     <li>
                       <strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(issue.message)}
                       ${issue.suggestion ? `<p class="fix-suggestion">${escapeHtml(issue.suggestion)}</p>` : ''}
-                      ${isDuplicateIssue(issue) ? `<button type="button" class="btn-secondary" data-merge-duplicates="${encodeURIComponent(JSON.stringify(issue.autoFix))}">Approve &amp; Merge Duplicate People</button>` : ''}
+                      ${isDuplicateIssue(issue) ? `<button type="button" class="btn-secondary" data-merge-duplicates="${encodeURIComponent(JSON.stringify(issue.autoFix))}">Merge duplicate people for review</button>` : ''}
                       <button type="button" class="btn-secondary" data-resolve-issue="${encodeURIComponent(issueId)}" data-duplicate-issue="${isDuplicateIssue(issue)}" ${isCompleted || basicLimitReached ? 'disabled' : ''}>${isCompleted ? 'Solved' : basicLimitReached ? 'Upgrade to fix more' : 'Mark solved'}</button>
                     </li>
                   `;
@@ -459,8 +484,8 @@ function renderWorkspace() {
 
 workspace.addEventListener('click', (event) => {
   if (event.target.closest('#applySafeBatchFixes')) {
-    if (!['pro', 'business'].includes(getCurrentTier())) {
-      alert('Safe automatic fixes are included with Pro / Researcher. Review and fix this batch manually, or upgrade in the Store.');
+    if (!canUseSafeAutomaticFixes()) {
+      alert('Safe automatic fixes are available with every paid plan. Review and fix this batch manually, or choose a paid plan in the Store.');
       return;
     }
     const treeData = getTreeData();
@@ -480,13 +505,18 @@ workspace.addEventListener('click', (event) => {
     return;
   }
 
+  if (event.target.closest('#approveDuplicateMerge')) {
+    localStorage.removeItem(DUPLICATE_MERGE_UNDO_STORAGE_KEY);
+    renderWorkspace();
+    return;
+  }
+
   if (event.target.closest('#undoDuplicateMerge')) {
     const undoState = getDuplicateMergeUndo();
     if (!undoState?.treeData || !undoState?.progress) {
       alert('There is no duplicate merge available to undo.');
       return;
     }
-
     if (!confirm('Undo the last duplicate merge and restore the previous family tree?')) {
       return;
     }
@@ -511,13 +541,16 @@ workspace.addEventListener('click', (event) => {
     }
 
     const names = [survivor, ...duplicates].map((person) => `${person.name} (${person.id})`).join(', ');
-    if (!confirm(`Merge these records into ${survivor.name} (${survivor.id})?\n\n${names}\n\nThis updates family references and removes the duplicate records.`)) {
+    if (!confirm(`Merge these records into ${survivor.name} (${survivor.id})?\n\n${names}\n\nYou will be able to review this merge before continuing.`)) {
       return;
     }
 
     try {
       const progress = getProgress();
-      saveDuplicateMergeUndo(JSON.parse(JSON.stringify(treeData)), progress);
+      saveDuplicateMergeUndo(JSON.parse(JSON.stringify(treeData)), progress, {
+        survivorName: survivor.name || survivor.id,
+        duplicateNames: duplicates.map((person) => person.name || person.id),
+      });
       mergeDuplicatePeople(treeData, fix);
       removeStaleIssuesAfterDuplicateMerge(treeData.validationReport, fix.duplicateIds);
       const mergedIssueId = getIssueId({
