@@ -114,10 +114,14 @@ function renderGenerations(treeData, peopleById, families) {
   return `
     <section class="tree-review-list">
       <h2>Family tree</h2>
-      <label for="primaryPerson">Start this tree with</label>
-      <select id="primaryPerson" data-primary-person>
-        ${treeData.people.map((person) => `<option value="${escapeHtml(person.id)}" ${person.id === primaryPerson?.id ? 'selected' : ''}>${escapeHtml(person.name || person.id)}</option>`).join('')}
-      </select>
+      <button class="btn-secondary" type="button" data-open-primary-person-picker>Choose starting person</button>
+      <div id="primaryPersonPicker" hidden>
+        <label for="primaryPerson">Start this tree with</label>
+        <select id="primaryPerson" data-primary-person>
+          ${treeData.people.map((person) => `<option value="${escapeHtml(person.id)}" ${person.id === primaryPerson?.id ? 'selected' : ''}>${escapeHtml(person.name || person.id)}</option>`).join('')}
+        </select>
+        <button class="btn-add" type="button" data-confirm-primary-person>Start tree with this person</button>
+      </div>
       <p>Showing generations 1-${displayedThrough} of ${maximumGeneration}, starting with ${escapeHtml(primaryPerson?.name || 'the main person')}.</p>
       ${sections.join('')}
       ${loadMore}
@@ -159,18 +163,24 @@ function renderTreeReview(treeData = loadedTreeData || getTreeData()) {
 }
 
 review.addEventListener('click', (event) => {
-  if (!event.target.closest('[data-load-more-generations]')) return;
-  visibleGenerationCount += GENERATIONS_PER_PAGE;
-  renderTreeReview();
-});
+  if (event.target.closest('[data-load-more-generations]')) {
+    visibleGenerationCount += GENERATIONS_PER_PAGE;
+    renderTreeReview();
+    return;
+  }
 
-review.addEventListener('change', (event) => {
-  const primaryPerson = event.target.closest('[data-primary-person]');
-  if (!primaryPerson || !loadedTreeData) return;
-  loadedTreeData.primaryPersonId = primaryPerson.value;
-  visibleGenerationCount = GENERATIONS_PER_PAGE;
-  saveTreeData(loadedTreeData);
-  renderTreeReview();
+  if (event.target.closest('[data-open-primary-person-picker]')) {
+    document.getElementById('primaryPersonPicker').hidden = false;
+    document.getElementById('primaryPerson').focus();
+    return;
+  }
+
+  if (event.target.closest('[data-confirm-primary-person]') && loadedTreeData) {
+    loadedTreeData.primaryPersonId = document.getElementById('primaryPerson').value;
+    visibleGenerationCount = GENERATIONS_PER_PAGE;
+    saveTreeData(loadedTreeData);
+    renderTreeReview();
+  }
 });
 
 const storedTreeData = getTreeData();
