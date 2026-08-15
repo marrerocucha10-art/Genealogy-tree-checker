@@ -1,5 +1,7 @@
 const STORAGE_KEY = window.familyTreeClientStorage?.getActiveTreeKey() || 'familyTreeData';
 const review = document.getElementById('treeReview');
+const GENERATIONS_PER_PAGE = 4;
+let visibleGenerationCount = GENERATIONS_PER_PAGE;
 
 function getTreeData() {
   try {
@@ -13,6 +15,107 @@ function escapeHtml(value = '') {
   return String(value).replace(/[&<>"']/g, (character) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;',
   }[character]));
+}
+
+function buildGenerationData(treeData, peopleById) {
+  const connectedIds = new Set();
+  const parentToChildren = new Map();
+  const childToParents = new Map();
+
+  for (const family of treeData.families || []) {
+    const parentIds = [family.husbandId, family.wifeId].filter((id) => id && peopleById.has(id));
+    const childIds = (family.childrenIds || []).filter((id) => id && peopleById.has(id));
+    [...parentIds, ...childIds].forEach((id) => connectedIds.add(id));
+
+    for (const parentId of parentIds) {
+      if (!parentToChildren.has(parentId)) parentToChildren.set(parentId, new Set());
+      childIds.forEach((childId) => parentToChildren.get(parentId).add(childId));
+    }
+
+    for (const childId of childIds) {
+      if (!childToParents.has(childId)) childToParents.set(childId, new Set());
+      parentIds.forEach((parentId) => childToParents.get(childId).add(parentId));
+    }
+  }
+
+  const generationByPerson = new Map();
+  const rootIds = [...connectedIds].filter((id) => !childToParents.has(id));
+  const queue = (rootIds.length ? rootIds : [...connectedIds]).map((id) => ({ id, generation: 1 }));
+
+  while (queue.length) {
+    const { id, generation } = queue.shift();
+    const knownGeneration = generationByPerson.get(id);
+    if (knownGeneration && knownGeneration <= generation) continue;
+
+    generationByPerson.set(id, generation);
+    for (const childId of parentToChildren.get(id) || []) {
+      queue.push({ id: childId, generation: generation + 1 });
+    }
+  }
+
+  for (const person of treeData.people) {
+    if (!generationByPerson.has(person.id)) generationByPerson.set(person.id, 1);
+  }
+
+  return generationByPerson;
+}
+
+function renderFamilyGroup(family, index, generation, peopleById) {
+  const parents = [family.husbandId, family.wifeId]
+    .map((id) => peopleById.get(id))
+    .filter(Boolean)
+    .map((person) => escapeHtml(person.name || person.id));
+  const children = (family.childrenIds || [])
+    .map((id) => peopleById.get(id))
+    .filter(Boolean)
+    .map((person) => escapeHtml(person.name || person.id));
+
+  return `
+    <article class="tree-review-family">
+      <h4>Family ${index + 1}</h4>
+      <p><strong>Parents:</strong> ${parents.join(' and ') || 'Not recorded'}</p>
+      <p><strong>Children:</strong> ${children.join(', ') || 'Not recorded'}</p>
+    </article>
+  `;
+}
+
+function renderGenerations(treeData, peopleById, families) {
+  const generationByPerson = buildGenerationData(treeData, peopleById);
+  const maximumGeneration = Math.max(...generationByPerson.values(), 1);
+  const displayedThrough = Math.min(visibleGenerationCount, maximumGeneration);
+  const sections = [];
+
+  for (let generation = 1; generation <= displayedThrough; generation += 1) {
+    const familyRows = families
+      .map((family, index) => ({ family, index }))
+      .filter(({ family }) => (
+        [family.husbandId, family.wifeId].some((id) => generationByPerson.get(id) === generation)
+      ));
+    const people = treeData.people.filter((person) => generationByPerson.get(person.id) === generation);
+
+    sections.push(`
+      <section class="tree-review-generation">
+        <h3>Generation ${generation}</h3>
+        <p class="muted">${people.length} person${people.length === 1 ? '' : 's'}</p>
+        ${familyRows.length
+          ? familyRows.map(({ family, index }) => renderFamilyGroup(family, index, generation, peopleById)).join('')
+          : `<article class="tree-review-family"><p>${people.map((person) => escapeHtml(person.name || person.id)).join(' · ') || 'No connected family group recorded.'}</p></article>`}
+      </section>
+    `);
+  }
+
+  const loadMore = displayedThrough < maximumGeneration
+    ? `<button class="btn-secondary" type="button" data-load-more-generations>Load next ${Math.min(GENERATIONS_PER_PAGE, maximumGeneration - displayedThrough)} generations</button>`
+    : '';
+
+  return `
+    <section class="tree-review-list">
+      <h2>Family tree</h2>
+      <p>Showing generations 1-${displayedThrough} of ${maximumGeneration}.</p>
+      ${sections.join('')}
+      ${loadMore}
+    </section>
+  `;
 }
 
 function renderTreeReview() {
@@ -44,17 +147,14 @@ function renderTreeReview() {
       <p>Fixing these items helps make your family tree more complete and reliable.</p>
       <a class="btn-add" href="errors.html">Fix errors in batches of 10</a>
     </section>
-    <section class="tree-review-list">
-      <h2>Family groups</h2>
-      ${families.length ? families.map((family, index) => {
-        const members = [family.husbandId, family.wifeId, ...(family.childrenIds || [])]
-          .map((id) => peopleById.get(id))
-          .filter(Boolean)
-          .map((person) => escapeHtml(person.name || person.id));
-        return `<article class="tree-review-family"><h3>Family ${index + 1}</h3><p>${members.join(' · ') || 'No connected people recorded.'}</p></article>`;
-      }).join('') : `<article class="tree-review-family"><h3>People in your tree</h3><p>${treeData.people.map((person) => escapeHtml(person.name || person.id)).join(' · ')}</p></article>`}
-    </section>
+    ${renderGenerations(treeData, peopleById, families)}
   `;
 }
+
+review.addEventListener('click', (event) => {
+  if (!event.target.closest('[data-load-more-generations]')) return;
+  visibleGenerationCount += GENERATIONS_PER_PAGE;
+  renderTreeReview();
+});
 
 renderTreeReview();
