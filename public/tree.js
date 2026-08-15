@@ -27,6 +27,34 @@ function normalizePersonSearch(value = '') {
     .replace(/[^a-z0-9]/g, '');
 }
 
+function getMatchingPeople(query = '') {
+  if (!loadedTreeData) return [];
+  const normalizedQuery = normalizePersonSearch(query);
+  if (!normalizedQuery) return [];
+
+  const queryWords = String(query)
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+
+  return loadedTreeData.people.filter((person) => {
+    const name = String(person.name || person.id);
+    const normalizedName = normalizePersonSearch(name);
+    const normalizedId = normalizePersonSearch(person.id);
+    if (normalizedName.includes(normalizedQuery) || normalizedId.includes(normalizedQuery)) return true;
+
+    const normalizedWords = name
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLocaleLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter(Boolean);
+    return queryWords.every((word) => normalizedWords.some((nameWord) => nameWord.includes(word)));
+  });
+}
+
 function getPrimaryPerson(treeData) {
   return treeData.people.find((person) => person.id === treeData.primaryPersonId) || treeData.people[0] || null;
 }
@@ -181,12 +209,7 @@ function renderPrimaryPersonMatches(query = '') {
     return;
   }
 
-  const people = loadedTreeData.people
-    .filter((person) => (
-      normalizePersonSearch(person.name || person.id).includes(normalizedQuery) ||
-      normalizePersonSearch(person.id).includes(normalizedQuery)
-    ))
-    .slice(0, 10);
+  const people = getMatchingPeople(query).slice(0, 10);
   matchingPrimaryPersonIds = people.map((person) => person.id);
 
   matches.innerHTML = people.length
@@ -227,14 +250,13 @@ review.addEventListener('click', (event) => {
   }
 
   if (event.target.closest('[data-confirm-primary-person]') && loadedTreeData) {
-    const enteredName = normalizePersonSearch(document.getElementById('primaryPerson').value);
-    const typedMatch = enteredName
-      ? loadedTreeData.people.find((person) => (
-        normalizePersonSearch(person.name || person.id).includes(enteredName) ||
-        normalizePersonSearch(person.id).includes(enteredName)
-      ))
-      : null;
-    const selectedPersonId = typedMatch?.id || matchingPrimaryPersonIds[0] || loadedTreeData.people[0]?.id;
+    const typedMatch = getMatchingPeople(document.getElementById('primaryPerson').value)[0];
+    const selectedPersonId = typedMatch?.id || matchingPrimaryPersonIds[0];
+    if (!selectedPersonId) {
+      document.getElementById('primaryPersonPicker').hidden = false;
+      renderPrimaryPersonMatches(document.getElementById('primaryPerson').value);
+      return;
+    }
     setPrimaryPerson(selectedPersonId);
   }
 });
