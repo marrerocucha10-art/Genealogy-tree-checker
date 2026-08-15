@@ -224,6 +224,59 @@ select:focus {
   margin-top: 6px;
 }
 
+.ancestry-tree {
+  display: grid;
+  gap: 30px;
+  margin-top: 24px;
+  overflow-x: auto;
+  padding: 8px 4px;
+}
+
+.ancestry-generation {
+  min-width: max-content;
+  position: relative;
+}
+
+.ancestry-generation + .ancestry-generation::before {
+  background: #a5b4fc;
+  content: '';
+  height: 22px;
+  left: 50%;
+  position: absolute;
+  top: -30px;
+  width: 2px;
+}
+
+.ancestry-generation-heading {
+  text-align: center;
+}
+
+.ancestry-generation-heading h3 {
+  color: #3730a3;
+  margin-bottom: 4px;
+}
+
+.ancestry-people {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.ancestry-people .tree-review-person {
+  background: #f8fafc;
+  border: 1px solid #c7d2fe;
+  border-radius: 10px;
+  margin: 0;
+  min-width: 220px;
+  padding: 14px;
+}
+
+.ancestry-people .selected-tree-person {
+  background: #eef2ff;
+  border-color: #818cf8;
+}
+
 .selected-tree-person {
   background: #eef2ff;
   border: 1px solid #a5b4fc;

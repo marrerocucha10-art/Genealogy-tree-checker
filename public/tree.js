@@ -140,12 +140,16 @@ function renderGenerations(treeData, peopleById, families) {
     const people = treeData.people.filter((person) => generationByPerson.get(person.id) === generation);
 
     sections.push(`
-      <section class="tree-review-generation">
-        <h3>${generation === 1 ? 'Starting person' : `Ancestor generation ${generation - 1}`}</h3>
-        <p class="muted">${people.length} person${people.length === 1 ? '' : 's'}</p>
-        ${people.length
-          ? people.map((person) => renderPersonCard(person, families, peopleById, person.id === primaryPerson?.id)).join('')
-          : '<p class="muted">No people recorded in this generation.</p>'}
+      <section class="tree-review-generation ancestry-generation">
+        <div class="ancestry-generation-heading">
+          <h3>${generation === 1 ? 'Starting person' : `Ancestor generation ${generation - 1}`}</h3>
+          <p class="muted">${people.length} person${people.length === 1 ? '' : 's'}</p>
+        </div>
+        <div class="ancestry-people">
+          ${people.length
+            ? people.map((person) => renderPersonCard(person, families, peopleById, person.id === primaryPerson?.id)).join('')
+            : '<p class="muted">No people recorded in this generation.</p>'}
+        </div>
       </section>
     `);
   }
@@ -165,7 +169,9 @@ function renderGenerations(treeData, peopleById, families) {
         <button class="btn-add" type="button" data-confirm-primary-person>Start tree with first matching person</button>
       </div>
       <p>Showing ${displayedThrough} of ${maximumGeneration} ancestry generations, starting with ${escapeHtml(primaryPerson?.name || 'the main person')}.</p>
-      ${sections.join('')}
+      <div class="ancestry-tree" aria-label="Family ancestry tree">
+        ${sections.join('')}
+      </div>
       ${loadMore}
     </section>
   `;
