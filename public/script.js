@@ -2432,8 +2432,12 @@ document.addEventListener('DOMContentLoaded', () => {
   loadSubscriptionConfig();
   loadSubscriptionStatusFromCustomer();
   renderFamilyTree();
-  if (new URLSearchParams(window.location.search).get('start') === 'upload') {
+  const startupParams = new URLSearchParams(window.location.search);
+  if (startupParams.get('start') === 'upload') {
     uploadSection.hidden = false;
     uploadSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (startupParams.get('test_plan') === 'true') {
+      setStatus(`Test mode: ${SUBSCRIPTION_TIERS[currentTier]?.name || 'selected'} plan is active. Choose a family file to test the guided flow without payment.`, 'info');
+    }
   }
 });

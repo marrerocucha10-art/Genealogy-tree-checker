@@ -86,6 +86,7 @@ function getStripeConfig() {
 
   return {
     configured: hasStripeSecret,
+    testSubscriptionsEnabled: process.env.ENABLE_TEST_SUBSCRIPTIONS === 'true',
     portalConfigured: Boolean(process.env.STRIPE_CUSTOMER_PORTAL_RETURN_URL || process.env.PUBLIC_APP_URL),
     tiers,
     storeUrl: process.env.PUBLIC_STORE_URL || '/store',

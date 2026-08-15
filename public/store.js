@@ -58,6 +58,9 @@ function renderPlans() {
     const checkoutReady = isFree || stripeConfig?.configured && stripeConfig.tiers?.[id]?.[billingInterval]?.configured;
     const price = tier.prices[billingInterval];
     const priceLabel = isFree ? 'Free' : `$${price.toFixed(2)} / month${billingInterval === 'annual' ? ' billed annually' : ''}`;
+    const testButton = !isFree && stripeConfig?.testSubscriptionsEnabled
+      ? `<button class="btn-secondary" type="button" data-test-tier="${id}">Test ${escapeHtml(tier.name)} flow</button>`
+      : '';
     const proPackage = id === 'pro' ? `
       <aside class="pro-package-highlight">
         <strong>Genealogy Pro Package included</strong>
@@ -79,6 +82,7 @@ function renderPlans() {
         ${isCurrent ? '<span class="plan-badge">Current</span>' : ''}
         ${isFree ? `<button class="btn-add" type="button" data-select-free>Start with Basic</button>` : ''}
         ${!isFree && !isCurrent ? `<button class="btn-add" type="button" data-upgrade-tier="${id}" ${checkoutReady ? '' : 'disabled'}>${checkoutReady ? `Choose ${escapeHtml(tier.name)}` : 'Checkout unavailable'}</button>` : ''}
+        ${testButton}
       </article>
     `;
   }).join('');
@@ -130,6 +134,16 @@ subscriptionPlans.addEventListener('click', async (event) => {
     window.location.href = '/?start=upload';
     return;
   }
+
+  const testButton = event.target.closest('[data-test-tier]');
+  if (testButton) {
+    currentTier = testButton.dataset.testTier;
+    localStorage.setItem(SUBSCRIPTION_STORAGE_KEY, currentTier);
+    localStorage.setItem(PLAN_SELECTION_STORAGE_KEY, 'true');
+    window.location.href = '/?start=upload&test_plan=true';
+    return;
+  }
+
   const button = event.target.closest('[data-upgrade-tier]');
   if (!button) return;
   button.disabled = true;
