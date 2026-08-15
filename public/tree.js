@@ -174,7 +174,7 @@ function renderGenerations(treeData, peopleById, families) {
       </div>
       ${loadMore}
       <div class="tree-next-step">
-        <a class="btn-add" href="errors.html">Continue to Fix Errors</a>
+        <a class="btn-add" href="errors.html">Continue to Fixing Errors</a>
       </div>
     </section>
   `;
