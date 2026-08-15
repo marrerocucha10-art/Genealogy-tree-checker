@@ -18,6 +18,14 @@ function escapeHtml(value = '') {
   }[character]));
 }
 
+function normalizePersonSearch(value = '') {
+  return String(value)
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
 function getPrimaryPerson(treeData) {
   return treeData.people.find((person) => person.id === treeData.primaryPersonId) || treeData.people[0] || null;
 }
@@ -165,7 +173,7 @@ function renderPrimaryPersonMatches(query = '') {
   const matches = document.getElementById('primaryPersonMatches');
   if (!matches || !loadedTreeData) return;
 
-  const normalizedQuery = query.trim().toLocaleLowerCase();
+  const normalizedQuery = normalizePersonSearch(query);
   if (!normalizedQuery) {
     matches.innerHTML = '<p class="muted">Type a name to see matching people.</p>';
     return;
@@ -173,8 +181,8 @@ function renderPrimaryPersonMatches(query = '') {
 
   const people = loadedTreeData.people
     .filter((person) => (
-      String(person.name || person.id).toLocaleLowerCase().includes(normalizedQuery) ||
-      String(person.id).toLocaleLowerCase().includes(normalizedQuery)
+      normalizePersonSearch(person.name || person.id).includes(normalizedQuery) ||
+      normalizePersonSearch(person.id).includes(normalizedQuery)
     ))
     .slice(0, 10);
 
@@ -216,17 +224,17 @@ review.addEventListener('click', (event) => {
   }
 
   if (event.target.closest('[data-confirm-primary-person]') && loadedTreeData) {
-    const enteredName = document.getElementById('primaryPerson').value.trim().toLocaleLowerCase();
+    const enteredName = normalizePersonSearch(document.getElementById('primaryPerson').value);
     if (!enteredName) {
       alert('Type a person’s name to start the family tree.');
       return;
     }
     const exactPerson = loadedTreeData.people.find((person) => (
-      String(person.name || person.id).toLocaleLowerCase() === enteredName ||
-      String(person.id).toLocaleLowerCase() === enteredName
+      normalizePersonSearch(person.name || person.id) === enteredName ||
+      normalizePersonSearch(person.id) === enteredName
     ));
     const selectedPerson = exactPerson || loadedTreeData.people.find((person) => (
-      String(person.name || person.id).toLocaleLowerCase().includes(enteredName)
+      normalizePersonSearch(person.name || person.id).includes(enteredName)
     ));
     if (!selectedPerson) {
       alert('No person with that name was found in this family tree.');
