@@ -234,8 +234,8 @@ select:focus {
 }
 
 .ancestry-generation {
-  flex: 0 0 250px;
-  min-width: 250px;
+  flex: 0 0 230px;
+  min-width: 230px;
   position: relative;
 }
 
@@ -261,8 +261,13 @@ select:focus {
 .ancestry-people {
   display: grid;
   gap: 14px;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-top: 12px;
+}
+
+.ancestry-generation:first-child .ancestry-people,
+.ancestry-generation:nth-child(2) .ancestry-people {
+  grid-template-columns: 1fr;
 }
 
 .ancestry-people .tree-review-person {
@@ -270,13 +275,26 @@ select:focus {
   border: 1px solid #c7d2fe;
   border-radius: 10px;
   margin: 0;
-  min-width: 220px;
-  padding: 14px;
+  min-width: 0;
+  padding: 10px;
 }
 
 .ancestry-people .selected-tree-person {
   background: #eef2ff;
   border-color: #818cf8;
+}
+
+.ancestry-generation:nth-child(n + 3) .tree-review-person {
+  padding: 8px;
+}
+
+.ancestry-generation:nth-child(n + 3) .tree-review-person p {
+  display: none;
+}
+
+.ancestry-generation:nth-child(n + 3) .tree-review-person h4 {
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
 }
 
 .tree-next-step {
