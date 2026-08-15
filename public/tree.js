@@ -40,7 +40,7 @@ function getMatchingPeople(query = '') {
     .filter(Boolean);
 
   return loadedTreeData.people.filter((person) => {
-    const name = String(person.name || person.id);
+    const name = [person.name || person.id, ...(person.aliases || [])].join(' ');
     const normalizedName = normalizePersonSearch(name);
     const normalizedId = normalizePersonSearch(person.id);
     if (normalizedName.includes(normalizedQuery) || normalizedId.includes(normalizedQuery)) return true;

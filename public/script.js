@@ -1000,6 +1000,7 @@ function ensureParsedPerson(peopleById, id) {
     peopleById.set(id, {
       id,
       name: null,
+      otherNames: [],
       sex: null,
       birth: {},
       death: {},
@@ -1125,7 +1126,11 @@ function parseGedcomInBrowser(gedcomText) {
 
       if (currentRecord.type === 'INDI') {
         const person = currentRecord.data;
-        if (tag === 'NAME') person.name = normalizeGedcomName(value);
+        if (tag === 'NAME') {
+          const name = normalizeGedcomName(value);
+          if (!person.name?.display) person.name = name;
+          else person.otherNames.push(name);
+        }
         if (tag === 'SEX') person.sex = value || null;
         if (tag === 'FAMC' && value) person.familyAsChild.push(value);
         if (tag === 'FAMS' && value) person.familyAsSpouse.push(value);
@@ -1293,6 +1298,7 @@ function normalizeParsedGedcom(parsed) {
       familyAsChild: person.familyAsChild || [],
       familyAsSpouse: person.familyAsSpouse || [],
       notes: person.notes || [],
+      aliases: (person.otherNames || []).map((name) => name.display).filter(Boolean),
       source: 'gedcom',
     })),
     families: parsed.families || [],

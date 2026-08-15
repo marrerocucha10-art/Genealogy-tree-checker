@@ -32,6 +32,7 @@ function ensurePerson(peopleById, id) {
     peopleById.set(id, {
       id,
       name: null,
+      otherNames: [],
       sex: null,
       birth: {},
       death: {},
@@ -230,7 +231,11 @@ function parseGedcom(gedcomText) {
       if (currentRecord.type === 'INDI') {
         const person = currentRecord.data;
 
-        if (tag === 'NAME') person.name = normalizeName(value);
+        if (tag === 'NAME') {
+          const name = normalizeName(value);
+          if (!person.name?.display) person.name = name;
+          else person.otherNames.push(name);
+        }
         if (tag === 'SEX') person.sex = value || null;
         if (tag === 'FAMC' && value) person.familyAsChild.push(value);
         if (tag === 'FAMS' && value) person.familyAsSpouse.push(value);
