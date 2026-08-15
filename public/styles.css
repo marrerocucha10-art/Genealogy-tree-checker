@@ -225,25 +225,28 @@ select:focus {
 }
 
 .ancestry-tree {
-  display: grid;
+  align-items: stretch;
+  display: flex;
   gap: 30px;
   margin-top: 24px;
+  overflow-x: auto;
   padding: 8px 4px;
 }
 
 .ancestry-generation {
-  min-width: 0;
+  flex: 0 0 250px;
+  min-width: 250px;
   position: relative;
 }
 
 .ancestry-generation + .ancestry-generation::before {
   background: #a5b4fc;
   content: '';
-  height: 22px;
-  left: 50%;
+  height: 2px;
+  left: -30px;
   position: absolute;
-  top: -30px;
-  width: 2px;
+  top: 50%;
+  width: 30px;
 }
 
 .ancestry-generation-heading {
@@ -258,7 +261,7 @@ select:focus {
 .ancestry-people {
   display: grid;
   gap: 14px;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: 1fr;
   margin-top: 12px;
 }
 
