@@ -222,6 +222,15 @@ select:focus {
   margin-top: 6px;
 }
 
+.tree-review-starting-person {
+  background: #eef2ff;
+  border: 1px solid #a5b4fc;
+  border-radius: 8px;
+  color: #312e81;
+  margin-top: 12px;
+  padding: 10px;
+}
+
 .primary-person-matches {
   display: grid;
   gap: 6px;

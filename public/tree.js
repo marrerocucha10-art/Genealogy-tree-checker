@@ -99,8 +99,15 @@ function buildGenerationData(treeData, peopleById, primaryPerson) {
   return generationByPerson;
 }
 
-function renderFamilyGroup(family, index, generation, peopleById) {
-  const parents = [family.husbandId, family.wifeId]
+function renderFamilyGroup(family, index, peopleById, primaryPersonId) {
+  const parentIds = [family.husbandId, family.wifeId]
+    .filter(Boolean)
+    .sort((first, second) => {
+      if (first === primaryPersonId) return -1;
+      if (second === primaryPersonId) return 1;
+      return 0;
+    });
+  const parents = parentIds
     .map((id) => peopleById.get(id))
     .filter(Boolean)
     .map((person) => escapeHtml(person.name || person.id));
@@ -132,13 +139,19 @@ function renderGenerations(treeData, peopleById, families) {
         [family.husbandId, family.wifeId].some((id) => generationByPerson.get(id) === generation)
       ));
     const people = treeData.people.filter((person) => generationByPerson.get(person.id) === generation);
+    const startingPerson = generation === 1 ? primaryPerson : null;
 
     sections.push(`
       <section class="tree-review-generation">
         <h3>Generation ${generation}</h3>
         <p class="muted">${people.length} person${people.length === 1 ? '' : 's'}</p>
+        ${startingPerson ? `
+          <article class="tree-review-starting-person">
+            <strong>Your starting person:</strong> ${escapeHtml(startingPerson.name || startingPerson.id)}
+          </article>
+        ` : ''}
         ${familyRows.length
-          ? familyRows.map(({ family, index }) => renderFamilyGroup(family, index, generation, peopleById)).join('')
+          ? familyRows.map(({ family, index }) => renderFamilyGroup(family, index, peopleById, primaryPerson?.id)).join('')
           : `<article class="tree-review-family"><p>${people.map((person) => escapeHtml(person.name || person.id)).join(' · ') || 'No connected family group recorded.'}</p></article>`}
       </section>
     `);
