@@ -227,11 +227,14 @@ review.addEventListener('click', (event) => {
   }
 
   if (event.target.closest('[data-confirm-primary-person]') && loadedTreeData) {
-    const selectedPersonId = matchingPrimaryPersonIds[0];
-    if (!selectedPersonId) {
-      alert('Type a name, then choose a matching person below.');
-      return;
-    }
+    const enteredName = normalizePersonSearch(document.getElementById('primaryPerson').value);
+    const typedMatch = enteredName
+      ? loadedTreeData.people.find((person) => (
+        normalizePersonSearch(person.name || person.id).includes(enteredName) ||
+        normalizePersonSearch(person.id).includes(enteredName)
+      ))
+      : null;
+    const selectedPersonId = typedMatch?.id || matchingPrimaryPersonIds[0] || loadedTreeData.people[0]?.id;
     setPrimaryPerson(selectedPersonId);
   }
 });
