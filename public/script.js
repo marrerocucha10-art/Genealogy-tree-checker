@@ -14,6 +14,7 @@ const GEDCOM_BACKUP_DATABASE = 'genealogyTreeCheckerBackups';
 const GEDCOM_BACKUP_STORE = 'gedcomFiles';
 const GEDCOM_BACKUP_ID = 'latest';
 const MAX_GEDCOM_FILE_BYTES = 150 * 1024 * 1024;
+const treeOverviewSection = document.getElementById('treeOverviewSection');
 
 let treeData = loadTreeData();
 let treeLayout = localStorage.getItem(LAYOUT_STORAGE_KEY) || 'vertical';
@@ -1522,10 +1523,11 @@ function showManualFixes() {
 
 function renderFamilyTree() {
   if (treeData.people.length === 0) {
-    familyTreeDiv.innerHTML = '<p class="empty-message">Your family-tree overview will appear here after you upload a family file or create a new tree.</p>';
+    treeOverviewSection.hidden = true;
     return;
   }
 
+  treeOverviewSection.hidden = false;
   const peopleById = new Map(treeData.people.map((person) => [person.id, person]));
   const generationData = buildGenerationData(peopleById);
 
