@@ -117,9 +117,10 @@ function renderGenerations(treeData, peopleById, families) {
       <button class="btn-secondary" type="button" data-open-primary-person-picker>Choose starting person</button>
       <div id="primaryPersonPicker" hidden>
         <label for="primaryPerson">Start this tree with</label>
-        <select id="primaryPerson" data-primary-person>
-          ${treeData.people.map((person) => `<option value="${escapeHtml(person.id)}" ${person.id === primaryPerson?.id ? 'selected' : ''}>${escapeHtml(person.name || person.id)}</option>`).join('')}
-        </select>
+        <input id="primaryPerson" type="search" list="primaryPeople" value="${escapeHtml(primaryPerson?.name || primaryPerson?.id || '')}" placeholder="Type a person's name">
+        <datalist id="primaryPeople">
+          ${treeData.people.map((person) => `<option value="${escapeHtml(person.name || person.id)}" label="${escapeHtml(person.id)}"></option>`).join('')}
+        </datalist>
         <button class="btn-add" type="button" data-confirm-primary-person>Start tree with this person</button>
       </div>
       <p>Showing generations 1-${displayedThrough} of ${maximumGeneration}, starting with ${escapeHtml(primaryPerson?.name || 'the main person')}.</p>
@@ -176,7 +177,16 @@ review.addEventListener('click', (event) => {
   }
 
   if (event.target.closest('[data-confirm-primary-person]') && loadedTreeData) {
-    loadedTreeData.primaryPersonId = document.getElementById('primaryPerson').value;
+    const enteredName = document.getElementById('primaryPerson').value.trim().toLocaleLowerCase();
+    const selectedPerson = loadedTreeData.people.find((person) => (
+      String(person.name || person.id).toLocaleLowerCase() === enteredName ||
+      String(person.id).toLocaleLowerCase() === enteredName
+    ));
+    if (!selectedPerson) {
+      alert('Choose a person from the matching name suggestions.');
+      return;
+    }
+    loadedTreeData.primaryPersonId = selectedPerson.id;
     visibleGenerationCount = GENERATIONS_PER_PAGE;
     saveTreeData(loadedTreeData);
     renderTreeReview();
