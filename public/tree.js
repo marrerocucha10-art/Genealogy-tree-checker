@@ -69,15 +69,15 @@ function saveTreeData(treeData) {
 }
 
 function buildGenerationData(treeData, peopleById, primaryPerson) {
-  const parentToChildren = new Map();
+  const childToParents = new Map();
 
   for (const family of treeData.families || []) {
     const parentIds = [family.husbandId, family.wifeId].filter((id) => id && peopleById.has(id));
     const childIds = (family.childrenIds || []).filter((id) => id && peopleById.has(id));
 
-    for (const parentId of parentIds) {
-      if (!parentToChildren.has(parentId)) parentToChildren.set(parentId, new Set());
-      childIds.forEach((childId) => parentToChildren.get(parentId).add(childId));
+    for (const childId of childIds) {
+      if (!childToParents.has(childId)) childToParents.set(childId, new Set());
+      parentIds.forEach((parentId) => childToParents.get(childId).add(parentId));
     }
 
   }
@@ -91,8 +91,8 @@ function buildGenerationData(treeData, peopleById, primaryPerson) {
     if (knownGeneration && knownGeneration <= generation) continue;
 
     generationByPerson.set(id, generation);
-    for (const childId of parentToChildren.get(id) || []) {
-      queue.push({ id: childId, generation: generation + 1 });
+    for (const parentId of childToParents.get(id) || []) {
+      queue.push({ id: parentId, generation: generation + 1 });
     }
   }
 
@@ -141,7 +141,7 @@ function renderGenerations(treeData, peopleById, families) {
 
     sections.push(`
       <section class="tree-review-generation">
-        <h3>Generation ${generation}</h3>
+        <h3>${generation === 1 ? 'Starting person' : `Ancestor generation ${generation - 1}`}</h3>
         <p class="muted">${people.length} person${people.length === 1 ? '' : 's'}</p>
         ${people.length
           ? people.map((person) => renderPersonCard(person, families, peopleById, person.id === primaryPerson?.id)).join('')
@@ -151,7 +151,7 @@ function renderGenerations(treeData, peopleById, families) {
   }
 
   const loadMore = displayedThrough < maximumGeneration
-    ? `<button class="btn-secondary" type="button" data-load-more-generations>Load next ${Math.min(GENERATIONS_PER_PAGE, maximumGeneration - displayedThrough)} generations</button>`
+    ? `<button class="btn-secondary" type="button" data-load-more-generations>Load next ${Math.min(GENERATIONS_PER_PAGE, maximumGeneration - displayedThrough)} ancestor generations</button>`
     : '';
 
   return `
@@ -164,7 +164,7 @@ function renderGenerations(treeData, peopleById, families) {
         <div id="primaryPersonMatches" class="primary-person-matches" aria-live="polite"></div>
         <button class="btn-add" type="button" data-confirm-primary-person>Start tree with first matching person</button>
       </div>
-      <p>Showing generations 1-${displayedThrough} of ${maximumGeneration}, starting with ${escapeHtml(primaryPerson?.name || 'the main person')}.</p>
+      <p>Showing ${displayedThrough} of ${maximumGeneration} ancestry generations, starting with ${escapeHtml(primaryPerson?.name || 'the main person')}.</p>
       ${sections.join('')}
       ${loadMore}
     </section>
