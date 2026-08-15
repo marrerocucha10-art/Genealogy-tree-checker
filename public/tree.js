@@ -178,12 +178,19 @@ review.addEventListener('click', (event) => {
 
   if (event.target.closest('[data-confirm-primary-person]') && loadedTreeData) {
     const enteredName = document.getElementById('primaryPerson').value.trim().toLocaleLowerCase();
-    const selectedPerson = loadedTreeData.people.find((person) => (
+    if (!enteredName) {
+      alert('Type a person’s name to start the family tree.');
+      return;
+    }
+    const exactPerson = loadedTreeData.people.find((person) => (
       String(person.name || person.id).toLocaleLowerCase() === enteredName ||
       String(person.id).toLocaleLowerCase() === enteredName
     ));
+    const selectedPerson = exactPerson || loadedTreeData.people.find((person) => (
+      String(person.name || person.id).toLocaleLowerCase().includes(enteredName)
+    ));
     if (!selectedPerson) {
-      alert('Choose a person from the matching name suggestions.');
+      alert('No person with that name was found in this family tree.');
       return;
     }
     loadedTreeData.primaryPersonId = selectedPerson.id;
