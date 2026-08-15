@@ -154,7 +154,7 @@ function renderGenerations(treeData, peopleById, families) {
       <button class="btn-secondary" type="button" data-open-primary-person-picker>Choose starting person</button>
       <div id="primaryPersonPicker" hidden>
         <label for="primaryPerson">Start this tree with</label>
-        <input id="primaryPerson" type="search" value="${escapeHtml(primaryPerson?.name || primaryPerson?.id || '')}" placeholder="Type a person's name" autocomplete="off">
+        <input id="primaryPerson" type="search" placeholder="Type a person's name" autocomplete="off">
         <div id="primaryPersonMatches" class="primary-person-matches" aria-live="polite"></div>
         <button class="btn-add" type="button" data-confirm-primary-person>Start tree with first matching person</button>
       </div>
@@ -238,7 +238,9 @@ review.addEventListener('click', (event) => {
 
   if (event.target.closest('[data-open-primary-person-picker]')) {
     document.getElementById('primaryPersonPicker').hidden = false;
-    document.getElementById('primaryPerson').focus();
+    const primaryPersonInput = document.getElementById('primaryPerson');
+    primaryPersonInput.value = '';
+    primaryPersonInput.focus();
     renderPrimaryPersonMatches();
     return;
   }
