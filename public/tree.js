@@ -18,30 +18,35 @@ function escapeHtml(value = '') {
   }[character]));
 }
 
-function buildGenerationData(treeData, peopleById) {
-  const connectedIds = new Set();
+function getPrimaryPerson(treeData) {
+  return treeData.people.find((person) => person.id === treeData.primaryPersonId) || treeData.people[0] || null;
+}
+
+function saveTreeData(treeData) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(treeData));
+    void window.familyTreeClientStorage?.removeTreeFromDatabase?.(STORAGE_KEY);
+  } catch (error) {
+    void window.familyTreeClientStorage?.saveTreeInDatabase?.(STORAGE_KEY, treeData);
+  }
+}
+
+function buildGenerationData(treeData, peopleById, primaryPerson) {
   const parentToChildren = new Map();
-  const childToParents = new Map();
 
   for (const family of treeData.families || []) {
     const parentIds = [family.husbandId, family.wifeId].filter((id) => id && peopleById.has(id));
     const childIds = (family.childrenIds || []).filter((id) => id && peopleById.has(id));
-    [...parentIds, ...childIds].forEach((id) => connectedIds.add(id));
 
     for (const parentId of parentIds) {
       if (!parentToChildren.has(parentId)) parentToChildren.set(parentId, new Set());
       childIds.forEach((childId) => parentToChildren.get(parentId).add(childId));
     }
 
-    for (const childId of childIds) {
-      if (!childToParents.has(childId)) childToParents.set(childId, new Set());
-      parentIds.forEach((parentId) => childToParents.get(childId).add(parentId));
-    }
   }
 
   const generationByPerson = new Map();
-  const rootIds = [...connectedIds].filter((id) => !childToParents.has(id));
-  const queue = (rootIds.length ? rootIds : [...connectedIds]).map((id) => ({ id, generation: 1 }));
+  const queue = primaryPerson ? [{ id: primaryPerson.id, generation: 1 }] : [];
 
   while (queue.length) {
     const { id, generation } = queue.shift();
@@ -52,10 +57,6 @@ function buildGenerationData(treeData, peopleById) {
     for (const childId of parentToChildren.get(id) || []) {
       queue.push({ id: childId, generation: generation + 1 });
     }
-  }
-
-  for (const person of treeData.people) {
-    if (!generationByPerson.has(person.id)) generationByPerson.set(person.id, 1);
   }
 
   return generationByPerson;
@@ -81,7 +82,8 @@ function renderFamilyGroup(family, index, generation, peopleById) {
 }
 
 function renderGenerations(treeData, peopleById, families) {
-  const generationByPerson = buildGenerationData(treeData, peopleById);
+  const primaryPerson = getPrimaryPerson(treeData);
+  const generationByPerson = buildGenerationData(treeData, peopleById, primaryPerson);
   const maximumGeneration = Math.max(...generationByPerson.values(), 1);
   const displayedThrough = Math.min(visibleGenerationCount, maximumGeneration);
   const sections = [];
@@ -112,7 +114,11 @@ function renderGenerations(treeData, peopleById, families) {
   return `
     <section class="tree-review-list">
       <h2>Family tree</h2>
-      <p>Showing generations 1-${displayedThrough} of ${maximumGeneration}.</p>
+      <label for="primaryPerson">Start this tree with</label>
+      <select id="primaryPerson" data-primary-person>
+        ${treeData.people.map((person) => `<option value="${escapeHtml(person.id)}" ${person.id === primaryPerson?.id ? 'selected' : ''}>${escapeHtml(person.name || person.id)}</option>`).join('')}
+      </select>
+      <p>Showing generations 1-${displayedThrough} of ${maximumGeneration}, starting with ${escapeHtml(primaryPerson?.name || 'the main person')}.</p>
       ${sections.join('')}
       ${loadMore}
     </section>
@@ -155,6 +161,15 @@ function renderTreeReview(treeData = loadedTreeData || getTreeData()) {
 review.addEventListener('click', (event) => {
   if (!event.target.closest('[data-load-more-generations]')) return;
   visibleGenerationCount += GENERATIONS_PER_PAGE;
+  renderTreeReview();
+});
+
+review.addEventListener('change', (event) => {
+  const primaryPerson = event.target.closest('[data-primary-person]');
+  if (!primaryPerson || !loadedTreeData) return;
+  loadedTreeData.primaryPersonId = primaryPerson.value;
+  visibleGenerationCount = GENERATIONS_PER_PAGE;
+  saveTreeData(loadedTreeData);
   renderTreeReview();
 });
 

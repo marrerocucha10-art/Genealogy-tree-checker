@@ -1230,6 +1230,7 @@ function createEmptyTreeData() {
     warnings: [],
     validationReport: createEmptyValidationReport(),
     fixHistory: [],
+    primaryPersonId: '',
   };
 }
 
@@ -1245,6 +1246,7 @@ function loadTreeData() {
         warnings: stored.warnings || [],
         validationReport: stored.validationReport || createEmptyValidationReport(),
         fixHistory: stored.fixHistory || [],
+        primaryPersonId: stored.primaryPersonId || stored.people[0]?.id || '',
       };
     }
   } catch (error) {
@@ -1292,6 +1294,7 @@ function normalizeParsedGedcom(parsed) {
     warnings: parsed.warnings || [],
     validationReport: createEmptyValidationReport(),
     fixHistory: [],
+    primaryPersonId: parsed.people[0]?.id || '',
   };
 
   normalized.validationReport = analyzeTreeData(normalized);
