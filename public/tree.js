@@ -269,9 +269,14 @@ review.addEventListener('click', (event) => {
   }
 });
 
-review.addEventListener('input', (event) => {
+function updatePrimaryPersonMatches(event) {
   if (event.target.id === 'primaryPerson') renderPrimaryPersonMatches(event.target.value);
-});
+}
+
+review.addEventListener('input', updatePrimaryPersonMatches);
+review.addEventListener('change', updatePrimaryPersonMatches);
+review.addEventListener('keyup', updatePrimaryPersonMatches);
+review.addEventListener('search', updatePrimaryPersonMatches);
 
 const storedTreeData = getTreeData();
 if (storedTreeData?.people?.length) {
