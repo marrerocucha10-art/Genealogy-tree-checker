@@ -153,6 +153,58 @@ select:focus {
   text-decoration: none;
 }
 
+.workflow-actions button {
+  width: 100%;
+}
+
+.fix-errors-modal-overlay {
+  align-items: center;
+  background: rgba(17, 24, 39, 0.55);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 16px;
+  position: fixed;
+  z-index: 1000;
+}
+
+.fix-errors-modal {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  max-width: 640px;
+  padding: 20px;
+  width: 100%;
+}
+
+.fix-errors-modal h4 {
+  color: #312e81;
+  margin-bottom: 10px;
+}
+
+.fix-errors-modal-list {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 12px 18px;
+}
+
+.fix-errors-modal-list li p {
+  color: #4a5568;
+  margin-top: 4px;
+}
+
+.fix-errors-modal-total {
+  color: #1f2937;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.fix-errors-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .manual-people-list {
   display: grid;
   gap: 10px;

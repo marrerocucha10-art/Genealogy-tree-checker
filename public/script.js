@@ -168,8 +168,34 @@ familyTreeDiv.addEventListener('click', (event) => {
     return;
   }
 
-  if (event.target.closest('[data-open-error-workspace]')) {
-    window.open('errors.html', '_blank', 'noopener');
+  if (event.target.closest('[data-open-error-modal]')) {
+    const modal = familyTreeDiv.querySelector('[data-fix-errors-modal]');
+    if (!modal) {
+      window.location.href = 'errors.html';
+      return;
+    }
+    modal.hidden = false;
+    return;
+  }
+
+  if (event.target.closest('[data-close-error-modal]')) {
+    const modal = familyTreeDiv.querySelector('[data-fix-errors-modal]');
+    if (modal) modal.hidden = true;
+    return;
+  }
+
+  if (event.target.matches('[data-fix-errors-modal]')) {
+    event.target.hidden = true;
+    return;
+  }
+
+  if (event.target.closest('[data-modal-apply-auto-fixes]')) {
+    applyAutomaticFixes();
+    return;
+  }
+
+  if (event.target.closest('[data-open-error-workspace]') || event.target.closest('[data-modal-open-error-workspace]')) {
+    window.location.href = 'errors.html';
     return;
   }
 
@@ -1534,11 +1560,50 @@ function renderWorkflowOverview() {
       <h3>Choose your next step</h3>
       <p>Your parsed GED is saved in this browser. Continue with one focused workspace at a time.</p>
       <div class="workflow-actions">
-        <a class="btn-add" href="errors.html">Fix errors${issueCount ? ` (${issueCount})` : ''}</a>
+        <button type="button" class="btn-add" data-open-error-modal>Fix errors${issueCount ? ` (${issueCount})` : ''}</button>
         <a class="btn-secondary" href="manual.html">Work on the tree manually</a>
         <a class="btn-secondary" href="ancestor.html">Open Ancestor Discovery</a>
       </div>
+      ${renderFixErrorsModal(report)}
     </section>
+  `;
+}
+
+function getErrorWorkspaceIssues(report = treeData.validationReport || createEmptyValidationReport()) {
+  return [
+    ...(report.errors || []),
+    ...(report.warnings || []).filter((issue) => issue.autoFix?.type === 'mergeDuplicatePeople'),
+  ];
+}
+
+function renderFixErrorsModal(report) {
+  const workspaceIssues = getErrorWorkspaceIssues(report);
+  if (!workspaceIssues.length) return '';
+
+  const previewIssues = workspaceIssues.slice(0, 5);
+  const hasAutomaticFixes = workspaceIssues.some((issue) => issue.autoFix);
+
+  return `
+    <div class="fix-errors-modal-overlay" data-fix-errors-modal hidden>
+      <section class="fix-errors-modal" role="dialog" aria-modal="true" aria-labelledby="fixErrorsModalTitle">
+        <h4 id="fixErrorsModalTitle">First batch to review (${workspaceIssues.length} total error${workspaceIssues.length === 1 ? '' : 's'})</h4>
+        <p class="muted">Start with the most important records below, then choose how you want to continue.</p>
+        <ol class="fix-errors-modal-list">
+          ${previewIssues.map((issue) => `
+            <li>
+              <strong>${escapeHtml(issue.category || 'Issue')}</strong>
+              <p>${escapeHtml(issue.message || 'Review this record for details.')}</p>
+            </li>
+          `).join('')}
+        </ol>
+        <p class="fix-errors-modal-total">${workspaceIssues.length} total error${workspaceIssues.length === 1 ? '' : 's'} to resolve.</p>
+        <div class="fix-errors-modal-actions">
+          ${hasAutomaticFixes ? '<button type="button" class="btn-secondary" data-modal-apply-auto-fixes>Apply Safe Automatic Fixes</button>' : ''}
+          <button type="button" class="btn-add" data-modal-open-error-workspace>Open Error Workspace</button>
+          <button type="button" class="btn-secondary" data-close-error-modal>Close</button>
+        </div>
+      </section>
+    </div>
   `;
 }
 
