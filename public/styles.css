@@ -411,6 +411,36 @@ main {
   }
 }
 
+.app-preview-access {
+  align-items: center;
+  background: linear-gradient(135deg, #ecfdf5, #eff6ff);
+  border: 1px solid #86efac;
+  border-radius: 16px;
+  display: flex;
+  gap: 24px;
+  justify-content: space-between;
+  margin-bottom: 32px;
+  padding: 22px 26px;
+}
+
+.app-preview-access h2 {
+  color: #166534;
+  font-size: 1.35rem;
+  margin-bottom: 6px;
+}
+
+.app-preview-access p:not(.eyebrow) {
+  color: #475569;
+  margin: 0;
+  max-width: 700px;
+}
+
+.app-preview-access .btn-add {
+  flex: 0 0 auto;
+  text-align: center;
+  text-decoration: none;
+}
+
 @media (max-width: 700px) {
   .privacy-assurance {
     padding: 16px;
@@ -418,6 +448,16 @@ main {
 
   .research-video-preview {
     padding: 22px;
+  }
+
+  .app-preview-access {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 20px;
+  }
+
+  .app-preview-access .btn-add {
+    width: 100%;
   }
 
   .workflow-preview {
