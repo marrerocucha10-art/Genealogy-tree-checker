@@ -1,6 +1,7 @@
 const STORAGE_KEY = window.familyTreeClientStorage?.getActiveTreeKey() || 'familyTreeData';
 const review = document.getElementById('treeReview');
 const GENERATIONS_PER_PAGE = 5;
+const DIRECT_LINE_SELECTION_VERSION = 1;
 let visibleGenerationCount = GENERATIONS_PER_PAGE;
 let loadedTreeData = null;
 let matchingPrimaryPersonIds = [];
@@ -92,12 +93,13 @@ function findDeepestAncestryPerson(treeData) {
 }
 
 function ensurePrimaryPerson(treeData) {
-  if (!treeData?.people?.length || treeData.primaryPersonSelectionMode === 'manual') return;
+  if (!treeData?.people?.length || treeData.directLineSelectionVersion === DIRECT_LINE_SELECTION_VERSION) return;
 
   const deepestPerson = findDeepestAncestryPerson(treeData);
   if (!deepestPerson) return;
   treeData.primaryPersonId = deepestPerson.id;
   treeData.primaryPersonSelectionMode = 'automatic';
+  treeData.directLineSelectionVersion = DIRECT_LINE_SELECTION_VERSION;
   saveTreeData(treeData);
 }
 
