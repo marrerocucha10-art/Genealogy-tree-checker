@@ -1,6 +1,6 @@
 const STORAGE_KEY = window.familyTreeClientStorage?.getActiveTreeKey() || 'familyTreeData';
 const review = document.getElementById('treeReview');
-const GENERATIONS_PER_PAGE = 5;
+const GENERATIONS_PER_PAGE = 2;
 let visibleGenerationCount = GENERATIONS_PER_PAGE;
 let loadedTreeData = null;
 let matchingPrimaryPersonIds = [];
@@ -119,17 +119,36 @@ function getPeopleNames(ids, peopleById) {
     .map((person) => escapeHtml(person.name || person.id));
 }
 
-function renderPersonCard(person, families, peopleById, isStartingPerson = false) {
-  const parentFamilies = families.filter((family) => (family.childrenIds || []).includes(person.id));
-  const spouseFamilies = families.filter((family) => family.husbandId === person.id || family.wifeId === person.id);
-  const parentIds = parentFamilies.flatMap((family) => [family.husbandId, family.wifeId]).filter(Boolean);
-  const spouseIds = spouseFamilies.map((family) => (
-    family.husbandId === person.id ? family.wifeId : family.husbandId
-  )).filter(Boolean);
-  const childIds = spouseFamilies.flatMap((family) => family.childrenIds || []);
-  const parents = getPeopleNames([...new Set(parentIds)], peopleById);
-  const spouses = getPeopleNames([...new Set(spouseIds)], peopleById);
-  const children = getPeopleNames([...new Set(childIds)], peopleById);
+function buildFamilyConnections(families, peopleById) {
+  const connections = new Map();
+  const getConnections = (personId) => {
+    if (!connections.has(personId)) {
+      connections.set(personId, { parents: new Set(), spouses: new Set(), children: new Set() });
+    }
+    return connections.get(personId);
+  };
+
+  for (const family of families) {
+    const parentIds = [family.husbandId, family.wifeId].filter((id) => peopleById.has(id));
+    const childIds = (family.childrenIds || []).filter((id) => peopleById.has(id));
+    for (const parentId of parentIds) {
+      const parentConnections = getConnections(parentId);
+      parentIds.filter((id) => id !== parentId).forEach((spouseId) => parentConnections.spouses.add(spouseId));
+      childIds.forEach((childId) => parentConnections.children.add(childId));
+    }
+    for (const childId of childIds) {
+      const childConnections = getConnections(childId);
+      parentIds.forEach((parentId) => childConnections.parents.add(parentId));
+    }
+  }
+  return connections;
+}
+
+function renderPersonCard(person, peopleById, familyConnections, isStartingPerson = false) {
+  const connections = familyConnections.get(person.id) || { parents: new Set(), spouses: new Set(), children: new Set() };
+  const parents = getPeopleNames([...connections.parents], peopleById);
+  const spouses = getPeopleNames([...connections.spouses], peopleById);
+  const children = getPeopleNames([...connections.children], peopleById);
 
   return `
     <article class="tree-review-person ${isStartingPerson ? 'selected-tree-person' : ''}">
@@ -145,12 +164,20 @@ function renderPersonCard(person, families, peopleById, isStartingPerson = false
 function renderGenerations(treeData, peopleById, families) {
   const primaryPerson = getPrimaryPerson(treeData);
   const generationByPerson = buildGenerationData(treeData, peopleById, primaryPerson);
+  const familyConnections = buildFamilyConnections(families, peopleById);
+  const peopleByGeneration = new Map();
+  for (const person of treeData.people) {
+    const generation = generationByPerson.get(person.id);
+    if (!generation) continue;
+    if (!peopleByGeneration.has(generation)) peopleByGeneration.set(generation, []);
+    peopleByGeneration.get(generation).push(person);
+  }
   const maximumGeneration = Math.max(...generationByPerson.values(), 1);
   const displayedThrough = Math.min(visibleGenerationCount, maximumGeneration);
   const sections = [];
 
   for (let generation = 1; generation <= displayedThrough; generation += 1) {
-    const people = treeData.people.filter((person) => generationByPerson.get(person.id) === generation);
+    const people = peopleByGeneration.get(generation) || [];
 
     sections.push(`
       <section class="tree-review-generation ancestry-generation">
@@ -160,7 +187,7 @@ function renderGenerations(treeData, peopleById, families) {
         </div>
         <div class="ancestry-people">
           ${people.length
-            ? people.map((person) => renderPersonCard(person, families, peopleById, person.id === primaryPerson?.id)).join('')
+            ? people.map((person) => renderPersonCard(person, peopleById, familyConnections, person.id === primaryPerson?.id)).join('')
             : '<p class="muted">No people recorded in this generation.</p>'}
         </div>
       </section>
@@ -173,7 +200,7 @@ function renderGenerations(treeData, peopleById, families) {
 
   return `
     <section class="tree-review-list">
-      <h2>Family tree</h2>
+      <h2>Your working tree preview</h2>
       <button class="btn-secondary" type="button" data-open-primary-person-picker>Choose a different direct line</button>
       <div id="primaryPersonPicker" hidden>
         <label for="primaryPerson">Start this tree with</label>
@@ -181,8 +208,8 @@ function renderGenerations(treeData, peopleById, families) {
         <div id="primaryPersonMatches" class="primary-person-matches" aria-live="polite"></div>
         <button class="btn-add" type="button" data-confirm-primary-person>Start tree with first matching person</button>
       </div>
-      <p>Showing ${displayedThrough} of ${maximumGeneration} ancestry generations, starting with ${escapeHtml(primaryPerson?.name || 'the main person')}.</p>
-      <p class="muted">This starting person stays locked until you choose a different direct line.</p>
+      <p>Showing ${displayedThrough} of ${maximumGeneration} ancestry generations around ${escapeHtml(primaryPerson?.name || 'the main person')}, so you can stay focused on the records you are correcting.</p>
+      <p class="muted">This quick preview starts with two generations. Add more only when you need them, or choose a different direct line.</p>
       <div class="tree-next-step">
         ${loadMore}
         <a class="btn-add" href="errors.html">Continue to Fixing Errors</a>

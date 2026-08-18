@@ -59,7 +59,7 @@ function renderWorkPlace(treeData = getTreeData()) {
       ${hasTree
         ? `<p>Your working tree is ready. Open it to see corrections so far, or continue with guided error review.</p>
            <div class="workflow-actions">
-             <a class="btn-add" href="tree.html">Open Your Family Tree</a>
+             <a class="btn-add" href="tree.html">Open Your Working Tree Preview</a>
              <a class="btn-secondary" href="errors.html">Continue Fixing Errors</a>
            </div>`
         : `<p>Start by uploading your GEDCOM file. After it is read, your tree and guided error review will be ready here.</p>

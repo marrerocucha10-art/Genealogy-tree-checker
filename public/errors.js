@@ -451,6 +451,9 @@ function renderWorkspaceDesk(errors, progress) {
   const savedWorkMessage = progress.resolvedItems?.length || pending.size
     ? 'Your corrections, saved-for-later research, and review progress are kept with this family tree in this browser so you can return here and continue.'
     : 'This is your saved review desk. As you solve items or save research for later, your progress will remain here with this family tree in this browser.';
+  const workingTreeUrl = progress.lastReviewedSubject
+    ? `tree.html?focus=${encodeURIComponent(progress.lastReviewedSubject)}`
+    : 'tree.html';
 
   return `
     <section class="review-desk">
@@ -461,7 +464,7 @@ function renderWorkspaceDesk(errors, progress) {
           <h2>Your family-tree work is ready when you are</h2>
           <p>${savedWorkMessage}</p>
         </div>
-        <a class="btn-secondary" href="tree.html">Open Family Tree</a>
+        <a class="btn-secondary" href="${workingTreeUrl}">Open Working Tree Preview</a>
       </div>
       <div class="review-desk-metrics" aria-label="Current review progress">
         <article><strong>${completed.size}</strong><span>Solved</span></article>
