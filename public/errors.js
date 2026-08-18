@@ -9,7 +9,7 @@ const PLAN_SELECTION_STORAGE_KEY = 'familyTreePlanSelected';
 const ERROR_BATCH_SIZE = 10;
 const BASIC_ERROR_REVIEW_LIMIT = 5;
 const FREE_DUPLICATE_FIX_LIMIT = 5;
-const ERROR_REVIEW_ORDER_VERSION = 3;
+const ERROR_REVIEW_ORDER_VERSION = 4;
 const workspace = document.getElementById('errorWorkspace');
 const returnToTreeLink = document.getElementById('returnToTree');
 const planErrorWorkspaceMessage = document.getElementById('planErrorWorkspaceMessage');
@@ -94,7 +94,8 @@ function createWorkspacePreviewTree() {
       { id: '@I2@', name: 'Mateo Rivera' },
       { id: '@I3@', name: 'Sofia Rivera' },
     ],
-    families: [],
+    primaryPersonId: '@I3@',
+    families: [{ id: '@F1@', husbandId: '@I2@', wifeId: '@I1@', childrenIds: ['@I3@'] }],
     relationships: [],
     validationReport: { errors: [resolvedIssue, pendingIssue, activeIssue], warnings: [], info: [] },
     errorProgress: {
@@ -692,16 +693,104 @@ function getDescendantReviewOrder(treeData) {
   return orderedPeople;
 }
 
+function getDirectLineReviewOrder(treeData) {
+  const peopleById = new Map((treeData?.people || []).map((person) => [person.id, person]));
+  const parentsByChildId = new Map();
+
+  for (const family of treeData?.families || []) {
+    const parentIds = [family.husbandId, family.wifeId].filter((id) => peopleById.has(id));
+    for (const childId of family.childrenIds || []) {
+      if (!peopleById.has(childId)) continue;
+      if (!parentsByChildId.has(childId)) parentsByChildId.set(childId, []);
+      parentsByChildId.get(childId).push(...parentIds);
+    }
+  }
+
+  const primaryPersonId = peopleById.has(treeData?.primaryPersonId)
+    ? treeData.primaryPersonId
+    : treeData?.people?.[0]?.id;
+  const directOrder = new Map();
+  const queue = primaryPersonId ? [primaryPersonId] : [];
+
+  for (let queueIndex = 0; queueIndex < queue.length; queueIndex += 1) {
+    const personId = queue[queueIndex];
+    if (directOrder.has(personId)) continue;
+    directOrder.set(personId, directOrder.size);
+    queue.push(...(parentsByChildId.get(personId) || []));
+  }
+
+  return directOrder;
+}
+
+function buildFamilyLocationIndex(treeData, peopleById) {
+  const index = new Map();
+  const getLocation = (personId) => {
+    if (!index.has(personId)) {
+      index.set(personId, { parents: new Set(), spouses: new Set(), children: new Set() });
+    }
+    return index.get(personId);
+  };
+
+  for (const family of treeData?.families || []) {
+    const parentIds = [family.husbandId, family.wifeId].filter((id) => peopleById.has(id));
+    const childIds = (family.childrenIds || []).filter((id) => peopleById.has(id));
+    for (const parentId of parentIds) {
+      const location = getLocation(parentId);
+      parentIds.filter((id) => id !== parentId).forEach((spouseId) => location.spouses.add(spouseId));
+      childIds.forEach((childId) => location.children.add(childId));
+    }
+    for (const childId of childIds) {
+      const location = getLocation(childId);
+      parentIds.forEach((parentId) => location.parents.add(parentId));
+    }
+  }
+
+  return index;
+}
+
+function renderFamilyLocationPreview(person, peopleById, locationIndex, directOrder, primaryPersonId) {
+  if (!person) return '';
+  const namesFor = (ids) => [...ids]
+    .map((id) => peopleById.get(id))
+    .filter(Boolean)
+    .map((relative) => escapeHtml(relative.name || relative.id));
+  const location = locationIndex.get(person.id) || { parents: new Set(), spouses: new Set(), children: new Set() };
+  const directPosition = directOrder.get(person.id);
+  const primaryPerson = peopleById.get(primaryPersonId);
+  const lineDescription = directPosition === 0
+    ? 'Selected starting person'
+    : directPosition !== undefined
+      ? `Direct ancestor · ${directPosition} generation${directPosition === 1 ? '' : 's'} from ${escapeHtml(primaryPerson?.name || 'your selected person')}`
+      : 'Related family branch · outside the selected direct line';
+  const treeParameters = new URLSearchParams();
+  if (WORKSPACE_PREVIEW_MODE) treeParameters.set('demo', 'workspace');
+  treeParameters.set('focus', person.id);
+
+  return `
+    <aside class="family-location-preview">
+      <strong>Family location: ${lineDescription}</strong>
+      <span>Parents: ${namesFor(location.parents).join(' and ') || 'Not recorded'} · Spouse: ${namesFor(location.spouses).join(' and ') || 'Not recorded'} · Children: ${namesFor(location.children).join(', ') || 'Not recorded'}</span>
+      <a href="tree.html?${treeParameters}">View this person in the working tree</a>
+    </aside>
+  `;
+}
+
 function getOrderedIssueGroups(treeData, errors) {
+  const directOrder = getDirectLineReviewOrder(treeData);
   const descendantOrder = getDescendantReviewOrder(treeData);
   return getIssueGroups(errors)
     .map((group, index) => ({ group, index }))
     .sort((left, right) => {
+      const leftDirectOrder = directOrder.get(left.group.issues[0]?.subject) ?? Number.MAX_SAFE_INTEGER;
+      const rightDirectOrder = directOrder.get(right.group.issues[0]?.subject) ?? Number.MAX_SAFE_INTEGER;
       const leftDuplicateRank = isDuplicateIssue(left.group.issues[0]) ? 0 : 1;
       const rightDuplicateRank = isDuplicateIssue(right.group.issues[0]) ? 0 : 1;
       const leftOrder = descendantOrder.get(left.group.issues[0]?.subject) ?? Number.MAX_SAFE_INTEGER;
       const rightOrder = descendantOrder.get(right.group.issues[0]?.subject) ?? Number.MAX_SAFE_INTEGER;
-      return leftDuplicateRank - rightDuplicateRank || leftOrder - rightOrder || left.index - right.index;
+      return leftDirectOrder - rightDirectOrder
+        || leftDuplicateRank - rightDuplicateRank
+        || leftOrder - rightOrder
+        || left.index - right.index;
     })
     .map(({ group }) => group);
 }
@@ -893,6 +982,11 @@ function renderWorkspace() {
 
   const activeGroups = getActiveIssueGroups(treeData, errors, progress);
   const peopleById = new Map(treeData.people.map((person) => [person.id, person]));
+  const directLineOrder = getDirectLineReviewOrder(treeData);
+  const familyLocationIndex = buildFamilyLocationIndex(treeData, peopleById);
+  const selectedPrimaryPersonId = peopleById.has(treeData.primaryPersonId)
+    ? treeData.primaryPersonId
+    : treeData.people[0]?.id;
   const completed = new Set(progress.completedIssueIds);
   const resolved = getResolvedIssueIds(progress);
   const activeDone = activeGroups.length === 0 || activeGroups.every((group) => (
@@ -945,6 +1039,13 @@ function renderWorkspace() {
           return `
             <li>
               <strong>${escapeHtml(group.label)}</strong>
+              ${renderFamilyLocationPreview(
+                peopleById.get(group.issues[0]?.subject),
+                peopleById,
+                familyLocationIndex,
+                directLineOrder,
+                selectedPrimaryPersonId,
+              )}
               <ul class="person-error-list">
                 ${group.issues.map((issue) => {
                   const issueId = getIssueId(issue);

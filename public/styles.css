@@ -2189,6 +2189,34 @@ input[type="file"] {
   border-color: #feb2b2;
 }
 
+.family-location-preview {
+  background: #eff6ff;
+  border-left: 3px solid #2563eb;
+  border-radius: 8px;
+  color: #1e3a8a;
+  display: grid;
+  gap: 5px;
+  margin-top: 10px;
+  padding: 10px 12px;
+}
+
+.family-location-preview strong,
+.family-location-preview span,
+.family-location-preview a {
+  display: block;
+}
+
+.family-location-preview span {
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.family-location-preview a {
+  color: #1d4ed8;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
 .error-batch-list .btn-secondary {
   margin-top: 10px;
 }
