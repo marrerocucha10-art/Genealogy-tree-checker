@@ -41,6 +41,83 @@ main {
   padding: 40px;
 }
 
+/* ── Hero Section ──────────────────────────────── */
+.hero-section {
+  margin-bottom: 48px;
+  padding: 32px 0 24px;
+  border-bottom: 2px solid #f0eaf8;
+}
+
+.hero-content {
+  max-width: 680px;
+  margin-bottom: 28px;
+}
+
+.hero-headline {
+  font-size: 2em;
+  color: #4a3570;
+  margin-bottom: 16px;
+  line-height: 1.3;
+}
+
+.hero-subtext {
+  font-size: 1.05em;
+  color: #555;
+  line-height: 1.7;
+  margin-bottom: 12px;
+}
+
+.btn-hero-cta {
+  display: inline-block;
+  margin-top: 20px;
+  padding: 14px 32px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  text-decoration: none;
+  border-radius: 8px;
+  font-size: 1em;
+  font-weight: 600;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.btn-hero-cta:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.explore-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.explore-link {
+  padding: 9px 18px;
+  border: 1.5px solid #c4b5ea;
+  border-radius: 20px;
+  color: #5a3f99;
+  text-decoration: none;
+  font-size: 0.9em;
+  font-weight: 500;
+  transition: background 0.2s, color 0.2s;
+}
+
+.explore-link:hover {
+  background: #f3eeff;
+}
+
+.explore-link--store {
+  border-color: #bbb;
+  color: #777;
+  font-size: 0.85em;
+}
+
+.explore-link--store:hover {
+  background: #f8f8f8;
+  color: #555;
+}
+/* ─────────────────────────────────────────────── */
+
 .form-section,
 .tree-section {
   margin-bottom: 40px;
