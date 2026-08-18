@@ -10,6 +10,7 @@ const ERROR_REVIEW_ORDER_VERSION = 3;
 const workspace = document.getElementById('errorWorkspace');
 let loadedTreeData = null;
 let inMemoryDuplicateMergeUndo = null;
+let pendingDuplicateMerge = null;
 
 function getTreeData() {
   if (loadedTreeData) return loadedTreeData;
@@ -216,11 +217,47 @@ function renderDuplicateMergeReview() {
 
   return `
     <section class="duplicate-merge-review">
-      <h2>Review duplicate merge</h2>
+      <h2>Duplicate merge complete</h2>
       <p><strong>${escapeHtml(undoState.mergeSummary.survivorName)}</strong> now includes ${escapeHtml(undoState.mergeSummary.duplicateNames.join(', '))}.</p>
-      <p>Confirm this merge to continue fixing errors, or return to your previous tree.</p>
-      <button id="approveDuplicateMerge" type="button" class="btn-add">Approve Merge and Continue</button>
+      <p>Keep this merged record to continue, or return to the previous version of your tree.</p>
+      <button id="approveDuplicateMerge" type="button" class="btn-add">Keep Merge and Continue</button>
       <button id="undoDuplicateMerge" type="button" class="btn-secondary">Return to Previous Tree</button>
+    </section>
+  `;
+}
+
+function renderPendingDuplicateMergeReview(treeData) {
+  if (!pendingDuplicateMerge) return '';
+
+  const survivor = treeData?.people?.find((person) => person.id === pendingDuplicateMerge.survivorId);
+  const duplicates = treeData?.people?.filter((person) => pendingDuplicateMerge.duplicateIds.includes(person.id)) || [];
+  if (!survivor || !duplicates.length) {
+    pendingDuplicateMerge = null;
+    return '';
+  }
+
+  const personDetails = (person) => [
+    person.birthDate && `Born: ${person.birthDate}`,
+    person.birthPlace && `Place: ${person.birthPlace}`,
+    person.deathDate && `Died: ${person.deathDate}`,
+  ].filter(Boolean).join(' · ') || 'No additional details recorded';
+
+  return `
+    <section class="duplicate-merge-review">
+      <h2>Review possible duplicate records</h2>
+      <p>Compare these records before combining them. Nothing has been changed yet.</p>
+      <article class="tree-review-person selected-tree-person">
+        <h3>Keep this record</h3>
+        <strong>${escapeHtml(survivor.name || survivor.id)}</strong>
+        <p>${escapeHtml(personDetails(survivor))}</p>
+      </article>
+      <h3>Records to combine into it</h3>
+      <ul class="person-error-list">
+        ${duplicates.map((person) => `<li><strong>${escapeHtml(person.name || person.id)}</strong><p>${escapeHtml(personDetails(person))}</p></li>`).join('')}
+      </ul>
+      <p>When you confirm, the selected details are combined into the record you chose to keep. You can still undo the merge immediately afterward.</p>
+      <button id="confirmDuplicateMerge" type="button" class="btn-add">Confirm and Merge These Records</button>
+      <button id="cancelDuplicateMerge" type="button" class="btn-secondary">Return Without Merging</button>
     </section>
   `;
 }
@@ -505,6 +542,37 @@ function applySafeBatchFixes(treeData, groups, progress) {
   return appliedIssueIds.length;
 }
 
+function completeDuplicateMerge(treeData, fix) {
+  const progress = getProgress();
+  if (getCurrentTier() === 'free' && progress.completedDuplicateIssueIds.length >= FREE_DUPLICATE_FIX_LIMIT) {
+    throw new Error(`Your free preview includes ${FREE_DUPLICATE_FIX_LIMIT} duplicate corrections. Choose a plan to continue reviewing and correcting possible duplicates.`);
+  }
+
+  const survivor = treeData?.people?.find((person) => person.id === fix.survivorId);
+  const duplicates = treeData?.people?.filter((person) => fix.duplicateIds.includes(person.id)) || [];
+  if (!survivor || !duplicates.length) {
+    throw new Error('The duplicate records are no longer available. Reload the tree and try again.');
+  }
+
+  saveDuplicateMergeUndo(JSON.parse(JSON.stringify(treeData)), progress, {
+    survivorName: survivor.name || survivor.id,
+    duplicateNames: duplicates.map((person) => person.name || person.id),
+  });
+  mergeDuplicatePeople(treeData, fix);
+  removeStaleIssuesAfterDuplicateMerge(treeData.validationReport, fix.duplicateIds);
+  const mergedIssueId = getIssueId({
+    category: 'Possible duplicate',
+    message: `${duplicates.length + 1} people share the same name and birth year: ${[survivor, ...duplicates].map((person) => `${person.name} (${person.id})`).join(', ')}.`,
+    subject: survivor.id,
+  });
+  if (!progress.completedIssueIds.includes(mergedIssueId)) progress.completedIssueIds.push(mergedIssueId);
+  if (!progress.completedDuplicateIssueIds.includes(mergedIssueId)) {
+    progress.completedDuplicateIssueIds.push(mergedIssueId);
+  }
+  saveTreeData(treeData);
+  saveProgress(progress);
+}
+
 function renderWorkspace() {
   const treeData = getTreeData();
   const allErrors = [
@@ -536,6 +604,12 @@ function renderWorkspace() {
 
   if (!localStorage.getItem(PLAN_SELECTION_STORAGE_KEY)) {
     workspace.innerHTML = '<p class="empty-message">Choose a subscription plan before starting error fixes. <a href="store.html#subscriptions">Choose a plan in the Store</a>.</p>';
+    return;
+  }
+
+  const pendingDuplicateReview = renderPendingDuplicateMergeReview(treeData);
+  if (pendingDuplicateReview) {
+    workspace.innerHTML = pendingDuplicateReview;
     return;
   }
 
@@ -727,29 +801,27 @@ workspace.addEventListener('click', (event) => {
       return;
     }
 
-    const names = [survivor, ...duplicates].map((person) => `${person.name} (${person.id})`).join(', ');
-    if (!confirm(`Merge these records into ${survivor.name} (${survivor.id})?\n\n${names}\n\nYou will be able to review this merge before continuing.`)) {
+    pendingDuplicateMerge = fix;
+    renderWorkspace();
+    return;
+  }
+
+  if (event.target.closest('#cancelDuplicateMerge')) {
+    pendingDuplicateMerge = null;
+    renderWorkspace();
+    return;
+  }
+
+  if (event.target.closest('#confirmDuplicateMerge')) {
+    const treeData = getTreeData();
+    const fix = pendingDuplicateMerge;
+    if (!fix) {
+      renderWorkspace();
       return;
     }
-
     try {
-      saveDuplicateMergeUndo(JSON.parse(JSON.stringify(treeData)), progress, {
-        survivorName: survivor.name || survivor.id,
-        duplicateNames: duplicates.map((person) => person.name || person.id),
-      });
-      mergeDuplicatePeople(treeData, fix);
-      removeStaleIssuesAfterDuplicateMerge(treeData.validationReport, fix.duplicateIds);
-      const mergedIssueId = getIssueId({
-        category: 'Possible duplicate',
-        message: `${duplicates.length + 1} people share the same name and birth year: ${[survivor, ...duplicates].map((person) => `${person.name} (${person.id})`).join(', ')}.`,
-        subject: survivor.id,
-      });
-      if (!progress.completedIssueIds.includes(mergedIssueId)) progress.completedIssueIds.push(mergedIssueId);
-      if (!progress.completedDuplicateIssueIds.includes(mergedIssueId)) {
-        progress.completedDuplicateIssueIds.push(mergedIssueId);
-      }
-      saveTreeData(treeData);
-      saveProgress(progress);
+      completeDuplicateMerge(treeData, fix);
+      pendingDuplicateMerge = null;
       renderWorkspace();
     } catch (error) {
       alert(error.message || 'Could not merge the duplicate people.');
