@@ -10,29 +10,38 @@
   <div class="container">
     <header>
       <h1>Genealogy Tree Checker</h1>
-      <p>Upload a GEDCOM file and build a family tree</p>
+      <p>Explore, clean, and understand your family history</p>
     </header>
 
     <main>
-      <section class="options-section">
-        <h2>Application Options</h2>
-        <div class="option-grid">
-          <a href="/store#subscriptions" class="option-button">Choose Subscription</a>
-          <a href="/store" class="option-button featured-option" target="_blank" rel="noopener">Access Store Products</a>
-          <a href="#gedcomForm" class="option-button">Parse Your GED</a>
-          <a href="manual.html" class="option-button">Build a Family Tree</a>
-          <a href="ancestor.html" class="option-button">Ancestor Discovery</a>
+      <section class="hero-section">
+        <div class="hero-content">
+          <h2 class="hero-headline">Every family has a story worth telling.</h2>
+          <p class="hero-subtext">
+            Genealogy Tree Checker helps you explore, clean, and understand your family history — 
+            turning raw genealogy data into meaningful connections across generations.
+          </p>
+          <p class="hero-subtext">
+            Whether you're just starting out or diving deep into decades of research, 
+            you're in the right place. Upload your GEDCOM file below and let's discover your roots together.
+          </p>
+          <a href="#gedcomForm" class="btn-hero-cta">Start with your GEDCOM ↓</a>
         </div>
+        <nav class="explore-links" aria-label="Explore features">
+          <a href="manual.html" class="explore-link">✏️ Build a Family Tree</a>
+          <a href="ancestor.html" class="explore-link">🔍 Ancestor Discovery</a>
+          <a href="/store" class="explore-link explore-link--store" target="_blank" rel="noopener">🛒 Store & Plans</a>
+        </nav>
       </section>
 
       <section class="form-section">
-        <h2>Continue with Parse Your GED</h2>
+        <h2>Upload your GEDCOM file</h2>
         <form id="gedcomForm">
           <div class="form-group">
             <label for="gedcomFile">GEDCOM file:</label>
             <input type="file" id="gedcomFile" accept=".ged,.gedcom,.ged.txt,.txt,.zip,.gedzip,application/x-gedcom,application/zip,text/plain,application/octet-stream" required>
           </div>
-          <button type="submit" class="btn-add">Parse Your GED</button>
+          <button type="submit" class="btn-add">Explore your family story</button>
         </form>
         <p class="help-text">Supports .ged, .gedcom, text GEDCOM downloads, and .zip files containing a GEDCOM file.</p>
         <p id="uploadStatus" class="status-message" aria-live="polite"></p>
@@ -57,6 +66,6 @@
     </footer>
   </div>
 
-  <script src="script.js?v=simplified-gedcom-workflow"></script>
+  <script src="script.js?v=welcoming-hero"></script>
 </body>
 </html>
