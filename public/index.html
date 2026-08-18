@@ -53,7 +53,14 @@
 
       <section class="tree-section">
         <div class="section-header">
-          <h2>GEDCOM Overview</h2>
+          <div>
+            <h2>Your Parsed Family Tree</h2>
+            <p class="section-subtitle">Review your family lineage with birth/death dates and places</p>
+          </div>
+          <div class="layout-controls">
+            <button type="button" class="btn-secondary active" data-layout="vertical">⬇️ Vertical View</button>
+            <button type="button" class="btn-secondary" data-layout="horizontal">➡️ Horizontal View</button>
+          </div>
         </div>
         <div id="familyTree" class="family-tree">
           <p class="empty-message">Parse a GEDCOM file or start a family tree manually.</p>
@@ -66,6 +73,6 @@
     </footer>
   </div>
 
-  <script src="script.js?v=welcoming-hero"></script>
+  <script src="script.js?v=simplified-genealogy-tree"></script>
 </body>
 </html>
