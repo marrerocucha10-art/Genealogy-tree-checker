@@ -10,8 +10,17 @@
   <div class="container error-workspace">
     <header>
       <h1>Error Workspace</h1>
-      <p><strong>Step 3:</strong> Review the current item, read the suggested next step, then resolve it, move it to Fix Later, or return to the focused person in your family tree. Your corrected-items preview and printable progress charts are available while you work.</p>
-      <p>Review and resolve family-tree errors in focused groups. Each item explains what may need attention and suggests a next step. Compare it with your original GEDCOM or research records, make the correction, then mark it solved. If an item cannot be resolved right away, move it to Fix Later (Pending). It will not block your progress, and you can return whenever you have more information. Your first five manual fixes are included at no charge; upgrade when you are ready to correct the rest or use safe automatic fixes.</p>
+      <section class="guided-error-flow">
+        <h2>Step 3: Bring your family tree into clearer focus</h2>
+        <p class="guided-celebration">You are doing meaningful work for your family story. Take one clear step at a time.</p>
+        <ol class="guided-steps">
+          <li><strong>Review the current item.</strong> Read the suggested next step and compare it with your GEDCOM or research records.</li>
+          <li><strong>Choose what happens next.</strong> Confirm a duplicate merge, mark a corrected item solved, or move an item to Fix Later without losing progress.</li>
+          <li><strong>Keep track of your work.</strong> Use the corrected-items preview and printable progress charts while you work.</li>
+          <li><strong>Return to your tree when ready.</strong> The return link opens the direct line for the last record you reviewed.</li>
+        </ol>
+      </section>
+      <p>Your first five manual fixes are included at no charge; upgrade when you are ready to correct the rest or use safe automatic fixes.</p>
       <p><strong>Where corrections are saved:</strong> Your original uploaded GEDCOM is never overwritten. Confirmed duplicate merges and safe automatic fixes update the working family-tree copy saved in this browser. For manual fixes, update the source GEDCOM or your genealogy program, then mark the item solved here to record your progress.</p>
     </header>
     <main id="errorWorkspace" aria-live="polite"></main>
@@ -20,6 +29,6 @@
     </footer>
   </div>
   <script src="client-storage.js"></script>
-  <script src="errors.js?v=guided-steps-1"></script>
+  <script src="errors.js?v=guided-error-flow-1"></script>
 </body>
 </html>

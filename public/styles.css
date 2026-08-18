@@ -141,6 +141,19 @@ main {
   margin-bottom: 8px;
 }
 
+.guided-error-flow {
+  background: #f5f3ff;
+  border: 1px solid #c4b5fd;
+  border-radius: 12px;
+  margin: 16px 0;
+  padding: 16px;
+}
+
+.guided-error-flow h2 {
+  color: #312e81;
+  font-size: 1.35rem;
+}
+
 .guided-steps {
   display: grid;
   gap: 10px;
