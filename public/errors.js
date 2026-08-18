@@ -167,7 +167,6 @@ function updateReturnToTreeLink(progress = getProgress()) {
 function updateWorkspaceTreeLinks(progress = getProgress()) {
   const parameters = new URLSearchParams();
   if (WORKSPACE_PREVIEW_MODE) parameters.set('demo', 'workspace');
-  if (progress.lastReviewedSubject) parameters.set('focus', progress.lastReviewedSubject);
   const treeUrl = parameters.size ? `tree.html?${parameters}` : 'tree.html';
   document.querySelectorAll('[data-workspace-tree-preview]').forEach((link) => {
     link.href = treeUrl;
@@ -500,7 +499,6 @@ function renderWorkspaceDesk(errors, progress) {
     : 'This is your saved review desk. As you solve items or save research for later, your progress will remain here with this family tree in this browser.';
   const workingTreeParameters = new URLSearchParams();
   if (WORKSPACE_PREVIEW_MODE) workingTreeParameters.set('demo', 'workspace');
-  if (progress.lastReviewedSubject) workingTreeParameters.set('focus', progress.lastReviewedSubject);
   const workingTreeUrl = workingTreeParameters.size ? `tree.html?${workingTreeParameters}` : 'tree.html';
 
   return `

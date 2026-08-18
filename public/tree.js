@@ -206,13 +206,13 @@ function renderGenerations(treeData, peopleById, families) {
     <section class="tree-review-list">
       <h2>Your working tree preview</h2>
       <div class="tree-review-actions">
-        <button class="btn-secondary" type="button" data-open-primary-person-picker>Choose a Different Direct Line</button>
+        <button class="btn-secondary" type="button" data-open-primary-person-picker>Choose the Person to Start With</button>
       </div>
       <div id="primaryPersonPicker" hidden>
-        <label for="primaryPerson">Start this tree with</label>
-        <input id="primaryPerson" type="search" placeholder="Type a person's name" autocomplete="off">
+        <label for="primaryPerson">Choose the person whose family branch you want to review</label>
+        <input id="primaryPerson" type="search" placeholder="Type the person's name or record ID" autocomplete="off">
         <div id="primaryPersonMatches" class="primary-person-matches" aria-live="polite"></div>
-        <button class="btn-add" type="button" data-confirm-primary-person>Start tree with first matching person</button>
+        <button class="btn-add" type="button" data-confirm-primary-person>Use This Person as the Starting Point</button>
       </div>
       <p>Showing ${displayedThrough} of ${maximumGeneration} ancestry generations around ${escapeHtml(primaryPerson?.name || 'the main person')}, so you can stay focused on the records you are correcting.</p>
       <p class="muted">This quick preview starts with two generations. Add more only when you need them, or choose a different direct line.</p>
