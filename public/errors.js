@@ -8,6 +8,7 @@ const BASIC_ERROR_REVIEW_LIMIT = 5;
 const ERROR_REVIEW_ORDER_VERSION = 3;
 const workspace = document.getElementById('errorWorkspace');
 let loadedTreeData = null;
+let inMemoryDuplicateMergeUndo = null;
 
 function getTreeData() {
   if (loadedTreeData) return loadedTreeData;
@@ -30,15 +31,31 @@ function saveTreeData(treeData) {
 }
 
 function saveDuplicateMergeUndo(treeData, progress, mergeSummary) {
-  localStorage.setItem(DUPLICATE_MERGE_UNDO_STORAGE_KEY, JSON.stringify({ treeData, progress, mergeSummary }));
+  const undoState = { treeData, progress, mergeSummary };
+  inMemoryDuplicateMergeUndo = undoState;
+  try {
+    localStorage.setItem(DUPLICATE_MERGE_UNDO_STORAGE_KEY, JSON.stringify(undoState));
+  } catch (error) {
+    const databaseSave = window.familyTreeClientStorage?.saveTreeInDatabase?.(DUPLICATE_MERGE_UNDO_STORAGE_KEY, undoState);
+    if (databaseSave) {
+      void databaseSave.catch((databaseError) => console.warn('Could not save duplicate-merge undo state:', databaseError));
+    }
+  }
 }
 
 function getDuplicateMergeUndo() {
+  if (inMemoryDuplicateMergeUndo) return inMemoryDuplicateMergeUndo;
   try {
     return JSON.parse(localStorage.getItem(DUPLICATE_MERGE_UNDO_STORAGE_KEY) || 'null');
   } catch (error) {
     return null;
   }
+}
+
+function clearDuplicateMergeUndo() {
+  inMemoryDuplicateMergeUndo = null;
+  localStorage.removeItem(DUPLICATE_MERGE_UNDO_STORAGE_KEY);
+  void window.familyTreeClientStorage?.removeTreeFromDatabase?.(DUPLICATE_MERGE_UNDO_STORAGE_KEY);
 }
 
 function getIssueId(issue) {
@@ -646,7 +663,7 @@ workspace.addEventListener('click', (event) => {
   }
 
   if (event.target.closest('#approveDuplicateMerge')) {
-    localStorage.removeItem(DUPLICATE_MERGE_UNDO_STORAGE_KEY);
+    clearDuplicateMergeUndo();
     renderWorkspace();
     return;
   }
@@ -663,7 +680,7 @@ workspace.addEventListener('click', (event) => {
 
     saveTreeData(undoState.treeData);
     saveProgress(undoState.progress);
-    localStorage.removeItem(DUPLICATE_MERGE_UNDO_STORAGE_KEY);
+    clearDuplicateMergeUndo();
     renderWorkspace();
     return;
   }
