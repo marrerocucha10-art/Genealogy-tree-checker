@@ -355,6 +355,7 @@ function renderWorkspace() {
       </div>
       <p class="batch-help">Errors are shown in groups of 10 people so it's easy and manageable. Work through this group at your own pace — each person's issues are listed below. Mark an error solved only after correcting it in your source GEDCOM or completing the recommended fix. The next group will unlock once this batch is complete.</p>
       ${encouragement}
+      <button id="markBatchSolved" type="button" class="btn-add">Mark all as solved</button>
       <button id="printProgressChart" type="button" class="btn-secondary">Print Progress Chart</button>
       <button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Errors Chart</button>
       ${undoButton}
@@ -454,6 +455,33 @@ workspace.addEventListener('click', (event) => {
       }
       saveProgress(progress);
     }
+    renderWorkspace();
+    return;
+  }
+
+  if (event.target.closest('#markBatchSolved')) {
+    const treeData = getTreeData();
+    const allErrors = [
+      ...(treeData?.validationReport?.errors || []),
+      ...(treeData?.validationReport?.warnings || []).filter((issue) => issue.autoFix?.type === 'mergeDuplicatePeople'),
+    ];
+    const progress = getProgress();
+    const activeGroups = getActiveIssueGroups(allErrors, progress);
+    for (const group of activeGroups) {
+      for (const issue of group.issues) {
+        const issueId = getIssueId(issue);
+        if (!progress.completedIssueIds.includes(issueId)) {
+          const basicLimitReached = !canUseUnlimitedErrorFixes() && !isDuplicateIssue(issue) && getCompletedNonDuplicateIssueCount(allErrors, progress) >= BASIC_ERROR_FIX_LIMIT;
+          if (!basicLimitReached) {
+            progress.completedIssueIds.push(issueId);
+            if (!isDuplicateIssue(issue)) {
+              progress.completedNonDuplicateIssueIds.push(issueId);
+            }
+          }
+        }
+      }
+    }
+    saveProgress(progress);
     renderWorkspace();
     return;
   }
