@@ -189,6 +189,7 @@ function recordResolvedItem(progress, issue, correctionType) {
 }
 
 function getCurrentTier() {
+  if (WORKSPACE_PREVIEW_MODE) return 'pro';
   return localStorage.getItem(SUBSCRIPTION_STORAGE_KEY) || 'free';
 }
 
