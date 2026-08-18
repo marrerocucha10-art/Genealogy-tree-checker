@@ -328,11 +328,22 @@ function renderWorkspace() {
   )).length;
 
   if (activeDone && remainingGroups) {
+    const correctedRows = activeGroups.flatMap((group) =>
+      group.issues
+        .filter((issue) => completed.has(getIssueId(issue)))
+        .map((issue) => `
+          <li>
+            <strong>${escapeHtml(group.label)}</strong> —
+            <em>${escapeHtml(issue.category)}</em>: ${escapeHtml(issue.message)}
+          </li>
+        `)
+    ).join('');
     workspace.innerHTML = `
       <section class="batch-complete">
         <h2>🎉 Congratulations on completing this batch!</h2>
         <p>Excellent work! You've finished this group of errors. There ${remainingGroups === 1 ? 'is' : 'are'} still <strong>${remainingGroups} person${remainingGroups === 1 ? '' : 's'} or record${remainingGroups === 1 ? '' : 's'}</strong> remaining — keep going, you're making great progress!</p>
-        <button id="loadNextBatch" type="button" class="btn-add">Load next ${Math.min(ERROR_BATCH_SIZE, remainingGroups)} people</button>
+        ${correctedRows ? `<h3>Corrected errors in this batch</h3><ul class="corrected-errors-list">${correctedRows}</ul>` : ''}
+        <button id="loadNextBatch" type="button" class="btn-add">Continue with next ${Math.min(ERROR_BATCH_SIZE, remainingGroups)} errors</button>
         <button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Errors Chart</button>
         ${undoButton}
         ${encouragement}
