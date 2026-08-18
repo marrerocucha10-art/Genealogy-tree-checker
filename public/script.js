@@ -107,6 +107,7 @@ const subscriptionStatusDiv = document.getElementById('subscriptionStatus');
 const manageBillingButton = document.getElementById('manageBilling');
 const goToStoreButton = document.getElementById('goToStore');
 const gedcomUploadLimit = document.getElementById('gedcomUploadLimit');
+const selectedPlanGuidance = document.getElementById('selectedPlanGuidance');
 
 function getGedcomUploadLimitBytes(tier = currentTier) {
   return GEDCOM_UPLOAD_LIMITS[tier] || GEDCOM_UPLOAD_LIMITS.free;
@@ -120,6 +121,14 @@ function formatGedcomUploadLimit(tier = currentTier) {
 function updateGedcomUploadLimit() {
   if (!gedcomUploadLimit) return;
   gedcomUploadLimit.textContent = `Supports .ged, .gedcom, text GEDCOM downloads, and .zip files containing a GEDCOM file up to ${formatGedcomUploadLimit()} on your current plan.`;
+}
+
+function updateSelectedPlanGuidance() {
+  if (!selectedPlanGuidance) return;
+  const planName = SUBSCRIPTION_TIERS[currentTier]?.name || 'selected';
+  selectedPlanGuidance.textContent = currentTier === 'free'
+    ? 'Wonderful - your free review is ready. You are about to bring your family story into clearer focus.'
+    : `Wonderful choice - your ${planName} plan is ready. You are about to bring your family story into clearer focus.`;
 }
 
 subscriptionPlansDiv?.addEventListener('click', (event) => {
@@ -585,6 +594,7 @@ function renderSubscriptionPlans() {
     `;
   }).join('');
   updateGedcomUploadLimit();
+  updateSelectedPlanGuidance();
 }
 
 function hasTier(requiredTier) {

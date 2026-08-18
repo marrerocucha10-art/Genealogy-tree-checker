@@ -123,6 +123,31 @@ main {
   margin-top: 18px;
 }
 
+.guided-upload {
+  background: #f5f3ff;
+  border: 1px solid #c4b5fd;
+  border-radius: 12px;
+  margin-bottom: 18px;
+  padding: 16px;
+}
+
+.guided-celebration {
+  color: #5b21b6;
+  font-weight: 700;
+}
+
+.guided-steps {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0 0;
+  padding-left: 24px;
+}
+
+.guided-steps li {
+  color: #4b5563;
+  padding-left: 4px;
+}
+
 .welcome-preview {
   background: #ffffff;
   border: 1px solid #dbeafe;

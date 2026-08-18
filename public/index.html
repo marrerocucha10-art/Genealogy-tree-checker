@@ -103,7 +103,14 @@
 
       <section id="uploadSection" class="form-section" hidden>
         <h2>Step 1: Upload Your Family File</h2>
-        <p class="help-text">Select your GEDCOM file and we will read it automatically. Next, review the direct family line we create from your records.</p>
+        <div class="guided-upload">
+          <p id="selectedPlanGuidance" class="guided-celebration">Wonderful - your plan is ready, and your family-story journey can begin.</p>
+          <ol class="guided-steps">
+            <li><strong>Upload your GEDCOM file.</strong> Choose your family file below and we will read it automatically.</li>
+            <li><strong>Review your direct family line.</strong> Check the people and connections shown in your tree.</li>
+            <li><strong>Work through clear next steps.</strong> Review possible duplicates and other details, then resolve, defer, or print your progress.</li>
+          </ol>
+        </div>
         <form id="gedcomForm">
           <div class="form-group">
             <label for="gedcomFile">Choose your GEDCOM file</label>
@@ -137,6 +144,6 @@
   </div>
 
   <script src="client-storage.js"></script>
-  <script src="script.js?v=guided-steps-1"></script>
+  <script src="script.js?v=guided-plan-1"></script>
 </body>
 </html>
