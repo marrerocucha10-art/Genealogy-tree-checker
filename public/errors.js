@@ -144,6 +144,7 @@ function renderBasicPlanOptions(errors, progress) {
         <h2>Wonderful progress on your family tree.</h2>
         <p>Your free preview includes up to ${FREE_DUPLICATE_FIX_LIMIT} reviewed duplicate corrections. ${duplicateProgressMessage}</p>
         <p>Family Builder lets you continue reviewing and correcting possible duplicates, so every person has a clearer place in your family story.</p>
+        <p>Your resolved work stays in this browser workspace when you upgrade, so you can continue from the same place.</p>
         <a class="btn-secondary assistance-upgrade-link" href="store.html#subscriptions">Upgrade for more duplicate corrections</a>
       </section>
     `;
@@ -161,6 +162,7 @@ function renderBasicPlanOptions(errors, progress) {
       <h2>Great news - these details can be fixed.</h2>
       <p>${freeReviewMessage} An accurate tree is a wonderful way to share your family's story with relatives and friends, while honoring your ancestors and their contributions to society.</p>
       <p>${remainingErrors ? `Upgrade to Family Builder to fix the remaining ${remainingErrors} error${remainingErrors === 1 ? '' : 's'}, and choose Pro / Researcher when you want safe automatic fixes.` : 'Upgrade to Family Builder whenever you are ready to continue fixing errors and preserving your family history.'}</p>
+      <p>Your resolved work stays in this browser workspace when you upgrade, so you can continue from the same place.</p>
       <a class="btn-secondary assistance-upgrade-link" href="store.html#subscriptions">Choose a plan to fix the rest</a>
     </section>
   `;
@@ -227,9 +229,9 @@ function renderDuplicateMergeReview() {
     <section class="duplicate-merge-review">
       <h2>Duplicate merge complete</h2>
       <p><strong>${escapeHtml(undoState.mergeSummary.survivorName)}</strong> now includes ${escapeHtml(undoState.mergeSummary.duplicateNames.join(', '))}.</p>
-      <p>Keep this merged record to continue, or return to the previous version of your tree.</p>
-      <button id="approveDuplicateMerge" type="button" class="btn-add">Keep Merge and Continue</button>
-      <button id="undoDuplicateMerge" type="button" class="btn-secondary">Return to Previous Tree</button>
+    <p>Keep this resolved correction in your workspace and continue reviewing or upgrade when you are ready. If you prefer, you can return this most recent merge to the previous tree state.</p>
+    <button id="approveDuplicateMerge" type="button" class="btn-add">Keep Resolved Work and Continue</button>
+    <button id="undoDuplicateMerge" type="button" class="btn-secondary">Return to Previous Tree State</button>
     </section>
   `;
 }
