@@ -108,7 +108,6 @@ const manageBillingButton = document.getElementById('manageBilling');
 const goToStoreButton = document.getElementById('goToStore');
 const gedcomUploadLimit = document.getElementById('gedcomUploadLimit');
 const selectedPlanGuidance = document.getElementById('selectedPlanGuidance');
-const selectedPlanSteps = document.getElementById('selectedPlanSteps');
 const selectedPlanWelcome = document.getElementById('selectedPlanWelcome');
 
 function getGedcomUploadLimitBytes(tier = currentTier) {
@@ -132,7 +131,6 @@ function updateSelectedPlanGuidance() {
     : `Wonderful choice - your ${planName} plan is ready. You are about to bring your family story into clearer focus.`;
   if (selectedPlanGuidance) selectedPlanGuidance.textContent = guidance;
   if (selectedPlanWelcome) selectedPlanWelcome.textContent = guidance;
-  if (selectedPlanSteps) selectedPlanSteps.hidden = !localStorage.getItem(PLAN_SELECTION_STORAGE_KEY);
 }
 
 subscriptionPlansDiv?.addEventListener('click', (event) => {
