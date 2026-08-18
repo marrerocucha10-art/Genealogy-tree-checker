@@ -931,6 +931,7 @@ function renderWorkspace() {
                     </div>`}
                     <div class="issue-fix-actions">
                     <button type="button" class="btn-secondary" data-review-manually>Review manually</button>
+                    <a class="btn-secondary" href="ancestor.html?focus=${encodeURIComponent(issue.subject || '')}${WORKSPACE_PREVIEW_MODE ? '&demo=workspace' : ''}">Find Supporting Records</a>
                     <button type="button" class="btn-secondary" data-resolve-issue="${encodeURIComponent(issueId)}" data-duplicate-issue="${isDuplicateIssue(issue)}" ${isResolved ? 'disabled' : ''}>${isCompleted ? 'Solved' : isPending ? 'Pending review' : 'Mark solved'}</button>
                     ${isResolved ? '' : `<button type="button" class="btn-secondary" data-pending-issue="${encodeURIComponent(issueId)}">Move to Fix Later</button>`}
                     </div>

@@ -2202,6 +2202,7 @@ input[type="file"] {
 
 .issue-fix-actions .btn-secondary {
   margin-top: 0;
+  text-decoration: none;
 }
 
 .manual-review-note {
