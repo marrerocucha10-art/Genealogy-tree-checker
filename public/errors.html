@@ -4,24 +4,22 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Error Workspace | Genealogy Tree Checker</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=workspace-entrance-1">
 </head>
 <body>
   <div class="container error-workspace">
-    <header>
-      <h1>Error Workspace</h1>
-      <section class="guided-error-flow">
-        <h2>Step 3: Bring your family tree into clearer focus</h2>
-        <p class="guided-celebration">You are doing meaningful work for your family story. Take one clear step at a time.</p>
-        <ol class="guided-steps">
-          <li><strong>Review the current item.</strong> Read the suggested next step and compare it with your GEDCOM or research records.</li>
-          <li><strong>Choose what happens next.</strong> Confirm a duplicate merge, mark a corrected item solved, or move an item to Fix Later without losing progress.</li>
-          <li><strong>Keep track of your work.</strong> Print a chart for manual research notes, or open the computer report for progress and your next step.</li>
-          <li><strong>Return to your tree when ready.</strong> The return link opens the direct line for the last record you reviewed.</li>
-        </ol>
-      </section>
-      <p id="planErrorWorkspaceMessage"></p>
-      <p><strong>Where corrections are saved:</strong> Your original uploaded GEDCOM is never overwritten. Confirmed duplicate merges and safe automatic fixes update the working family-tree copy saved in this browser. For manual fixes, update the source GEDCOM or your genealogy program, then mark the item solved here to record your progress.</p>
+    <header class="workspace-welcome">
+      <p class="eyebrow">Your saved review area</p>
+      <h1>Welcome to Your Error Workspace</h1>
+      <p>Use this one clean place to review records, save research for later, and see every correction you have completed.</p>
+      <nav class="workspace-welcome-flow" aria-label="Error Workspace flow">
+        <a href="tree.html"><span>1</span><strong>View working tree</strong><small>See the small branch you are correcting.</small></a>
+        <a href="#activeReview"><span>2</span><strong>Review errors</strong><small>Follow each recommended correction.</small></a>
+        <a href="#researchShelf"><span>3</span><strong>Save research</strong><small>Return when you find more information.</small></a>
+        <a href="#progressReports"><span>4</span><strong>Charts and reports</strong><small>Print progress or check your next step.</small></a>
+      </nav>
+      <p id="planErrorWorkspaceMessage" class="workspace-plan-message"></p>
+      <p class="workspace-storage-note"><strong>Your work stays here:</strong> confirmed merges, safe fixes, completed review records, and items saved for later are kept with this browser family tree. Your original GEDCOM is never overwritten.</p>
     </header>
     <main id="errorWorkspace" aria-live="polite"></main>
     <footer>
@@ -29,6 +27,6 @@
     </footer>
   </div>
   <script src="client-storage.js"></script>
-  <script src="errors.js?v=workspace-flow-1"></script>
+  <script src="errors.js?v=workspace-entrance-1"></script>
 </body>
 </html>

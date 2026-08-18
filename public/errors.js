@@ -476,43 +476,6 @@ function renderWorkspaceDesk(errors, progress) {
         <a href="#researchShelf">Open research shelf</a>
         <a href="#progressReports">View charts and reports</a>
       </div>
-      <section class="review-desk-guide" aria-label="How to use your review desk">
-        <h3>Welcome to your Error Workspace</h3>
-        <p>Everything you review here stays organized with this family tree, so you can pause and return whenever you are ready.</p>
-        <ol>
-          <li><strong>Review the active items.</strong> Open the current batch below, read each suggested fix, then mark it solved after you correct the source record.</li>
-          <li><strong>Save research for later.</strong> Move anything that needs more records to the research shelf without losing your place.</li>
-          <li><strong>Check your progress.</strong> Use the chart for handwritten notes or the computer report for your completed work and next step.</li>
-        </ol>
-      </section>
-      <section class="workspace-flow-chart" aria-label="Error Workspace flow">
-        <div class="workspace-flow-heading">
-          <h3>Your guided error-review flow</h3>
-          <p>Move through each step at your own pace. Your saved work stays here.</p>
-        </div>
-        <div class="workspace-flow-steps">
-          <a class="workspace-flow-step" href="${workingTreeUrl}">
-            <span>1</span>
-            <strong>View your working tree</strong>
-            <small>Check the small family branch around the record you are reviewing.</small>
-          </a>
-          <a class="workspace-flow-step" href="#activeReview">
-            <span>2</span>
-            <strong>Review and fix errors</strong>
-            <small>Use each recommended next step, then mark the record solved.</small>
-          </a>
-          <a class="workspace-flow-step" href="#researchShelf">
-            <span>3</span>
-            <strong>Save research for later</strong>
-            <small>Keep unanswered items without losing your active review progress.</small>
-          </a>
-          <a class="workspace-flow-step" href="#progressReports">
-            <span>4</span>
-            <strong>Check charts and reports</strong>
-            <small>Print a manual chart or open your computer progress report and next steps.</small>
-          </a>
-        </div>
-      </section>
       <div id="progressReports">
         ${renderProgressTools(progress, errors)}
       </div>
