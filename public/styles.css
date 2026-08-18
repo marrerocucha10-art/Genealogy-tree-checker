@@ -5,7 +5,7 @@
 }
 
 body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Brush Script MT', 'Lucida Handwriting', cursive;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   min-height: 100vh;
   padding: 20px;
@@ -30,11 +30,14 @@ header {
 header h1 {
   font-size: 2.5em;
   margin-bottom: 10px;
+  font-family: 'Brush Script MT', 'Lucida Handwriting', cursive;
+  font-weight: 400;
 }
 
 header p {
   font-size: 1.1em;
   opacity: 0.9;
+  font-family: 'Brush Script MT', 'Lucida Handwriting', cursive;
 }
 
 main {
@@ -53,6 +56,8 @@ main {
   font-size: 1.5em;
   border-bottom: 3px solid #667eea;
   padding-bottom: 10px;
+  font-family: 'Brush Script MT', 'Lucida Handwriting', cursive;
+  font-weight: 400;
 }
 
 .form-group {
@@ -64,6 +69,7 @@ label {
   margin-bottom: 8px;
   color: #555;
   font-weight: 500;
+  font-family: 'Brush Script MT', 'Lucida Handwriting', cursive;
 }
 
 input[type="text"],
@@ -75,6 +81,7 @@ select {
   border-radius: 8px;
   font-size: 1em;
   transition: border-color 0.3s;
+  font-family: 'Brush Script MT', 'Lucida Handwriting', cursive;
 }
 
 input[type="text"]:focus,
@@ -96,6 +103,7 @@ select:focus {
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
   width: 100%;
+  font-family: 'Brush Script MT', 'Lucida Handwriting', cursive;
 }
 
 .btn-add:hover {
@@ -136,10 +144,13 @@ select:focus {
 .workflow-overview h3 {
   color: #3730a3;
   margin-bottom: 8px;
+  font-family: 'Brush Script MT', 'Lucida Handwriting', cursive;
+  font-weight: 400;
 }
 
 .workflow-overview p {
   color: #4b5563;
+  font-family: 'Brush Script MT', 'Lucida Handwriting', cursive;
 }
 
 .workflow-actions {
@@ -216,6 +227,7 @@ select:focus {
   color: #333;
   margin-bottom: 5px;
   font-size: 1.1em;
+  font-family: 'Brush Script MT', 'Lucida Handwriting', cursive;
 }
 
 .member-info p {
@@ -260,6 +272,7 @@ footer {
   text-align: center;
   color: #666;
   border-top: 1px solid #ddd;
+  font-family: 'Brush Script MT', 'Lucida Handwriting', cursive;
 }
 
 @media (max-width: 600px) {
@@ -289,6 +302,7 @@ input[type="file"] {
   border-radius: 8px;
   background: #f8f9ff;
   cursor: pointer;
+  font-family: 'Brush Script MT', 'Lucida Handwriting', cursive;
 }
 
 .status-message {
@@ -296,6 +310,7 @@ input[type="file"] {
   min-height: 1.4em;
   color: #555;
   font-weight: 600;
+  font-family: 'Brush Script MT', 'Lucida Handwriting', cursive;
 }
 
 .status-message.success {
@@ -332,6 +347,7 @@ input[type="file"] {
   border-radius: 6px;
   cursor: pointer;
   font-weight: 600;
+  font-family: 'Brush Script MT', 'Lucida Handwriting', cursive;
 }
 
 .btn-secondary:hover {
@@ -351,6 +367,7 @@ input[type="file"] {
   padding: 8px 12px;
   border-radius: 999px;
   box-shadow: 0 1px 5px rgba(0, 0, 0, 0.08);
+  font-family: 'Brush Script MT', 'Lucida Handwriting', cursive;
 }
 
 .family-group {
@@ -365,6 +382,8 @@ input[type="file"] {
 .group-title {
   color: #333;
   margin-bottom: 12px;
+  font-family: 'Brush Script MT', 'Lucida Handwriting', cursive;
+  font-weight: 400;
 }
 
 .relationship-grid {
@@ -376,6 +395,8 @@ input[type="file"] {
 .relationship-grid h4 {
   color: #4a5568;
   margin-bottom: 10px;
+  font-family: 'Brush Script MT', 'Lucida Handwriting', cursive;
+  font-weight: 400;
 }
 
 .muted {
@@ -420,6 +441,8 @@ input[type="file"] {
 .gedcom-info h4 {
   color: #333;
   margin-bottom: 12px;
+  font-family: 'Brush Script MT', 'Lucida Handwriting', cursive;
+  font-weight: 400;
 }
 
 .gedcom-info dl {
@@ -474,6 +497,8 @@ input[type="file"] {
 .family-heading h3 {
   color: #333;
   margin: 0;
+  font-family: 'Brush Script MT', 'Lucida Handwriting', cursive;
+  font-weight: 400;
 }
 
 .family-heading span,
@@ -587,6 +612,8 @@ input[type="file"] {
   font-size: 1.05em;
   margin-bottom: 4px;
   padding-right: 24px;
+  font-family: 'Brush Script MT', 'Lucida Handwriting', cursive;
+  font-weight: 400;
 }
 
 .person-node p {
@@ -679,6 +706,7 @@ input[type="file"] {
   cursor: pointer;
   font-weight: 700;
   padding: 8px 14px;
+  font-family: 'Brush Script MT', 'Lucida Handwriting', cursive;
 }
 
 .layout-button.active {
@@ -969,6 +997,8 @@ input[type="file"] {
 .report-heading h3 {
   color: #2d3748;
   margin: 0;
+  font-family: 'Brush Script MT', 'Lucida Handwriting', cursive;
+  font-weight: 400;
 }
 
 .report-heading span {
@@ -998,890 +1028,4 @@ input[type="file"] {
   background: #ebf8ff;
   border: 1px solid #63b3ed;
   color: #2a4365;
-}
-
-.issue-group h4 {
-  margin-bottom: 8px;
-}
-
-.issue-group ul {
-  margin-left: 18px;
-}
-
-.issue-group li {
-  margin: 6px 0;
-}
-
-.issue-group li span {
-  color: #718096;
-  font-family: Consolas, Monaco, monospace;
-  font-size: 0.86em;
-}
-
-@media print {
-  .validation-report {
-    border: 1px solid #9ca3af;
-  }
-
-  .issue-group {
-    border: 1px solid #9ca3af !important;
-  }
-}
-
-.report-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.ancestor-discovery {
-  background: #fffaf0;
-  border: 1px solid #f6ad55;
-  border-radius: 14px;
-  margin: 20px 0;
-  padding: 20px;
-}
-
-.ancestor-discovery .report-heading p,
-.ancestor-discovery-intro {
-  margin: 6px 0 0;
-}
-
-.tree-presentation {
-  background: #f5f3ff;
-  border: 2px solid #c4b5fd;
-  border-radius: 14px;
-  margin: 20px 0;
-  padding: 20px;
-  scroll-margin-top: 16px;
-}
-
-.tree-presentation .report-heading p {
-  margin: 6px 0 0;
-}
-
-.presentation-options {
-  display: grid;
-  gap: 16px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin: 18px 0;
-}
-
-.presentation-options h4,
-.keepsake-offer h4 {
-  color: #5b21b6;
-  margin-bottom: 8px;
-}
-
-.presentation-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.active-presentation {
-  background: #6d28d9 !important;
-  border-color: #6d28d9 !important;
-  color: #fff !important;
-}
-
-.presentation-print-button {
-  max-width: 360px;
-}
-
-.presentation-print-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.presentation-print-actions .btn-secondary {
-  width: auto;
-}
-
-.presentation-upgrade {
-  color: #4c1d95;
-  margin: 16px 0;
-}
-
-.presentation-upgrade a {
-  color: #5b21b6;
-  font-weight: 700;
-}
-
-.keepsake-offer,
-.updated-tree-offer {
-  background: #fff;
-  border: 1px solid #ddd6fe;
-  border-radius: 10px;
-  margin-top: 18px;
-  padding: 16px;
-}
-
-.keepsake-offer p,
-.updated-tree-offer p {
-  color: #4a5568;
-  margin-bottom: 12px;
-}
-
-.keepsake-offer .btn-secondary {
-  display: inline-block;
-  text-decoration: none;
-}
-
-.updated-tree-offer {
-  border-color: #c4b5fd;
-  text-align: center;
-}
-
-.updated-tree-offer h2 {
-  color: #5b21b6;
-  font-size: 1.2em;
-  margin-bottom: 8px;
-}
-
-.updated-tree-offer .btn-add {
-  display: inline-block;
-  max-width: 400px;
-  text-decoration: none;
-}
-
-.family-tree.theme-heritage .tree-chart {
-  background:
-    linear-gradient(#fffbeb, #fffbeb) padding-box,
-    linear-gradient(135deg, #92400e, #b45309) border-box;
-}
-
-.family-tree.theme-heritage .person-node::before {
-  background: linear-gradient(135deg, #92400e, #d97706);
-}
-
-.family-tree.theme-garden .tree-chart {
-  background:
-    linear-gradient(#f0fdf4, #f0fdf4) padding-box,
-    linear-gradient(135deg, #166534, #22c55e) border-box;
-}
-
-.family-tree.theme-garden .person-node::before {
-  background: linear-gradient(135deg, #166534, #22c55e);
-}
-
-@media (max-width: 800px) {
-  .presentation-options {
-    grid-template-columns: 1fr;
-  }
-}
-
-.ancestor-discovery-grid {
-  display: grid;
-  gap: 14px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin-top: 16px;
-}
-
-.ancestor-card {
-  background: #fff;
-  border: 1px solid #fed7aa;
-  border-radius: 10px;
-  padding: 14px;
-}
-
-.ancestor-card h4 {
-  color: #9c4221;
-  margin-bottom: 6px;
-}
-
-.ancestor-card p {
-  color: #4a5568;
-  font-size: 0.92em;
-}
-
-.ancestor-meta {
-  color: #9c4221 !important;
-  font-weight: 700;
-}
-
-.ancestor-card details {
-  color: #4a5568;
-  font-size: 0.9em;
-  margin: 12px 0;
-}
-
-.ancestor-card summary {
-  color: #9c4221;
-  cursor: pointer;
-  font-weight: 700;
-}
-
-.ancestor-card ul {
-  display: grid;
-  gap: 7px;
-  margin: 10px 0 0 18px;
-}
-
-.ancestor-resource-links {
-  display: grid;
-  gap: 8px;
-  margin-top: 14px;
-}
-
-.ancestor-resource-links .btn-secondary {
-  text-align: center;
-  text-decoration: none;
-}
-
-@media (max-width: 800px) {
-  .ancestor-discovery-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.family-builder-tools {
-  background: #f8fafc;
-  border: 2px solid #a5b4fc;
-  border-radius: 14px;
-  margin: 20px 0;
-  padding: 20px;
-  scroll-margin-top: 16px;
-  transition: box-shadow 0.25s ease, transform 0.25s ease;
-}
-
-.family-builder-tools.highlighted {
-  box-shadow: 0 0 0 5px rgba(99, 102, 241, 0.25);
-  transform: translateY(-2px);
-}
-
-.family-builder-tools .report-heading p {
-  margin: 6px 0 0;
-}
-
-.family-builder-summary,
-.family-builder-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin: 14px 0;
-}
-
-.family-builder-summary span {
-  background: #e0e7ff;
-  border-radius: 999px;
-  color: #3730a3;
-  padding: 7px 11px;
-}
-
-.family-builder-actions .btn-secondary {
-  text-decoration: none;
-}
-
-.worksheet-grid {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.worksheet-card {
-  background: #fff;
-  border: 1px solid #cbd5e1;
-  border-radius: 10px;
-  padding: 14px;
-}
-
-.worksheet-card h4 {
-  color: #312e81;
-  margin-bottom: 7px;
-}
-
-.worksheet-card p,
-.ancestry-forms-note {
-  color: #475569;
-  font-size: 0.92em;
-}
-
-.worksheet-card .btn-secondary {
-  margin-top: 10px;
-}
-
-.ancestry-forms-note {
-  margin: 16px 0 0;
-}
-
-@media (max-width: 800px) {
-  .worksheet-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.error-workspace main {
-  min-height: 360px;
-}
-
-.error-batch,
-.batch-complete {
-  background: #ffffff;
-  border: 1px solid #f6ad55;
-  border-radius: 12px;
-  padding: 22px;
-}
-
-.batch-complete {
-  text-align: center;
-}
-
-.batch-complete h2,
-.error-batch h2 {
-  color: #2d3748;
-  margin-bottom: 10px;
-}
-
-.batch-help {
-  color: #4a5568;
-  margin-bottom: 18px;
-}
-
-.error-batch-list {
-  display: grid;
-  gap: 12px;
-  list-style-position: inside;
-}
-
-.error-batch-list li {
-  background: #fff5f5;
-  border: 1px solid #fc8181;
-  border-radius: 10px;
-  color: #742a2a;
-  padding: 14px;
-}
-
-.person-error-list {
-  display: grid;
-  gap: 10px;
-  list-style: none;
-  margin-top: 12px;
-}
-
-.person-error-list li {
-  background: rgba(255, 255, 255, 0.65);
-  border-color: #feb2b2;
-}
-
-.error-batch-list .btn-secondary {
-  margin-top: 10px;
-}
-
-.assistance-options {
-  background: #eff6ff;
-  border: 1px solid #93c5fd;
-  border-radius: 12px;
-  margin-top: 18px;
-  padding: 18px;
-}
-
-.assistance-options h2 {
-  color: #1e3a8a;
-  font-size: 1.15em;
-  margin-bottom: 8px;
-}
-
-.assistance-options p {
-  color: #1e40af;
-  margin-bottom: 12px;
-}
-
-.progress-encouragement {
-  background: #f0fdf4;
-  border: 1px solid #86efac;
-  border-radius: 12px;
-  color: #166534;
-  margin: 16px 0;
-  padding: 14px 16px;
-}
-
-.progress-encouragement strong {
-  display: block;
-  margin-bottom: 5px;
-}
-
-.progress-encouragement p {
-  color: #166534;
-  margin: 0;
-}
-
-.assistance-upgrade-link {
-  display: inline-block;
-  margin-left: 8px;
-  text-decoration: none;
-}
-
-.fix-suggestion {
-  background: rgba(255, 255, 255, 0.65);
-  border-radius: 8px;
-  color: #2d3748;
-  margin-top: 6px;
-  padding: 7px 9px;
-}
-
-.fix-history {
-  background: #f0fff4;
-  border: 1px solid #68d391;
-  border-radius: 12px;
-  margin-bottom: 18px;
-  padding: 18px;
-}
-
-.fix-history ol {
-  margin-left: 20px;
-}
-
-.fix-history li {
-  background: rgba(255, 255, 255, 0.72);
-  border-radius: 10px;
-  margin: 10px 0;
-  padding: 10px 12px;
-}
-
-.fix-history li span,
-.fix-time {
-  color: #718096;
-  font-family: Consolas, Monaco, monospace;
-  font-size: 0.86em;
-}
-
-.fix-history p {
-  margin: 5px 0;
-}
-
-@media print {
-  .fix-history {
-    border: 1px solid #9ca3af;
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-}
-
-.subscription-section {
-  margin-bottom: 40px;
-}
-
-.subscription-header {
-  align-items: flex-start;
-  border-bottom: 3px solid #667eea;
-  display: flex;
-  gap: 16px;
-  justify-content: space-between;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-}
-
-.subscription-header h2 {
-  border-bottom: 0;
-  color: #333;
-  margin-bottom: 6px;
-  padding-bottom: 0;
-}
-
-.subscription-header p,
-.subscription-status {
-  color: #4a5568;
-}
-
-.subscription-status {
-  background: #edf2f7;
-  border-radius: 999px;
-  display: inline-block;
-  font-weight: 700;
-  margin-bottom: 16px;
-  padding: 8px 14px;
-}
-
-.subscription-plans {
-  display: grid;
-  gap: 14px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.subscription-card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  box-shadow: 0 8px 22px rgba(45, 55, 72, 0.08);
-  padding: 16px;
-}
-
-.subscription-card.current {
-  border-color: #667eea;
-  box-shadow: 0 12px 28px rgba(102, 126, 234, 0.16);
-}
-
-.subscription-card h3 {
-  color: #2d3748;
-  margin-bottom: 8px;
-}
-
-.subscription-card p,
-.subscription-card li {
-  color: #4a5568;
-  font-size: 0.92em;
-}
-
-.subscription-card ul {
-  margin: 10px 0 14px 18px;
-}
-
-.subscription-card .btn-add,
-.subscription-card .btn-secondary {
-  margin-top: 8px;
-  width: 100%;
-}
-
-.plan-badge {
-  background: #c6f6d5;
-  border-radius: 999px;
-  color: #22543d;
-  display: inline-block;
-  font-size: 0.82em;
-  font-weight: 800;
-  padding: 5px 9px;
-}
-
-@media (max-width: 900px) {
-  .subscription-plans {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 600px) {
-  .subscription-header {
-    display: block;
-  }
-
-  .subscription-plans {
-    grid-template-columns: 1fr;
-  }
-}
-
-.package-section {
-  margin-bottom: 40px;
-}
-
-.keepsake-catalog {
-  background: #fff7ed;
-  border: 2px solid #fdba74;
-  border-radius: 14px;
-  margin-bottom: 40px;
-  padding: 22px;
-  scroll-margin-top: 20px;
-}
-
-.keepsake-catalog-heading {
-  align-items: flex-start;
-  display: flex;
-  gap: 16px;
-  justify-content: space-between;
-}
-
-.keepsake-catalog-heading h2 {
-  color: #9a3412;
-  margin-bottom: 7px;
-}
-
-.keepsake-catalog-heading p,
-.keepsake-catalog-note {
-  color: #7c2d12;
-}
-
-.keepsake-catalog-heading span,
-.coming-soon-badge {
-  background: #fed7aa;
-  border-radius: 999px;
-  color: #9a3412;
-  font-size: 0.82em;
-  font-weight: 800;
-  padding: 6px 10px;
-  white-space: nowrap;
-}
-
-.keepsake-catalog-note {
-  margin: 16px 0;
-}
-
-.keepsake-product-grid {
-  display: grid;
-  gap: 14px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.keepsake-product-card {
-  background: #fff;
-  border: 1px solid #fed7aa;
-  border-radius: 10px;
-  padding: 16px;
-}
-
-.keepsake-product-card h3 {
-  color: #9a3412;
-  margin-bottom: 8px;
-}
-
-.keepsake-product-card p {
-  color: #4a5568;
-  margin-bottom: 14px;
-}
-
-@media (max-width: 600px) {
-  .keepsake-catalog-heading {
-    display: block;
-  }
-
-  .keepsake-catalog-heading span {
-    display: inline-block;
-    margin-top: 10px;
-  }
-
-  .keepsake-product-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.package-grid {
-  display: grid;
-  gap: 16px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.package-card {
-  background:
-    linear-gradient(#ffffff, #ffffff) padding-box,
-    linear-gradient(135deg, #667eea, #68d391) border-box;
-  border: 2px solid transparent;
-  border-radius: 14px;
-  box-shadow: 0 12px 28px rgba(45, 55, 72, 0.1);
-  padding: 18px;
-}
-
-.package-card h3 {
-  color: #2d3748;
-  margin-bottom: 12px;
-}
-
-.package-card ul {
-  margin-left: 20px;
-}
-
-.package-card li {
-  color: #4a5568;
-  margin: 7px 0;
-}
-
-@media (max-width: 900px) {
-  .package-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.billing-toggle {
-  background: #edf2f7;
-  border: 1px solid #cbd5e0;
-  border-radius: 999px;
-  display: inline-flex;
-  margin-bottom: 14px;
-  padding: 4px;
-}
-
-.plan-price {
-  color: #4c51bf;
-  font-size: 1.1em;
-  font-weight: 800;
-  margin-bottom: 8px;
-}
-
-.included-badge {
-  background: #c6f6d5;
-  border-radius: 999px;
-  color: #22543d;
-  display: inline-block;
-  font-size: 0.55em;
-  font-weight: 800;
-  margin-left: 8px;
-  padding: 5px 10px;
-  vertical-align: middle;
-}
-
-.store-hero {
-  background:
-    linear-gradient(#ffffff, #ffffff) padding-box,
-    linear-gradient(135deg, #667eea, #68d391) border-box;
-  border: 2px solid transparent;
-  border-radius: 16px;
-  box-shadow: 0 16px 38px rgba(76, 81, 191, 0.12);
-  margin-bottom: 32px;
-  padding: 26px;
-  text-align: center;
-}
-
-.store-hero h2 {
-  color: #2d3748;
-  margin-bottom: 10px;
-}
-
-.store-hero p {
-  color: #4a5568;
-  margin: 0 auto 18px;
-  max-width: 720px;
-}
-
-.store-cta-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  justify-content: center;
-}
-
-.btn-link-primary,
-.btn-link-secondary {
-  border-radius: 8px;
-  display: inline-block;
-  font-weight: 800;
-  padding: 12px 18px;
-  text-decoration: none;
-}
-
-.btn-link-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #ffffff;
-}
-
-.btn-link-secondary {
-  background: #edf2f7;
-  border: 1px solid #cbd5e0;
-  color: #4a5568;
-}
-
-.options-section {
-  margin-bottom: 40px;
-}
-
-.options-section h2 {
-  border-bottom: 3px solid #667eea;
-  color: #333;
-  margin-bottom: 16px;
-  padding-bottom: 10px;
-}
-
-.option-grid {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-}
-
-.option-button {
-  background:
-    linear-gradient(#ffffff, #ffffff) padding-box,
-    linear-gradient(135deg, #667eea, #68d391) border-box;
-  border: 2px solid transparent;
-  border-radius: 12px;
-  color: #2d3748;
-  font-weight: 800;
-  padding: 14px 12px;
-  text-align: center;
-  text-decoration: none;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.option-button:hover {
-  box-shadow: 0 10px 22px rgba(102, 126, 234, 0.18);
-  transform: translateY(-2px);
-}
-
-@media (max-width: 900px) {
-  .option-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 600px) {
-  .option-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.featured-option {
-  background:
-    linear-gradient(135deg, #667eea, #764ba2) padding-box,
-    linear-gradient(135deg, #667eea, #68d391) border-box;
-  color: #ffffff;
-}
-
-.product-access-link {
-  background: #edf2f7;
-  border: 1px solid #cbd5e0;
-  border-radius: 8px;
-  color: #4a5568;
-  display: inline-block;
-  font-weight: 800;
-  margin-top: 12px;
-  padding: 9px 12px;
-  text-decoration: none;
-}
-
-.product-access-link:hover {
-  background: #e2e8f0;
-}
-
-
-.generation-block {
-  background: #f8f9ff;
-  border: 1px solid #c3dafe;
-  border-radius: 14px;
-  margin-bottom: 24px;
-  padding: 18px;
-}
-
-.later-generations {
-  background: #fffaf0;
-  border-color: #f6ad55;
-}
-
-.generation-heading,
-.single-generation-heading {
-  align-items: baseline;
-  display: flex;
-  gap: 12px;
-  justify-content: space-between;
-  margin-bottom: 14px;
-}
-
-.generation-heading h3,
-.single-generation-heading h4 {
-  color: #2d3748;
-  margin: 0;
-}
-
-.generation-heading span,
-.single-generation-heading span {
-  color: #718096;
-  font-weight: 700;
-}
-
-.single-generation {
-  margin-top: 18px;
-}
-
-.single-generation:first-of-type {
-  margin-top: 0;
-}
-
-@media print {
-  .generation-block,
-  .single-generation {
-    break-inside: auto;
-    page-break-inside: auto;
-  }
-
-  .generation-heading,
-  .single-generation-heading {
-    break-after: avoid;
-    page-break-after: avoid;
-  }
 }
