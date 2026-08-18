@@ -148,6 +148,10 @@ main {
   padding-left: 4px;
 }
 
+.selected-plan-steps .btn-add {
+  margin-top: 16px;
+}
+
 .welcome-preview {
   background: #ffffff;
   border: 1px solid #dbeafe;
