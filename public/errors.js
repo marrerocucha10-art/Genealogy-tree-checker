@@ -51,6 +51,7 @@ function getProgress() {
       completedNonDuplicateIssueIds: Array.isArray(progress.completedNonDuplicateIssueIds)
         ? progress.completedNonDuplicateIssueIds
         : [],
+      pendingIssueIds: Array.isArray(progress.pendingIssueIds) ? progress.pendingIssueIds : [],
       activeGroupIds: progress.batchMode === 'people' && Array.isArray(progress.activeGroupIds) ? progress.activeGroupIds : [],
       batchMode: 'people',
     };
@@ -58,6 +59,7 @@ function getProgress() {
     return {
       completedIssueIds: [],
       completedNonDuplicateIssueIds: [],
+      pendingIssueIds: [],
       activeGroupIds: [],
       batchMode: 'people',
     };
@@ -66,6 +68,10 @@ function getProgress() {
 
 function saveProgress(progress) {
   localStorage.setItem(ERROR_PROGRESS_STORAGE_KEY, JSON.stringify(progress));
+}
+
+function getResolvedIssueIds(progress) {
+  return new Set([...progress.completedIssueIds, ...progress.pendingIssueIds]);
 }
 
 function getCurrentTier() {
@@ -319,7 +325,7 @@ function getIssueGroups(errors) {
 
 function getActiveIssueGroups(errors, progress) {
   const groupsById = new Map(getIssueGroups(errors).map((group) => [group.id, group]));
-  const completed = new Set(progress.completedIssueIds);
+  const resolved = getResolvedIssueIds(progress);
   const activeIds = progress.activeGroupIds.filter((id) => groupsById.has(id));
 
   if (activeIds.length) {
@@ -327,7 +333,7 @@ function getActiveIssueGroups(errors, progress) {
   }
 
   const nextGroups = getIssueGroups(errors)
-    .filter((group) => group.issues.some((issue) => !completed.has(getIssueId(issue))))
+    .filter((group) => group.issues.some((issue) => !resolved.has(getIssueId(issue))))
     .slice(0, ERROR_BATCH_SIZE);
   progress.activeGroupIds = nextGroups.map((group) => group.id);
   saveProgress(progress);
@@ -415,17 +421,18 @@ function renderWorkspace() {
   }
 
   if (!errors.length) {
-    workspace.innerHTML = `${duplicateMergeReview}${encouragement}<p class="empty-message">No validation errors are currently available. Return to the family tree to review warnings and notes.</p><button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Errors Chart</button>${renderUpdatedTreeOffer()}${undoButton}${assistanceOptions}`;
+    workspace.innerHTML = `${duplicateMergeReview}${encouragement}<p class="empty-message">No validation errors are currently available. Return to the family tree to review warnings and notes.</p><button id="printProgressChart" type="button" class="btn-secondary">Print Progress Chart</button><button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Errors Chart</button>${renderUpdatedTreeOffer()}${undoButton}${assistanceOptions}`;
     return;
   }
 
   const activeGroups = getActiveIssueGroups(errors, progress);
   const completed = new Set(progress.completedIssueIds);
+  const resolved = getResolvedIssueIds(progress);
   const activeDone = activeGroups.length === 0 || activeGroups.every((group) => (
-    group.issues.every((issue) => completed.has(getIssueId(issue)))
+    group.issues.every((issue) => resolved.has(getIssueId(issue)))
   ));
   const remainingGroups = getIssueGroups(errors).filter((group) => (
-    group.issues.some((issue) => !completed.has(getIssueId(issue)))
+    group.issues.some((issue) => !resolved.has(getIssueId(issue)))
   )).length;
 
   if (activeDone && remainingGroups) {
@@ -435,7 +442,6 @@ function renderWorkspace() {
         <h2>Batch complete</h2>
         <p>Great job - you completed this group. ${remainingGroups} person${remainingGroups === 1 ? '' : 's'} or record${remainingGroups === 1 ? '' : 's'} remain.</p>
         <button id="loadNextBatch" type="button" class="btn-add">Load next ${Math.min(ERROR_BATCH_SIZE, remainingGroups)} people</button>
-        <button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Errors Chart</button>
         ${undoButton}
         ${encouragement}
         ${assistanceOptions}
@@ -445,7 +451,7 @@ function renderWorkspace() {
   }
 
   if (activeDone) {
-    workspace.innerHTML = `${duplicateMergeReview}<section class="batch-complete"><h2>All errors completed</h2><p>You completed every issue in this workspace. Take a moment to print your fixed-errors chart and celebrate the progress.</p><button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Errors Chart</button>${undoButton}</section>${renderUpdatedTreeOffer()}${encouragement}${assistanceOptions}`;
+    workspace.innerHTML = `${duplicateMergeReview}<section class="batch-complete"><h2>All errors completed</h2><p>You completed every issue in this workspace. Take a moment to print your progress, save your fixed-errors chart, and celebrate the progress.</p><button id="printProgressChart" type="button" class="btn-secondary">Print Progress Chart</button><button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Errors Chart</button>${undoButton}</section>${renderUpdatedTreeOffer()}${encouragement}${assistanceOptions}`;
     return;
   }
 
@@ -458,12 +464,6 @@ function renderWorkspace() {
       <p class="batch-help">${isBasicPlan ? `Your free Basic review includes the first ${BASIC_ERROR_REVIEW_LIMIT} errors we found. These details are fixable, and upgrading to Family Builder lets you review and correct the rest before sharing your family story.` : 'Each person includes all of their unresolved errors. Mark an error solved only after correcting it in the source GEDCOM or completing its recommended fix. The next batch stays locked until this batch is complete.'}</p>
       ${duplicateMergeReview}
       ${encouragement}
-      ${isBasicPlan ? '' : `<div class="report-actions">
-        <button id="applySafeBatchFixes" type="button" class="btn-secondary" ${canUseSafeAutomaticFixes() ? '' : 'disabled'}>${canUseSafeAutomaticFixes() ? 'Apply safe automatic fixes' : 'Safe automatic fixes available with a paid plan'}</button>
-        <button id="reviewManualBatchFixes" type="button" class="btn-secondary">Review and fix manually</button>
-      </div>
-      <button id="printProgressChart" type="button" class="btn-secondary">Print Progress Chart</button>
-      <button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Errors Chart</button>`}
       ${undoButton}
       ${assistanceOptions}
       <ol class="error-batch-list">
@@ -475,12 +475,27 @@ function renderWorkspace() {
                 ${group.issues.map((issue) => {
                   const issueId = getIssueId(issue);
                   const isCompleted = completed.has(issueId);
+                  const isPending = progress.pendingIssueIds.includes(issueId);
+                  const isResolved = isCompleted || isPending;
+                  const hasSafeAutomaticFix = Boolean(issue.autoFix) && !isDuplicateIssue(issue);
+                  const issueActions = isBasicPlan ? '' : `
+                    <div class="issue-fix-actions">
+                      ${isDuplicateIssue(issue) ? `<button type="button" class="btn-secondary" data-merge-duplicates="${encodeURIComponent(JSON.stringify(issue.autoFix))}">Merge duplicate people for review</button>` : ''}
+                      <button type="button" class="btn-secondary" data-apply-safe-fix="${encodeURIComponent(issueId)}" ${!hasSafeAutomaticFix || !canUseSafeAutomaticFixes() || isResolved ? 'disabled' : ''}>${hasSafeAutomaticFix && canUseSafeAutomaticFixes() ? 'Apply safe automatic fix' : 'No safe automatic fix'}</button>
+                      <button type="button" class="btn-secondary" data-review-manually>Review manually</button>
+                    </div>
+                    <p class="manual-review-note" hidden>Review the source record and suggestion above, then mark this item solved or pending.</p>
+                    <button type="button" class="btn-secondary" data-resolve-issue="${encodeURIComponent(issueId)}" data-duplicate-issue="${isDuplicateIssue(issue)}" ${isResolved ? 'disabled' : ''}>${isCompleted ? 'Solved' : isPending ? 'Pending review' : 'Mark solved'}</button>
+                    ${isResolved ? '' : `<button type="button" class="btn-secondary" data-pending-issue="${encodeURIComponent(issueId)}">Mark pending and continue</button>`}
+                  `;
                   return `
                     <li>
                       <strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(issue.message)}
                       ${issue.suggestion ? `<p class="fix-suggestion">${escapeHtml(issue.suggestion)}</p>` : ''}
-                      ${isBasicPlan ? '' : `${isDuplicateIssue(issue) ? `<button type="button" class="btn-secondary" data-merge-duplicates="${encodeURIComponent(JSON.stringify(issue.autoFix))}">Merge duplicate people for review</button>` : ''}
-                      <button type="button" class="btn-secondary" data-resolve-issue="${encodeURIComponent(issueId)}" data-duplicate-issue="${isDuplicateIssue(issue)}" ${isCompleted ? 'disabled' : ''}>${isCompleted ? 'Solved' : 'Mark solved'}</button>`}
+                      ${issueActions}
+                      ${true ? '' : `${isDuplicateIssue(issue) ? `<button type="button" class="btn-secondary" data-merge-duplicates="${encodeURIComponent(JSON.stringify(issue.autoFix))}">Merge duplicate people for review</button>` : ''}
+                      <button type="button" class="btn-secondary" data-resolve-issue="${encodeURIComponent(issueId)}" data-duplicate-issue="${isDuplicateIssue(issue)}" ${isResolved ? 'disabled' : ''}>${isCompleted ? 'Solved' : isPending ? 'Pending review' : 'Mark solved'}</button>
+                      ${isResolved ? '' : `<button type="button" class="btn-secondary" data-pending-issue="${encodeURIComponent(issueId)}">Mark pending and continue</button>`}`}`}
                     </li>
                   `;
                 }).join('')}
@@ -494,6 +509,33 @@ function renderWorkspace() {
 }
 
 workspace.addEventListener('click', (event) => {
+  const applySafeFixButton = event.target.closest('[data-apply-safe-fix]');
+  if (applySafeFixButton) {
+    const issueId = decodeURIComponent(applySafeFixButton.dataset.applySafeFix);
+    const treeData = getTreeData();
+    const progress = getProgress();
+    const errors = [
+      ...(treeData?.validationReport?.errors || []),
+      ...(treeData?.validationReport?.warnings || []).filter(isDuplicateIssue),
+    ];
+    const issue = errors.find((item) => getIssueId(item) === issueId);
+    if (!issue?.autoFix || isDuplicateIssue(issue)) {
+      alert('This error needs a manual review.');
+      return;
+    }
+    const appliedCount = applySafeBatchFixes(treeData, [{ issues: [issue] }], progress);
+    alert(appliedCount ? 'Safe automatic fix applied.' : 'This error could not be fixed automatically.');
+    renderWorkspace();
+    return;
+  }
+
+  const reviewManuallyButton = event.target.closest('[data-review-manually]');
+  if (reviewManuallyButton) {
+    const note = reviewManuallyButton.closest('.person-error-list li')?.querySelector('.manual-review-note');
+    if (note) note.hidden = !note.hidden;
+    return;
+  }
+
   if (event.target.closest('#applySafeBatchFixes')) {
     if (!canUseSafeAutomaticFixes()) {
       alert('Safe automatic fixes are available with every paid plan. Review and fix this batch manually, or choose a paid plan in the Store.');
@@ -588,6 +630,18 @@ workspace.addEventListener('click', (event) => {
       if (resolveButton.dataset.duplicateIssue !== 'true') {
         progress.completedNonDuplicateIssueIds.push(issueId);
       }
+      saveProgress(progress);
+    }
+    renderWorkspace();
+    return;
+  }
+
+  const pendingButton = event.target.closest('[data-pending-issue]');
+  if (pendingButton) {
+    const issueId = decodeURIComponent(pendingButton.dataset.pendingIssue);
+    const progress = getProgress();
+    if (!progress.pendingIssueIds.includes(issueId)) {
+      progress.pendingIssueIds.push(issueId);
       saveProgress(progress);
     }
     renderWorkspace();

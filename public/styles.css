@@ -672,8 +672,25 @@ select:focus {
 }
 
 .tree-next-step {
-  margin-top: 22px;
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 12px;
   text-align: center;
+}
+
+@media (max-width: 600px) {
+  .tree-next-step {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .tree-next-step .btn-add,
+  .tree-next-step .btn-secondary {
+    width: 100%;
+  }
 }
 
 .selected-tree-person {
@@ -2081,6 +2098,25 @@ input[type="file"] {
 
 .error-batch-list .btn-secondary {
   margin-top: 10px;
+}
+
+.issue-fix-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.issue-fix-actions .btn-secondary {
+  margin-top: 0;
+}
+
+.manual-review-note {
+  background: #fffbeb;
+  border-left: 3px solid #f59e0b;
+  color: #78350f;
+  margin-top: 10px;
+  padding: 8px;
 }
 
 .assistance-options {

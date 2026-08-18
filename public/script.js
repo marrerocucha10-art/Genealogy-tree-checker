@@ -1357,19 +1357,21 @@ function analyzeTreeData(data) {
     const birthYear = extractYear(person.birthDate || person.birthYear);
     const deathYear = extractYear(person.deathDate);
 
-    if (birthYear && deathYear && deathYear < birthYear) {
+    const hasApproximateDate = isApproximateDate(person.birthDate || person.birthYear) || isApproximateDate(person.deathDate);
+
+    if (!hasApproximateDate && birthYear && deathYear && deathYear < birthYear) {
       addIssue(report.errors, 'Date inconsistency', `${person.name} has a death year (${deathYear}) before birth year (${birthYear}).`, person.id, 'Manual fix: review the original record and correct either the birth date or death date.');
     }
 
-    if (birthYear && birthYear > new Date().getFullYear()) {
+    if (!hasApproximateDate && birthYear && birthYear > new Date().getFullYear()) {
       addIssue(report.errors, 'Date inconsistency', `${person.name} has a birth year in the future (${birthYear}).`, person.id, 'Manual fix: verify the source and correct the birth date.');
     }
 
-    if (deathYear && deathYear > new Date().getFullYear()) {
+    if (!hasApproximateDate && deathYear && deathYear > new Date().getFullYear()) {
       addIssue(report.errors, 'Date inconsistency', `${person.name} has a death year in the future (${deathYear}).`, person.id, 'Manual fix: verify the source and correct or remove the death date.');
     }
 
-    if (birthYear && deathYear && deathYear - birthYear > 125) {
+    if (!hasApproximateDate && birthYear && deathYear && deathYear - birthYear > 125) {
       addIssue(report.warnings, 'Date warning', `${person.name} appears to have lived ${deathYear - birthYear} years.`, person.id, 'Manual fix: confirm the birth and death dates with a source record.');
     }
 
@@ -1439,15 +1441,19 @@ function analyzeTreeData(data) {
         const parentBirthYear = extractYear(parent.birthDate || parent.birthYear);
         const parentDeathYear = extractYear(parent.deathDate);
 
-        if (parentBirthYear && childBirthYear && childBirthYear < parentBirthYear) {
+        const hasApproximateFamilyDate = isApproximateDate(child.birthDate || child.birthYear)
+          || isApproximateDate(parent.birthDate || parent.birthYear)
+          || isApproximateDate(parent.deathDate);
+
+        if (!hasApproximateFamilyDate && parentBirthYear && childBirthYear && childBirthYear < parentBirthYear) {
           addIssue(report.errors, 'Date inconsistency', `${child.name} appears born before parent ${parent.name}.`, family.id, 'Manual fix: verify the child and parent birth dates or the relationship link.');
         }
 
-        if (parentBirthYear && childBirthYear && childBirthYear - parentBirthYear < 12) {
+        if (!hasApproximateFamilyDate && parentBirthYear && childBirthYear && childBirthYear - parentBirthYear < 12) {
           addIssue(report.warnings, 'Date warning', `${parent.name} appears younger than 12 when ${child.name} was born.`, family.id, 'Manual fix: verify dates and confirm the parent-child relationship.');
         }
 
-        if (parentDeathYear && childBirthYear && childBirthYear > parentDeathYear + 1) {
+        if (!hasApproximateFamilyDate && parentDeathYear && childBirthYear && childBirthYear > parentDeathYear + 1) {
           addIssue(report.errors, 'Date inconsistency', `${child.name} appears born after parent ${parent.name} died.`, family.id, 'Manual fix: verify the parent death date, child birth date, and relationship link.');
         }
       }
@@ -1459,6 +1465,10 @@ function analyzeTreeData(data) {
   }
 
   return report;
+}
+
+function isApproximateDate(value) {
+  return /\b(ABT|ABOUT|EST|ESTIMATED|CAL|CIRCA|CA|BEF|BEFORE|AFT|AFTER|BET|BETWEEN|FROM|TO)\b/i.test(String(value || ''));
 }
 
 function normalizeDuplicateKey(person) {

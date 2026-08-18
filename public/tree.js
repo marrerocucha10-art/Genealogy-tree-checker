@@ -169,12 +169,12 @@ function renderGenerations(treeData, peopleById, families) {
         <button class="btn-add" type="button" data-confirm-primary-person>Start tree with first matching person</button>
       </div>
       <p>Showing ${displayedThrough} of ${maximumGeneration} ancestry generations, starting with ${escapeHtml(primaryPerson?.name || 'the main person')}.</p>
+      <div class="tree-next-step">
+        ${loadMore}
+        <a class="btn-add" href="errors.html">Continue to Fixing Errors</a>
+      </div>
       <div class="ancestry-tree" aria-label="Family ancestry tree">
         ${sections.join('')}
-      </div>
-      ${loadMore}
-      <div class="tree-next-step">
-        <a class="btn-add" href="errors.html">Continue to Fixing Errors</a>
       </div>
     </section>
   `;
