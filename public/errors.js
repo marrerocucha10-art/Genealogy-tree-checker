@@ -1,4 +1,7 @@
-const STORAGE_KEY = window.familyTreeClientStorage?.getActiveTreeKey() || 'familyTreeData';
+const WORKSPACE_PREVIEW_MODE = new URLSearchParams(window.location.search).get('demo') === 'workspace';
+const STORAGE_KEY = WORKSPACE_PREVIEW_MODE
+  ? 'familyTreeWorkspacePreviewData'
+  : window.familyTreeClientStorage?.getActiveTreeKey() || 'familyTreeData';
 const ERROR_PROGRESS_STORAGE_KEY = `${STORAGE_KEY}:errorProgress`;
 const DUPLICATE_MERGE_UNDO_STORAGE_KEY = `${STORAGE_KEY}:duplicateMergeUndo`;
 const SUBSCRIPTION_STORAGE_KEY = 'familyTreeSubscriptionTier';
@@ -64,6 +67,55 @@ function clearDuplicateMergeUndo() {
 
 function getIssueId(issue) {
   return JSON.stringify([issue.category || '', issue.message || '', issue.subject || '']);
+}
+
+function createWorkspacePreviewTree() {
+  const resolvedIssue = {
+    category: 'Missing birth date',
+    message: 'Elena Rivera does not have a birth date.',
+    suggestion: 'Review the family register or census record and add the date when confirmed.',
+    subject: '@I1@',
+  };
+  const pendingIssue = {
+    category: 'Missing birthplace',
+    message: 'Mateo Rivera does not have a birthplace.',
+    suggestion: 'Check immigration, census, or church records before adding a birthplace.',
+    subject: '@I2@',
+  };
+  const activeIssue = {
+    category: 'Relationship detail',
+    message: 'Sofia Rivera has a parent connection that needs review.',
+    suggestion: 'Compare the family record with the source GEDCOM, then confirm or correct the parent connection.',
+    subject: '@I3@',
+  };
+  return {
+    people: [
+      { id: '@I1@', name: 'Elena Rivera' },
+      { id: '@I2@', name: 'Mateo Rivera' },
+      { id: '@I3@', name: 'Sofia Rivera' },
+    ],
+    families: [],
+    relationships: [],
+    validationReport: { errors: [resolvedIssue, pendingIssue, activeIssue], warnings: [], info: [] },
+    errorProgress: {
+      completedIssueIds: [getIssueId(resolvedIssue)],
+      completedNonDuplicateIssueIds: [getIssueId(resolvedIssue)],
+      completedDuplicateIssueIds: [],
+      pendingIssueIds: [getIssueId(pendingIssue)],
+      resolvedItems: [{
+        issueId: getIssueId(resolvedIssue),
+        category: resolvedIssue.category,
+        message: resolvedIssue.message,
+        subject: resolvedIssue.subject,
+        correctionType: 'Manual review',
+      }],
+      activeGroupIds: [`record:${activeIssue.subject}`],
+      batchMode: 'people',
+      reviewOrderVersion: ERROR_REVIEW_ORDER_VERSION,
+      duplicateReviewMode: '',
+      lastReviewedSubject: activeIssue.subject,
+    },
+  };
 }
 
 function getProgress() {
@@ -402,6 +454,7 @@ function renderWorkspaceDesk(errors, progress) {
 
   return `
     <section class="review-desk">
+      ${WORKSPACE_PREVIEW_MODE ? '<p class="workspace-preview-notice"><strong>Preview workspace:</strong> This sample family tree is only for trying the review desk. Your customer tree is unchanged.</p>' : ''}
       <div class="review-desk-heading">
         <div>
           <p class="eyebrow">Your saved review desk</p>
@@ -769,7 +822,7 @@ function renderWorkspace() {
     return;
   }
 
-  if (!localStorage.getItem(PLAN_SELECTION_STORAGE_KEY)) {
+  if (!WORKSPACE_PREVIEW_MODE && !localStorage.getItem(PLAN_SELECTION_STORAGE_KEY)) {
     workspace.innerHTML = `
       ${workspaceDesk}
       <section id="activeReview" class="batch-complete">
@@ -1116,6 +1169,7 @@ workspace.addEventListener('click', (event) => {
   }
 });
 
+if (WORKSPACE_PREVIEW_MODE) loadedTreeData = createWorkspacePreviewTree();
 const storedTreeData = getTreeData();
 if (storedTreeData?.people?.length) {
   renderWorkspace();

@@ -2234,6 +2234,15 @@ input[type="file"] {
   padding: 22px;
 }
 
+.workspace-preview-notice {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  color: #78350f;
+  margin-bottom: 16px;
+  padding: 10px 12px;
+}
+
 .review-desk-heading {
   align-items: flex-start;
   display: flex;
