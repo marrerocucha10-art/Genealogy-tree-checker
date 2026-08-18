@@ -264,7 +264,7 @@ gedcomForm.addEventListener('submit', async (event) => {
   const previousTreeData = treeData;
   treeData = createEmptyTreeData();
   renderFamilyTree();
-  setStatus('Reading GEDCOM file...', 'info');
+  setStatus('🎉 Great job uploading your GEDCOM file! Reading and parsing your family data now…', 'info');
 
   try {
     const gedcom = await readGedcomFile(file);
@@ -275,7 +275,7 @@ gedcomForm.addEventListener('submit', async (event) => {
     const backupText = backupSaved
       ? ' A local GEDCOM backup is ready to download or restore from this browser.'
       : ' The GEDCOM backup could not be saved in this browser.';
-    setStatus(`${formatGedcomImportStatus(result)}${storageText}${backupText}`, 'success');
+    setStatus(`🎊 Congratulations! Your GEDCOM was successfully parsed. ${formatGedcomImportStatus(result)}${storageText}${backupText} Your next step is to scroll down and review your tree — then head to "Fix errors" to start cleaning up your data.`, 'success');
     gedcomForm.reset();
   } catch (error) {
     treeData = previousTreeData;
@@ -1529,10 +1529,15 @@ function renderWorkflowOverview() {
     issue.autoFix?.type === 'mergeDuplicatePeople'
   )).length;
 
+  const errorCallout = issueCount
+    ? `<p class="workflow-error-hint">🔍 Your tree has <strong>${issueCount} issue${issueCount === 1 ? '' : 's'}</strong> to review. Don't worry — errors are presented in groups of 10 so it's easy and manageable to work through them one batch at a time.</p>`
+    : `<p class="workflow-error-hint">✅ Great news — no errors were found in your tree!</p>`;
+
   return `
     <section class="workflow-overview">
-      <h3>Choose your next step</h3>
-      <p>Your parsed GED is saved in this browser. Continue with one focused workspace at a time.</p>
+      <h3>🎉 Parsing complete! What would you like to do next?</h3>
+      <p>Your GEDCOM file has been saved in this browser. Take it one step at a time — you're doing great!</p>
+      ${errorCallout}
       <div class="workflow-actions">
         <a class="btn-add" href="errors.html">Fix errors${issueCount ? ` (${issueCount})` : ''}</a>
         <a class="btn-secondary" href="manual.html">Work on the tree manually</a>

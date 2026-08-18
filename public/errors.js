@@ -328,11 +328,22 @@ function renderWorkspace() {
   )).length;
 
   if (activeDone && remainingGroups) {
+    const correctedRows = activeGroups.flatMap((group) =>
+      group.issues
+        .filter((issue) => completed.has(getIssueId(issue)))
+        .map((issue) => `
+          <li>
+            <strong>${escapeHtml(group.label)}</strong> —
+            <em>${escapeHtml(issue.category)}</em>: ${escapeHtml(issue.message)}
+          </li>
+        `)
+    ).join('');
     workspace.innerHTML = `
       <section class="batch-complete">
-        <h2>Batch complete</h2>
-        <p>Great job - you completed this group. ${remainingGroups} person${remainingGroups === 1 ? '' : 's'} or record${remainingGroups === 1 ? '' : 's'} remain.</p>
-        <button id="loadNextBatch" type="button" class="btn-add">Load next ${Math.min(ERROR_BATCH_SIZE, remainingGroups)} people</button>
+        <h2>🎉 Congratulations on completing this batch!</h2>
+        <p>Excellent work! You've finished this group of errors. There ${remainingGroups === 1 ? 'is' : 'are'} still <strong>${remainingGroups} person${remainingGroups === 1 ? '' : 's'} or record${remainingGroups === 1 ? '' : 's'}</strong> remaining — keep going, you're making great progress!</p>
+        ${correctedRows ? `<h3>Corrected errors in this batch</h3><ul class="corrected-errors-list">${correctedRows}</ul>` : ''}
+        <button id="loadNextBatch" type="button" class="btn-add">Continue with next ${Math.min(ERROR_BATCH_SIZE, remainingGroups)} errors</button>
         <button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Errors Chart</button>
         ${undoButton}
         ${encouragement}
@@ -343,18 +354,19 @@ function renderWorkspace() {
   }
 
   if (activeDone) {
-    workspace.innerHTML = `<section class="batch-complete"><h2>All errors completed</h2><p>You completed every issue in this workspace. Take a moment to print your fixed-errors chart and celebrate the progress.</p><button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Errors Chart</button>${undoButton}</section>${renderUpdatedTreeOffer()}${encouragement}${assistanceOptions}`;
+    workspace.innerHTML = `<section class="batch-complete"><h2>🏆 Amazing — all errors completed!</h2><p>You did it! Every issue in this workspace has been resolved. Your family tree is cleaner and more accurate thanks to your hard work. Take a moment to print your fixed-errors chart and celebrate this milestone!</p><button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Errors Chart</button>${undoButton}</section>${renderUpdatedTreeOffer()}${encouragement}${assistanceOptions}`;
     return;
   }
 
   workspace.innerHTML = `
     <section class="error-batch">
       <div class="report-heading">
-        <h2>Current people batch</h2>
+        <h2>🔧 Let's fix your family tree — one group at a time!</h2>
         <span>${activeGroups.length} of ${ERROR_BATCH_SIZE} selected</span>
       </div>
-      <p class="batch-help">Each person includes all of their unresolved errors. Mark an error solved only after correcting it in the source GEDCOM or completing its recommended fix. The next batch stays locked until this batch is complete.</p>
+      <p class="batch-help">Errors are shown in groups of 10 people so it's easy and manageable. Work through this group at your own pace — each person's issues are listed below. Mark an error solved only after correcting it in your source GEDCOM or completing the recommended fix. The next group will unlock once this batch is complete.</p>
       ${encouragement}
+      <button id="markBatchSolved" type="button" class="btn-add">Mark all as solved</button>
       <button id="printProgressChart" type="button" class="btn-secondary">Print Progress Chart</button>
       <button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Errors Chart</button>
       ${undoButton}
@@ -374,7 +386,7 @@ function renderWorkspace() {
                       <strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(issue.message)}
                       ${issue.suggestion ? `<p class="fix-suggestion">${escapeHtml(issue.suggestion)}</p>` : ''}
                       ${isDuplicateIssue(issue) ? `<button type="button" class="btn-secondary" data-merge-duplicates="${encodeURIComponent(JSON.stringify(issue.autoFix))}">Approve &amp; Merge Duplicate People</button>` : ''}
-                      <button type="button" class="btn-secondary" data-resolve-issue="${encodeURIComponent(issueId)}" data-duplicate-issue="${isDuplicateIssue(issue)}" ${isCompleted || basicLimitReached ? 'disabled' : ''}>${isCompleted ? 'Solved' : basicLimitReached ? 'Upgrade to fix more' : 'Mark solved'}</button>
+                      <button type="button" class="btn-secondary" data-resolve-issue="${encodeURIComponent(issueId)}" data-duplicate-issue="${isDuplicateIssue(issue)}" ${isCompleted || basicLimitReached ? 'disabled' : ''}>${isCompleted ? '✅ Solved' : basicLimitReached ? 'Upgrade to fix more' : 'Mark solved'}</button>
                     </li>
                   `;
                 }).join('')}
@@ -454,6 +466,33 @@ workspace.addEventListener('click', (event) => {
       }
       saveProgress(progress);
     }
+    renderWorkspace();
+    return;
+  }
+
+  if (event.target.closest('#markBatchSolved')) {
+    const treeData = getTreeData();
+    const allErrors = [
+      ...(treeData?.validationReport?.errors || []),
+      ...(treeData?.validationReport?.warnings || []).filter((issue) => issue.autoFix?.type === 'mergeDuplicatePeople'),
+    ];
+    const progress = getProgress();
+    const activeGroups = getActiveIssueGroups(allErrors, progress);
+    for (const group of activeGroups) {
+      for (const issue of group.issues) {
+        const issueId = getIssueId(issue);
+        if (!progress.completedIssueIds.includes(issueId)) {
+          const basicLimitReached = !canUseUnlimitedErrorFixes() && !isDuplicateIssue(issue) && getCompletedNonDuplicateIssueCount(allErrors, progress) >= BASIC_ERROR_FIX_LIMIT;
+          if (!basicLimitReached) {
+            progress.completedIssueIds.push(issueId);
+            if (!isDuplicateIssue(issue)) {
+              progress.completedNonDuplicateIssueIds.push(issueId);
+            }
+          }
+        }
+      }
+    }
+    saveProgress(progress);
     renderWorkspace();
     return;
   }

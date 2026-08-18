@@ -1340,6 +1340,22 @@ input[type="file"] {
   margin-bottom: 18px;
 }
 
+.corrected-errors-list {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 12px 0 20px;
+  text-align: left;
+}
+
+.corrected-errors-list li {
+  background: #f0fff4;
+  border: 1px solid #68d391;
+  border-radius: 8px;
+  color: #22543d;
+  padding: 10px 14px;
+}
+
 .error-batch-list {
   display: grid;
   gap: 12px;
