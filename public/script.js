@@ -79,6 +79,7 @@ const gedcomForm = document.getElementById('gedcomForm');
 const gedcomFileInput = document.getElementById('gedcomFile');
 const uploadSection = document.getElementById('uploadSection');
 const uploadStatus = document.getElementById('uploadStatus');
+const welcomeStartAction = document.getElementById('welcomeStartAction');
 const uploadCompleteActions = document.getElementById('uploadCompleteActions');
 const continueToTreeReviewButton = document.getElementById('continueToTreeReview');
 const reviewInitialTreeButton = document.getElementById('reviewInitialTree');
@@ -2463,6 +2464,10 @@ document.addEventListener('DOMContentLoaded', () => {
   loadSubscriptionConfig();
   loadSubscriptionStatusFromCustomer();
   renderFamilyTree();
+  if (localStorage.getItem(PLAN_SELECTION_STORAGE_KEY)) {
+    welcomeStartAction.href = '/?start=upload';
+    welcomeStartAction.textContent = 'Upload Your Family File';
+  }
   const startupParams = new URLSearchParams(window.location.search);
   if (startupParams.get('start') === 'upload') {
     uploadSection.hidden = false;
