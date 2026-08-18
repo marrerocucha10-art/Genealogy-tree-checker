@@ -51,14 +51,15 @@ function updateBillingButtons() {
 
 function renderPlans() {
   const current = tiers[currentTier] || tiers.free;
-  subscriptionStatus.textContent = `Current plan: ${current.name} · ${billingInterval === 'annual' ? 'Annual billing' : 'Monthly billing'}`;
-  subscriptionPlans.innerHTML = Object.entries(tiers).map(([id, tier]) => {
-    const isFree = id === 'free';
+  subscriptionStatus.textContent = currentTier === 'free'
+    ? 'Current access: Free tree review'
+    : `Current plan: ${current.name} · ${billingInterval === 'annual' ? 'Annual billing' : 'Monthly billing'}`;
+  subscriptionPlans.innerHTML = Object.entries(tiers).filter(([id]) => id !== 'free').map(([id, tier]) => {
     const isCurrent = id === currentTier;
-    const checkoutReady = isFree || stripeConfig?.configured && stripeConfig.tiers?.[id]?.[billingInterval]?.configured;
+    const checkoutReady = stripeConfig?.configured && stripeConfig.tiers?.[id]?.[billingInterval]?.configured;
     const price = tier.prices[billingInterval];
-    const priceLabel = isFree ? 'Free' : `$${price.toFixed(2)} / month${billingInterval === 'annual' ? ' billed annually' : ''}`;
-    const testButton = !isFree && stripeConfig?.testSubscriptionsEnabled
+    const priceLabel = `$${price.toFixed(2)} / month${billingInterval === 'annual' ? ' billed annually' : ''}`;
+    const testButton = stripeConfig?.testSubscriptionsEnabled
       ? `<button class="btn-secondary" type="button" data-test-tier="${id}">Test ${escapeHtml(tier.name)} flow</button>`
       : '';
     const proPackage = id === 'pro' ? `
@@ -80,8 +81,7 @@ function renderPlans() {
         <ul>${tier.features.map((feature) => `<li>${escapeHtml(feature)}</li>`).join('')}</ul>
         ${proPackage}
         ${isCurrent ? '<span class="plan-badge">Current</span>' : ''}
-        ${isFree ? `<button class="btn-add" type="button" data-select-free>Start with Basic</button>` : ''}
-        ${!isFree && !isCurrent ? `<button class="btn-add" type="button" data-upgrade-tier="${id}" ${checkoutReady ? '' : 'disabled'}>${checkoutReady ? `Choose ${escapeHtml(tier.name)}` : 'Checkout unavailable'}</button>` : ''}
+        ${!isCurrent ? `<button class="btn-add" type="button" data-upgrade-tier="${id}" ${checkoutReady ? '' : 'disabled'}>${checkoutReady ? `Choose ${escapeHtml(tier.name)}` : 'Checkout unavailable'}</button>` : ''}
         ${testButton}
       </article>
     `;
@@ -124,14 +124,6 @@ subscriptionPlans.addEventListener('click', async (event) => {
       collection.open = true;
       collection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-    return;
-  }
-
-  if (event.target.closest('[data-select-free]')) {
-    currentTier = 'free';
-    localStorage.setItem(SUBSCRIPTION_STORAGE_KEY, currentTier);
-    localStorage.setItem(PLAN_SELECTION_STORAGE_KEY, 'true');
-    window.location.href = '/?start=upload';
     return;
   }
 

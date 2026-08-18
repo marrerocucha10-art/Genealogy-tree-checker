@@ -84,6 +84,18 @@ main {
   width: auto;
 }
 
+.welcome-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+}
+
+.welcome-actions .welcome-action {
+  margin-top: 18px;
+}
+
 .welcome-continue {
   margin-bottom: 32px;
   text-align: center;
@@ -107,7 +119,7 @@ main {
   margin-top: 14px;
 }
 
-.welcome-continue .welcome-action {
+.welcome-continue > .welcome-action {
   margin-top: 18px;
 }
 

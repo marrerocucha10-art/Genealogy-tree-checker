@@ -2490,6 +2490,12 @@ function escapeHtml(value = '') {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  const startupParams = new URLSearchParams(window.location.search);
+  if (startupParams.get('free_review') === 'true') {
+    currentTier = 'free';
+    localStorage.setItem(SUBSCRIPTION_STORAGE_KEY, currentTier);
+    localStorage.setItem(PLAN_SELECTION_STORAGE_KEY, 'true');
+  }
   applyCheckoutReturn();
   updateLayoutButtons();
   updateBillingButtons();
@@ -2502,7 +2508,6 @@ document.addEventListener('DOMContentLoaded', () => {
     welcomeStartAction.href = '/?start=upload';
     welcomeStartAction.textContent = 'Upload Your Family File';
   }
-  const startupParams = new URLSearchParams(window.location.search);
   if (startupParams.get('start') === 'upload') {
     uploadSection.hidden = false;
     uploadSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
