@@ -968,7 +968,7 @@ function renderWorkspace() {
                     <div class="issue-fix-actions">
                     <button type="button" class="btn-secondary" data-review-manually>Review manually</button>
                     <button type="button" class="btn-secondary" data-resolve-issue="${encodeURIComponent(issueId)}" data-duplicate-issue="${isDuplicateIssue(issue)}" ${isResolved ? 'disabled' : ''}>${isCompleted ? 'Solved' : isPending ? 'Pending review' : 'Mark solved'}</button>
-                    ${isResolved ? '' : `<button type="button" class="btn-secondary" data-pending-issue="${encodeURIComponent(issueId)}">Move to Fix Later</button>`}
+                    ${isResolved ? '' : `<button type="button" class="btn-secondary" data-pending-issue="${encodeURIComponent(issueId)}">Save for Later and Continue</button>`}
                     </div>
                     ${renderRecordReviewOptions(issue, peopleById.get(issue.subject))}
                     <p class="manual-review-note" hidden>Review the source record and suggestion above, then mark this item solved or move it to Fix Later (Pending) without blocking your progress.</p>
