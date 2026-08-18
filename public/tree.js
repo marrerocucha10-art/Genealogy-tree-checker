@@ -59,6 +59,48 @@ function getPrimaryPerson(treeData) {
   return treeData.people.find((person) => person.id === treeData.primaryPersonId) || treeData.people[0] || null;
 }
 
+function findDeepestAncestryPerson(treeData) {
+  const peopleById = new Map(treeData.people.map((person) => [person.id, person]));
+  const parentsByChildId = new Map();
+
+  for (const family of treeData.families || []) {
+    const parentIds = [family.husbandId, family.wifeId].filter((id) => peopleById.has(id));
+    for (const childId of family.childrenIds || []) {
+      if (!peopleById.has(childId) || !parentIds.length) continue;
+      if (!parentsByChildId.has(childId)) parentsByChildId.set(childId, new Set());
+      parentIds.forEach((parentId) => parentsByChildId.get(childId).add(parentId));
+    }
+  }
+
+  const depths = new Map();
+  const visiting = new Set();
+  const getDepth = (personId) => {
+    if (depths.has(personId)) return depths.get(personId);
+    if (visiting.has(personId)) return 1;
+
+    visiting.add(personId);
+    const parentDepths = [...(parentsByChildId.get(personId) || [])].map(getDepth);
+    visiting.delete(personId);
+    const depth = 1 + (parentDepths.length ? Math.max(...parentDepths) : 0);
+    depths.set(personId, depth);
+    return depth;
+  };
+
+  return treeData.people.reduce((deepestPerson, person) => (
+    getDepth(person.id) > getDepth(deepestPerson.id) ? person : deepestPerson
+  ), treeData.people[0] || null);
+}
+
+function ensurePrimaryPerson(treeData) {
+  if (!treeData?.people?.length || treeData.primaryPersonSelectionMode === 'manual') return;
+
+  const deepestPerson = findDeepestAncestryPerson(treeData);
+  if (!deepestPerson) return;
+  treeData.primaryPersonId = deepestPerson.id;
+  treeData.primaryPersonSelectionMode = 'automatic';
+  saveTreeData(treeData);
+}
+
 function saveTreeData(treeData) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(treeData));
@@ -192,6 +234,7 @@ function renderTreeReview(treeData = loadedTreeData || getTreeData()) {
     `;
     return;
   }
+  ensurePrimaryPerson(treeData);
   const errors = treeData.validationReport?.errors || [];
   const duplicateWarnings = (treeData.validationReport?.warnings || []).filter((issue) => issue.autoFix?.type === 'mergeDuplicatePeople');
   const issueCount = errors.length + duplicateWarnings.length;
@@ -238,6 +281,7 @@ function renderPrimaryPersonMatches(query = '') {
 function setPrimaryPerson(personId) {
   if (!loadedTreeData) return;
   loadedTreeData.primaryPersonId = personId;
+  loadedTreeData.primaryPersonSelectionMode = 'manual';
   visibleGenerationCount = GENERATIONS_PER_PAGE;
   saveTreeData(loadedTreeData);
   renderTreeReview();
