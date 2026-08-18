@@ -1,5 +1,4 @@
 const STORAGE_KEY = window.familyTreeClientStorage?.getActiveTreeKey() || 'familyTreeData';
-const DUPLICATE_REVIEW_BYPASS_KEY = `${STORAGE_KEY}:duplicateReviewBypass`;
 const review = document.getElementById('treeReview');
 const GENERATIONS_PER_PAGE = 5;
 let visibleGenerationCount = GENERATIONS_PER_PAGE;
@@ -206,18 +205,6 @@ function renderTreeReview(treeData = loadedTreeData || getTreeData()) {
   restoreDefaultStartingPerson(treeData);
   const errors = treeData.validationReport?.errors || [];
   const duplicateWarnings = (treeData.validationReport?.warnings || []).filter((issue) => issue.autoFix?.type === 'mergeDuplicatePeople');
-  if (duplicateWarnings.length && !sessionStorage.getItem(DUPLICATE_REVIEW_BYPASS_KEY)) {
-    review.innerHTML = `
-      <section class="tree-review-summary">
-        <h2>Review possible duplicates before opening your tree</h2>
-        <p>We found ${duplicateWarnings.length} possible duplicate record${duplicateWarnings.length === 1 ? '' : 's'}. Reviewing these first can keep the direct family line clear and prevent the same person from appearing more than once.</p>
-        <p>Each merge asks for your confirmation, so you stay in control of your family history.</p>
-        <a class="btn-add" href="errors.html">Review Possible Duplicates</a>
-        <button class="btn-secondary" type="button" data-show-tree-before-duplicates>Show Family Tree Before Reviewing</button>
-      </section>
-    `;
-    return;
-  }
   const issueCount = errors.length + duplicateWarnings.length;
   const peopleById = new Map(treeData.people.map((person) => [person.id, person]));
   const families = treeData.families || [];
@@ -269,12 +256,6 @@ function setPrimaryPerson(personId) {
 }
 
 review.addEventListener('click', (event) => {
-  if (event.target.closest('[data-show-tree-before-duplicates]')) {
-    sessionStorage.setItem(DUPLICATE_REVIEW_BYPASS_KEY, 'true');
-    renderTreeReview();
-    return;
-  }
-
   if (event.target.closest('[data-load-more-generations]')) {
     visibleGenerationCount += GENERATIONS_PER_PAGE;
     renderTreeReview();
