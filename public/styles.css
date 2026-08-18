@@ -2205,6 +2205,31 @@ input[type="file"] {
   text-decoration: none;
 }
 
+.record-review-options {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  margin-top: 12px;
+  padding: 12px;
+}
+
+.record-review-options p {
+  color: #1e3a8a;
+  margin-bottom: 8px;
+}
+
+.record-source-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.record-source-options .btn-secondary {
+  margin-top: 0;
+  text-decoration: none;
+}
+
 .manual-review-note {
   background: #fffbeb;
   border-left: 3px solid #f59e0b;

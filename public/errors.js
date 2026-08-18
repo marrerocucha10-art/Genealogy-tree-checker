@@ -199,6 +199,39 @@ function recordResolvedItem(progress, issue, correctionType) {
   });
 }
 
+function getRecordResearchLinks(issue, person) {
+  const personName = person?.name || issue.subject || 'family history';
+  const searchTerms = [personName, person?.birthPlace, person?.birthDate, 'genealogy'].filter(Boolean).join(' ');
+  return {
+    familySearch: `https://www.familysearch.org/search/record/results?count=20&q.any=${encodeURIComponent(searchTerms)}`,
+    census: 'https://www.archives.gov/research/census',
+    vital: 'https://www.familysearch.org/en/wiki/United_States_Vital_Records',
+    church: 'https://www.familysearch.org/en/wiki/Church_records',
+    immigration: 'https://www.archives.gov/research/immigration',
+    archive: `https://archive.org/search?query=${encodeURIComponent(searchTerms)}`,
+  };
+}
+
+function renderRecordReviewOptions(issue, person) {
+  const resourceKey = encodeURIComponent(getIssueId(issue));
+  const personName = escapeHtml(person?.name || issue.subject || 'this person');
+  const links = getRecordResearchLinks(issue, person);
+  return `
+    <section class="record-review-options">
+      <p><strong>How would you like to review records for ${personName}?</strong></p>
+      <button type="button" class="btn-secondary" data-open-record-sources="${resourceKey}">Choose a Record Source</button>
+      <div class="record-source-options" data-record-source-options="${resourceKey}" hidden>
+        <a class="btn-secondary" href="${links.familySearch}" target="_blank" rel="noopener">Search FamilySearch</a>
+        <a class="btn-secondary" href="${links.census}" target="_blank" rel="noopener">Census Records</a>
+        <a class="btn-secondary" href="${links.vital}" target="_blank" rel="noopener">Vital Records</a>
+        <a class="btn-secondary" href="${links.church}" target="_blank" rel="noopener">Church Records</a>
+        <a class="btn-secondary" href="${links.immigration}" target="_blank" rel="noopener">Immigration Records</a>
+        <a class="btn-secondary" href="${links.archive}" target="_blank" rel="noopener">Internet Archive</a>
+      </div>
+    </section>
+  `;
+}
+
 function getCurrentTier() {
   if (WORKSPACE_PREVIEW_MODE) return 'pro';
   return localStorage.getItem(SUBSCRIPTION_STORAGE_KEY) || 'free';
@@ -859,6 +892,7 @@ function renderWorkspace() {
   }
 
   const activeGroups = getActiveIssueGroups(treeData, errors, progress);
+  const peopleById = new Map(treeData.people.map((person) => [person.id, person]));
   const completed = new Set(progress.completedIssueIds);
   const resolved = getResolvedIssueIds(progress);
   const activeDone = activeGroups.length === 0 || activeGroups.every((group) => (
@@ -931,10 +965,10 @@ function renderWorkspace() {
                     </div>`}
                     <div class="issue-fix-actions">
                     <button type="button" class="btn-secondary" data-review-manually>Review manually</button>
-                    <a class="btn-secondary" href="ancestor.html?focus=${encodeURIComponent(issue.subject || '')}${WORKSPACE_PREVIEW_MODE ? '&demo=workspace' : ''}">Find Supporting Records</a>
                     <button type="button" class="btn-secondary" data-resolve-issue="${encodeURIComponent(issueId)}" data-duplicate-issue="${isDuplicateIssue(issue)}" ${isResolved ? 'disabled' : ''}>${isCompleted ? 'Solved' : isPending ? 'Pending review' : 'Mark solved'}</button>
                     ${isResolved ? '' : `<button type="button" class="btn-secondary" data-pending-issue="${encodeURIComponent(issueId)}">Move to Fix Later</button>`}
                     </div>
+                    ${renderRecordReviewOptions(issue, peopleById.get(issue.subject))}
                     <p class="manual-review-note" hidden>Review the source record and suggestion above, then mark this item solved or move it to Fix Later (Pending) without blocking your progress.</p>
                   `;
                   return `
@@ -967,6 +1001,16 @@ workspace.addEventListener('click', (event) => {
     progress.activeGroupIds = [];
     saveProgress(progress);
     renderWorkspace();
+    return;
+  }
+
+  const recordSourcesButton = event.target.closest('[data-open-record-sources]');
+  if (recordSourcesButton) {
+    const sourcePanel = document.querySelector(`[data-record-source-options="${recordSourcesButton.dataset.openRecordSources}"]`);
+    if (sourcePanel) {
+      sourcePanel.hidden = !sourcePanel.hidden;
+      recordSourcesButton.textContent = sourcePanel.hidden ? 'Choose a Record Source' : 'Hide Record Sources';
+    }
     return;
   }
 
