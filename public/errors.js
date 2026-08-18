@@ -9,6 +9,7 @@ const FREE_DUPLICATE_FIX_LIMIT = 5;
 const ERROR_REVIEW_ORDER_VERSION = 3;
 const workspace = document.getElementById('errorWorkspace');
 const returnToTreeLink = document.getElementById('returnToTree');
+const planErrorWorkspaceMessage = document.getElementById('planErrorWorkspaceMessage');
 let loadedTreeData = null;
 let inMemoryDuplicateMergeUndo = null;
 let pendingDuplicateMerge = null;
@@ -137,6 +138,17 @@ function recordResolvedItem(progress, issue, correctionType) {
 
 function getCurrentTier() {
   return localStorage.getItem(SUBSCRIPTION_STORAGE_KEY) || 'free';
+}
+
+function updatePlanErrorWorkspaceMessage() {
+  if (!planErrorWorkspaceMessage) return;
+  const messages = {
+    free: 'Your first five manual fixes are included at no charge. Upgrade when you are ready to correct the rest or use safe automatic fixes.',
+    personal: 'Your Family Builder plan includes unlimited manual error review and correction. Continue at your own pace, one clear step at a time.',
+    pro: 'Your Pro / Researcher plan includes unlimited review, safe automatic fixes, and advanced correction support.',
+    business: 'Your Business / Genealogist plan includes client-focused review tools and room to keep each family tree organized.',
+  };
+  planErrorWorkspaceMessage.textContent = messages[getCurrentTier()] || messages.free;
 }
 
 function isDuplicateIssue(issue) {
@@ -654,6 +666,7 @@ function completeDuplicateMerge(treeData, fix) {
 }
 
 function renderWorkspace() {
+  updatePlanErrorWorkspaceMessage();
   const treeData = getTreeData();
   const allErrors = [
     ...(treeData?.validationReport?.errors || []),

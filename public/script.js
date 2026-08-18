@@ -112,6 +112,7 @@ const selectedPlanWelcome = document.getElementById('selectedPlanWelcome');
 const selectedPlanSteps = document.getElementById('selectedPlanSteps');
 const selectedPlanTitle = document.getElementById('selectedPlanTitle');
 const continuePlanFlowAction = document.getElementById('continuePlanFlowAction');
+const selectedPlanFeatures = document.getElementById('selectedPlanFeatures');
 const freeReviewInvitation = document.getElementById('freeReviewInvitation');
 const exploreWaysAction = document.getElementById('exploreWaysAction');
 
@@ -144,10 +145,15 @@ function updateSelectedPlanGuidance() {
       ? 'Welcome to your free family-tree review!'
       : `Welcome to your ${planName} journey!`;
   }
+  if (selectedPlanFeatures) {
+    selectedPlanFeatures.innerHTML = (SUBSCRIPTION_TIERS[currentTier]?.features || [])
+      .map((feature) => `<li>${escapeHtml(feature)}</li>`)
+      .join('');
+  }
   if (continuePlanFlowAction) {
     continuePlanFlowAction.textContent = currentTier === 'free'
-      ? 'Begin Your Free Review: Upload Your GEDCOM'
-      : `Continue Your ${planName} Plan: Upload Your GEDCOM`;
+      ? 'Open Your Free Review Work Place'
+      : `Open Your ${planName} Work Place`;
   }
   if (selectedPlanSteps) selectedPlanSteps.hidden = !hasSelectedPlan;
   if (freeReviewInvitation) freeReviewInvitation.hidden = hasPaidPlan;

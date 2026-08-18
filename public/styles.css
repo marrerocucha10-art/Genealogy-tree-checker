@@ -170,6 +170,19 @@ main {
   margin-top: 16px;
 }
 
+.workplace-card {
+  background: #f5f3ff;
+  border: 1px solid #c4b5fd;
+  border-radius: 12px;
+  margin: 18px 0;
+  padding: 20px;
+}
+
+.workplace-card h2,
+.workplace-card h3 {
+  color: #312e81;
+}
+
 .welcome-preview {
   background: #ffffff;
   border: 1px solid #dbeafe;
