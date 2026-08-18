@@ -64,6 +64,8 @@ const SUBSCRIPTION_TIERS = {
 };
 
 const BASIC_ASSISTANCE_PRICE = 9.99;
+const MAX_PHOTO_TO_LIFE_BYTES = 10 * 1024 * 1024;
+const REPLICATE_MODEL = process.env.REPLICATE_MODEL || 'kwaivgi/kling-v2.1';
 
 function getBaseUrl(req) {
   if (process.env.PUBLIC_APP_URL) return process.env.PUBLIC_APP_URL.replace(/\/$/, '');
@@ -95,6 +97,55 @@ function getStripeConfig() {
     tiers,
     storeUrl: process.env.PUBLIC_STORE_URL || '/store',
   };
+}
+
+function getPhotoToLifeConfig() {
+  return {
+    configured: Boolean(process.env.REPLICATE_API_TOKEN),
+    model: REPLICATE_MODEL,
+  };
+}
+
+function assertPhotoToLifeRequest(body) {
+  if (!body?.hasPermission || !body?.acceptsAiLabel) {
+    throw new Error('Confirm photo permission and the AI-generated animation disclosure before continuing.');
+  }
+  if (typeof body.image !== 'string' || !/^data:image\/(jpeg|png|webp);base64,/i.test(body.image)) {
+    throw new Error('Upload a JPG, PNG, or WebP family photo.');
+  }
+  const encodedPhoto = body.image.slice(body.image.indexOf(',') + 1);
+  const photoBytes = Buffer.byteLength(encodedPhoto, 'base64');
+  if (!photoBytes || photoBytes > MAX_PHOTO_TO_LIFE_BYTES) {
+    throw new Error('Choose a family photo smaller than 10 MB.');
+  }
+  if (typeof body.motion !== 'string' || body.motion.length > 240) {
+    throw new Error('Choose one of the available gentle motion styles.');
+  }
+}
+
+function getReplicateModelUrl() {
+  const [owner, name] = REPLICATE_MODEL.split('/');
+  if (!owner || !name || REPLICATE_MODEL.split('/').length !== 2) {
+    throw new Error('REPLICATE_MODEL must use the format owner/model.');
+  }
+  return `https://api.replicate.com/v1/models/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/predictions`;
+}
+
+async function replicateRequest(url, options = {}) {
+  if (!process.env.REPLICATE_API_TOKEN) {
+    throw new Error('Photo-to-life is not configured yet. Add REPLICATE_API_TOKEN to enable it.');
+  }
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${process.env.REPLICATE_API_TOKEN}`,
+      'Content-Type': 'application/json',
+      ...(options.headers || {}),
+    },
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.detail || payload.error || 'The photo-to-life service could not complete this request.');
+  return payload;
 }
 
 async function createStripeCheckoutSession(req, tierId, interval = 'monthly') {
@@ -506,6 +557,54 @@ app.post(['/api/parse', '/api/parse-gedcom'], (req, res) => {
 
 app.get('/api/subscription/config', (req, res) => {
   res.json({ success: true, stripe: getStripeConfig() });
+});
+
+app.get('/api/photo-to-life/config', (req, res) => {
+  res.json({ success: true, photoToLife: getPhotoToLifeConfig() });
+});
+
+app.post('/api/photo-to-life', async (req, res) => {
+  try {
+    assertPhotoToLifeRequest(req.body);
+    const prediction = await replicateRequest(getReplicateModelUrl(), {
+      method: 'POST',
+      body: JSON.stringify({
+        input: {
+          start_image: req.body.image,
+          prompt: req.body.motion,
+          duration: 5,
+          mode: 'standard',
+          negative_prompt: 'distorted face, extra limbs, dramatic movement, text, watermark',
+        },
+      }),
+    });
+    res.status(202).json({
+      success: true,
+      prediction: { id: prediction.id, status: prediction.status },
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+app.get('/api/photo-to-life/:predictionId', async (req, res) => {
+  try {
+    const predictionId = String(req.params.predictionId || '');
+    if (!/^[a-zA-Z0-9_-]+$/.test(predictionId)) {
+      throw new Error('Invalid memory video request.');
+    }
+    const prediction = await replicateRequest(`https://api.replicate.com/v1/predictions/${encodeURIComponent(predictionId)}`);
+    res.json({
+      success: true,
+      prediction: {
+        status: prediction.status,
+        output: prediction.output,
+        error: prediction.error,
+      },
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
 });
 
 app.post('/api/create-checkout-session', async (req, res) => {

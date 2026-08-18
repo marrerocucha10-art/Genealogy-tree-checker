@@ -13,7 +13,12 @@ const POSTER_FAMILY_STORAGE_KEY = 'familyTreePosterFamily';
 const GEDCOM_BACKUP_DATABASE = 'genealogyTreeCheckerBackups';
 const GEDCOM_BACKUP_STORE = 'gedcomFiles';
 const GEDCOM_BACKUP_ID = 'latest';
-const MAX_GEDCOM_FILE_BYTES = 150 * 1024 * 1024;
+const GEDCOM_UPLOAD_LIMITS = {
+  free: 150 * 1024 * 1024,
+  personal: 500 * 1024 * 1024,
+  pro: 500 * 1024 * 1024,
+  business: 2 * 1024 * 1024 * 1024,
+};
 const treeOverviewSection = document.getElementById('treeOverviewSection');
 
 let treeData = loadTreeData();
@@ -35,10 +40,10 @@ const SUBSCRIPTION_TIERS = {
   free: {
     name: 'Basic',
     rank: 0,
-    description: 'Review your tree, fix up to 20 validation errors, and merge duplicate people for free.',
+    description: 'Upload a GEDCOM file and review the first five validation errors for free.',
     monthlyPrice: 0,
     annualPrice: 0,
-    features: ['Small GEDCOM upload', 'Start a family tree manually', '20 non-duplicate error fixes', 'Free duplicate person merges', 'Printable progress chart', 'Ancestor Discovery research prompts'],
+    features: ['GEDCOM uploads up to 150 MB', 'Review the first 5 validation errors', 'Upgrade to review and fix the remaining errors'],
   },
   personal: {
     name: 'Family Builder',
@@ -46,7 +51,7 @@ const SUBSCRIPTION_TIERS = {
     description: 'For organizing one family tree with unlimited error review, charts, and research worksheets.',
     monthlyPrice: 19.99,
     annualPrice: 19.99,
-    features: ['Unlimited manual error fixes', 'Generation and family organizer', 'Progress messages and charts', 'Downloadable research worksheets', 'Ancestor Discovery research prompts', 'ZIP uploads', 'Print tree', 'Export JSON/CSV', 'Local fix records'],
+    features: ['GEDCOM uploads up to 500 MB', 'Unlimited manual error fixes', 'Generation and family organizer', 'Progress messages and charts', 'Downloadable research worksheets', 'Ancestor Discovery research prompts', 'ZIP uploads', 'Print tree', 'Export JSON/CSV', 'Local fix records'],
   },
   pro: {
     name: 'Pro / Researcher',
@@ -54,7 +59,7 @@ const SUBSCRIPTION_TIERS = {
     description: 'For deeper genealogy cleanup, reporting, and the Genealogy Pro Package included free with subscription.',
     monthlyPrice: 29.99,
     annualPrice: 29.99,
-    features: ['Safe automatic fixes', 'Full correction report', 'Advanced validation workflow', 'Ancestor Discovery research prompts', 'Free Genealogy Pro Package included', 'Digital report package', 'Printed tree and chart package', 'Researcher review service package', 'Memory keepsake package', 'Research journals and worksheets'],
+    features: ['GEDCOM uploads up to 500 MB', 'Safe automatic fixes', 'Full correction report', 'Advanced validation workflow', 'Ancestor Discovery research prompts', 'Free Genealogy Pro Package included', 'Digital report package', 'Printed tree and chart package', 'Researcher review service package', 'Memory keepsake package', 'Research journals and worksheets'],
   },
   business: {
     name: 'Business / Genealogist',
@@ -62,7 +67,7 @@ const SUBSCRIPTION_TIERS = {
     description: 'For client-facing genealogy workflows.',
     monthlyPrice: 39.99,
     annualPrice: 39.99,
-    features: ['Client tree workflow', 'Ancestor Discovery research prompts', 'Branded reports roadmap', 'Higher limits roadmap'],
+    features: ['GEDCOM uploads up to 2 GB', 'Client tree workflow', 'Ancestor Discovery research prompts', 'Branded reports roadmap'],
   },
 };
 
@@ -101,6 +106,21 @@ const subscriptionPlansDiv = document.getElementById('subscriptionPlans');
 const subscriptionStatusDiv = document.getElementById('subscriptionStatus');
 const manageBillingButton = document.getElementById('manageBilling');
 const goToStoreButton = document.getElementById('goToStore');
+const gedcomUploadLimit = document.getElementById('gedcomUploadLimit');
+
+function getGedcomUploadLimitBytes(tier = currentTier) {
+  return GEDCOM_UPLOAD_LIMITS[tier] || GEDCOM_UPLOAD_LIMITS.free;
+}
+
+function formatGedcomUploadLimit(tier = currentTier) {
+  const megabytes = getGedcomUploadLimitBytes(tier) / (1024 * 1024);
+  return megabytes >= 1024 ? `${megabytes / 1024} GB` : `${Math.round(megabytes)} MB`;
+}
+
+function updateGedcomUploadLimit() {
+  if (!gedcomUploadLimit) return;
+  gedcomUploadLimit.textContent = `Supports .ged, .gedcom, text GEDCOM downloads, and .zip files containing a GEDCOM file up to ${formatGedcomUploadLimit()} on your current plan.`;
+}
 
 subscriptionPlansDiv?.addEventListener('click', (event) => {
   const upgradeButton = event.target.closest('[data-upgrade-tier]');
@@ -564,6 +584,7 @@ function renderSubscriptionPlans() {
       </article>
     `;
   }).join('');
+  updateGedcomUploadLimit();
 }
 
 function hasTier(requiredTier) {
@@ -755,8 +776,9 @@ function formatGedcomLoadError(error) {
 }
 
 async function readGedcomFile(file) {
-  if (file.size > MAX_GEDCOM_FILE_BYTES) {
-    throw new Error('GEDCOM file is too large. Maximum size is 150 MB.');
+  const uploadLimit = getGedcomUploadLimitBytes();
+  if (file.size > uploadLimit) {
+    throw new Error(`GEDCOM file is too large for your ${SUBSCRIPTION_TIERS[currentTier]?.name || 'Basic'} plan. Maximum size is ${formatGedcomUploadLimit()}.`);
   }
 
   const buffer = await file.arrayBuffer();
@@ -787,8 +809,9 @@ async function readGedcomFromZip(buffer) {
     throw new Error('No .ged or .gedcom file was found inside this ZIP file.');
   }
 
-  if (gedcomEntry.uncompressedSize > MAX_GEDCOM_FILE_BYTES) {
-    throw new Error('The GEDCOM file inside this ZIP is too large. Maximum size is 150 MB.');
+  const uploadLimit = getGedcomUploadLimitBytes();
+  if (gedcomEntry.uncompressedSize > uploadLimit) {
+    throw new Error(`The GEDCOM file inside this ZIP is too large for your ${SUBSCRIPTION_TIERS[currentTier]?.name || 'Basic'} plan. Maximum size is ${formatGedcomUploadLimit()}.`);
   }
 
   const data = await extractZipEntry(zipBytes, gedcomEntry);
@@ -2461,6 +2484,7 @@ document.addEventListener('DOMContentLoaded', () => {
   updateLayoutButtons();
   updateBillingButtons();
   renderSubscriptionPlans();
+  updateGedcomUploadLimit();
   loadSubscriptionConfig();
   loadSubscriptionStatusFromCustomer();
   renderFamilyTree();

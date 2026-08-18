@@ -10,27 +10,27 @@ const billingButtons = document.querySelectorAll('[data-billing-interval]');
 const tiers = {
   free: {
     name: 'Basic',
-    description: 'Review your tree, start a family tree manually, and fix up to 20 validation errors for free.',
+    description: 'Upload a GEDCOM file and review the first five validation errors for free.',
     prices: { monthly: 0, annual: 0 },
-    features: ['Parse a small GEDCOM', 'Start a family tree manually', '20 non-duplicate error fixes', 'Free duplicate merges'],
+    features: ['GEDCOM uploads up to 150 MB', 'Review the first 5 validation errors', 'Upgrade to review and fix the remaining errors'],
   },
   personal: {
     name: 'Family Builder',
     description: 'Organize one family tree with unlimited error review, charts, and research worksheets.',
     prices: { monthly: 19.99, annual: 19.99 },
-    features: ['Unlimited manual error fixes', 'Family-tree organization', 'Printable tree and exports', 'Research worksheets'],
+    features: ['GEDCOM uploads up to 500 MB', 'Unlimited manual error fixes', 'Family-tree organization', 'Printable tree and exports', 'Research worksheets'],
   },
   pro: {
     name: 'Pro / Researcher',
     description: 'Unlock advanced cleanup, reporting, and the Genealogy Pro Package.',
     prices: { monthly: 29.99, annual: 29.99 },
-    features: ['Safe automatic fixes', 'Full correction report', 'Advanced validation workflow', 'Genealogy Pro Package'],
+    features: ['GEDCOM uploads up to 500 MB', 'Safe automatic fixes', 'Full correction report', 'Advanced validation workflow', 'Genealogy Pro Package'],
   },
   business: {
     name: 'Business / Genealogist',
     description: 'Support client-facing genealogy workflows.',
     prices: { monthly: 39.99, annual: 39.99 },
-    features: ['Separate client folders and browser-saved trees', 'Client tree workflow', 'Branded reports roadmap', 'Higher limits roadmap'],
+    features: ['GEDCOM uploads up to 2 GB', 'Separate client folders and browser-saved trees', 'Client tree workflow', 'Branded reports roadmap'],
   },
 };
 

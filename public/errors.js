@@ -4,7 +4,7 @@ const DUPLICATE_MERGE_UNDO_STORAGE_KEY = `${STORAGE_KEY}:duplicateMergeUndo`;
 const SUBSCRIPTION_STORAGE_KEY = 'familyTreeSubscriptionTier';
 const PLAN_SELECTION_STORAGE_KEY = 'familyTreePlanSelected';
 const ERROR_BATCH_SIZE = 10;
-const BASIC_ERROR_FIX_LIMIT = 20;
+const BASIC_ERROR_REVIEW_LIMIT = 5;
 const workspace = document.getElementById('errorWorkspace');
 let loadedTreeData = null;
 
@@ -93,18 +93,18 @@ function getCompletedNonDuplicateIssueCount(errors, progress) {
   return completedNonDuplicateIds.size;
 }
 
-function renderBasicPlanOptions(errors, progress) {
+function renderBasicPlanOptions(errors) {
   if (getCurrentTier() !== 'free') return '';
 
-  const fixedCount = getCompletedNonDuplicateIssueCount(errors, progress);
-  const remainingFixes = Math.max(BASIC_ERROR_FIX_LIMIT - fixedCount, 0);
-  const limitReached = remainingFixes === 0;
+  const reviewedCount = Math.min(errors.length, BASIC_ERROR_REVIEW_LIMIT);
+  const remainingErrors = Math.max(errors.length - reviewedCount, 0);
 
   return `
     <section class="assistance-options">
-      <h2>${limitReached ? 'Basic fix limit reached' : 'Basic plan progress'}</h2>
-      <p>${fixedCount} of ${BASIC_ERROR_FIX_LIMIT} non-duplicate error fixes used.${limitReached ? ' Upgrade to Family Builder for unlimited manual fixes.' : ` ${remainingFixes} fix${remainingFixes === 1 ? '' : 'es'} remaining.`} Duplicate person merges are free and do not use this limit.</p>
-      <a class="btn-secondary assistance-upgrade-link" href="store.html#subscriptions">Upgrade to Family Builder</a>
+      <h2>Great news - these details can be fixed.</h2>
+      <p>We spotted ${reviewedCount} error${reviewedCount === 1 ? '' : 's'} for you to review in your family tree. An accurate tree is a wonderful way to share your family's story with relatives and friends, while honoring your ancestors and their contributions to society.</p>
+      <p>${remainingErrors ? `Upgrade to Family Builder to review and fix the remaining ${remainingErrors} error${remainingErrors === 1 ? '' : 's'}, so you can share your family history with confidence.` : 'Upgrade to Family Builder whenever you are ready to fix errors and continue preserving your family history.'}</p>
+      <a class="btn-secondary assistance-upgrade-link" href="store.html#subscriptions">Upgrade to review and fix the rest</a>
     </section>
   `;
 }
@@ -131,7 +131,7 @@ function renderProgressEncouragement(errors, progress) {
   const tierMessage = tier === 'personal'
     ? ' Family Builder gives you room to keep reviewing and organizing without a fix limit.'
     : tier === 'free'
-      ? ' Duplicate person merges remain free, and Family Builder is ready whenever you want unlimited manual fixes.'
+      ? ' Basic lets you review your first five errors. Upgrade to Family Builder to review and fix the rest.'
       : ' Your plan includes safe automatic fixes alongside the manual review tools.';
 
   return `
@@ -147,6 +147,16 @@ function renderUpdatedTreeOffer() {
     <section class="updated-tree-offer">
       <h2>Your updated tree is ready to celebrate</h2>
       <p>Personalize a fresh family-tree edition, print it, or explore posters and keepsakes made from the progress you just completed.</p>
+      <div class="family-documentary-offer">
+        <strong>Your family story deserves a standing ovation!</strong>
+        <p>Coming soon: celebrate your family achievements and memories with a short documentary video. Select treasured photographs and turn them into a living tribute to the ancestors whose lives and contributions shaped your family.</p>
+        <video class="family-documentary-video" autoplay loop muted playsinline controls aria-label="Family members revisiting treasured photographs">
+          <source src="family-memory-documentary-preview.mp4#t=0,15" type="video/mp4">
+          Your browser does not support the video tag.
+        </video>
+        <small>Preview video by cottonbro studio on Pexels.</small>
+        <a class="btn-secondary" href="photo-to-life.html">Bring a Family Photo to Life</a>
+      </div>
       <a class="btn-add" href="index.html#treePresentation">Personalize and print your updated tree</a>
     </section>
   `;
@@ -378,10 +388,12 @@ function applySafeBatchFixes(treeData, groups, progress) {
 
 function renderWorkspace() {
   const treeData = getTreeData();
-  const errors = [
+  const allErrors = [
     ...(treeData?.validationReport?.errors || []),
     ...(treeData?.validationReport?.warnings || []).filter((issue) => issue.autoFix?.type === 'mergeDuplicatePeople'),
   ];
+  const isBasicPlan = getCurrentTier() === 'free';
+  const errors = isBasicPlan ? allErrors.slice(0, BASIC_ERROR_REVIEW_LIMIT) : allErrors;
   const progress = getProgress();
   const duplicateMergeUndo = getDuplicateMergeUndo();
   const canUndoDuplicateMerge = Boolean(duplicateMergeUndo);
@@ -389,7 +401,7 @@ function renderWorkspace() {
     ? '<button id="undoDuplicateMerge" type="button" class="btn-secondary">Return to Previous Tree</button>'
     : '';
   const duplicateMergeReview = renderDuplicateMergeReview();
-  const assistanceOptions = renderBasicPlanOptions(errors, progress);
+  const assistanceOptions = renderBasicPlanOptions(allErrors);
   const encouragement = renderProgressEncouragement(errors, progress);
 
   if (!treeData?.people?.length) {
@@ -443,15 +455,15 @@ function renderWorkspace() {
         <h2>Current people batch</h2>
         <span>${activeGroups.length} of ${ERROR_BATCH_SIZE} selected</span>
       </div>
-      <p class="batch-help">Each person includes all of their unresolved errors. Mark an error solved only after correcting it in the source GEDCOM or completing its recommended fix. The next batch stays locked until this batch is complete.</p>
+      <p class="batch-help">${isBasicPlan ? `Your free Basic review includes the first ${BASIC_ERROR_REVIEW_LIMIT} errors we found. These details are fixable, and upgrading to Family Builder lets you review and correct the rest before sharing your family story.` : 'Each person includes all of their unresolved errors. Mark an error solved only after correcting it in the source GEDCOM or completing its recommended fix. The next batch stays locked until this batch is complete.'}</p>
       ${duplicateMergeReview}
       ${encouragement}
-      <div class="report-actions">
+      ${isBasicPlan ? '' : `<div class="report-actions">
         <button id="applySafeBatchFixes" type="button" class="btn-secondary" ${canUseSafeAutomaticFixes() ? '' : 'disabled'}>${canUseSafeAutomaticFixes() ? 'Apply safe automatic fixes' : 'Safe automatic fixes available with a paid plan'}</button>
         <button id="reviewManualBatchFixes" type="button" class="btn-secondary">Review and fix manually</button>
       </div>
       <button id="printProgressChart" type="button" class="btn-secondary">Print Progress Chart</button>
-      <button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Errors Chart</button>
+      <button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Errors Chart</button>`}
       ${undoButton}
       ${assistanceOptions}
       <ol class="error-batch-list">
@@ -463,13 +475,12 @@ function renderWorkspace() {
                 ${group.issues.map((issue) => {
                   const issueId = getIssueId(issue);
                   const isCompleted = completed.has(issueId);
-                  const basicLimitReached = !canUseUnlimitedErrorFixes() && !isDuplicateIssue(issue) && getCompletedNonDuplicateIssueCount(errors, progress) >= BASIC_ERROR_FIX_LIMIT;
                   return `
                     <li>
                       <strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(issue.message)}
                       ${issue.suggestion ? `<p class="fix-suggestion">${escapeHtml(issue.suggestion)}</p>` : ''}
-                      ${isDuplicateIssue(issue) ? `<button type="button" class="btn-secondary" data-merge-duplicates="${encodeURIComponent(JSON.stringify(issue.autoFix))}">Merge duplicate people for review</button>` : ''}
-                      <button type="button" class="btn-secondary" data-resolve-issue="${encodeURIComponent(issueId)}" data-duplicate-issue="${isDuplicateIssue(issue)}" ${isCompleted || basicLimitReached ? 'disabled' : ''}>${isCompleted ? 'Solved' : basicLimitReached ? 'Upgrade to fix more' : 'Mark solved'}</button>
+                      ${isBasicPlan ? '' : `${isDuplicateIssue(issue) ? `<button type="button" class="btn-secondary" data-merge-duplicates="${encodeURIComponent(JSON.stringify(issue.autoFix))}">Merge duplicate people for review</button>` : ''}
+                      <button type="button" class="btn-secondary" data-resolve-issue="${encodeURIComponent(issueId)}" data-duplicate-issue="${isDuplicateIssue(issue)}" ${isCompleted ? 'disabled' : ''}>${isCompleted ? 'Solved' : 'Mark solved'}</button>`}
                     </li>
                   `;
                 }).join('')}

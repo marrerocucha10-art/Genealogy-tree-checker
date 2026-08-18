@@ -114,6 +114,17 @@ Your family tree data is automatically saved to your browser's **LocalStorage**.
 - Your data is stored locally on your device
 - No server-side database required for personal use
 
+## 🎞️ Photo-to-Life Setup
+
+The Photo-to-Life page creates a short AI-generated motion keepsake from a customer-authorized family portrait. To enable it, add these environment variables to the deployment:
+
+```text
+REPLICATE_API_TOKEN=your_replicate_token
+REPLICATE_MODEL=kwaivgi/kling-v2.1
+```
+
+Customers must confirm that they have permission to use the photo and acknowledge that the result is AI-generated, not an original historical recording. The app accepts JPG, PNG, and WebP portraits up to 10 MB and requests a five-second, subtle animation.
+
 ## 🛡️ Security Features
 
 - XSS protection to prevent script injection

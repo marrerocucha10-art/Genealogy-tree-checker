@@ -19,25 +19,16 @@
           <p class="eyebrow">Welcome to your family history workspace</p>
           <h2>Bring your family story into focus.</h2>
           <p>Upload an existing GEDCOM file or begin a new tree. We will guide you from a simple ancestry preview to clear, manageable fixes.</p>
-          <a id="welcomeStartAction" href="/store#subscriptions" class="btn-add welcome-action">Choose a Plan and Begin</a>
         </div>
         <aside class="welcome-preview" aria-label="What the app includes">
           <h3>What you can do</h3>
           <ul>
-            <li><strong>Read your family file</strong><span>Import GEDCOM files up to 150 MB.</span></li>
+            <li><strong>Read your family file</strong><span>Import GEDCOM files with paid-plan limits up to 2 GB.</span></li>
             <li><strong>See your ancestry</strong><span>Start with a person and review five generations.</span></li>
             <li><strong>Fix your tree</strong><span>Work through errors in focused batches of 10.</span></li>
           </ul>
         </aside>
       </section>
-
-      <aside class="privacy-assurance" aria-label="Privacy assurance">
-        <div class="privacy-icon" aria-hidden="true"></div>
-        <div>
-          <strong>Your family tree stays yours.</strong>
-          <p>Your research is stored in your browser. It will not be copied, sold, or shared with anyone, and you keep full control of your family history.</p>
-        </div>
-      </aside>
 
       <section class="research-video-preview" aria-labelledby="researchVideoTitle">
         <div class="research-video-copy">
@@ -79,6 +70,22 @@
         </div>
       </section>
 
+      <section class="welcome-continue">
+        <p class="eyebrow">Ready to begin?</p>
+        <h2>Great news - your first family-tree review is free!</h2>
+        <p>Start with the free Basic plan: upload your GEDCOM file and review your first five errors. When you are ready to review and fix the rest, simply upgrade and keep building your family story.</p>
+        <p class="experience-promise">We are committed to helping you have a wonderful, confident experience as you preserve and share your family history.</p>
+        <a id="welcomeStartAction" href="/store#subscriptions" class="btn-add welcome-action">Choose a Plan and Begin</a>
+      </section>
+
+      <aside class="privacy-assurance" aria-label="Privacy assurance">
+        <div class="privacy-icon" aria-hidden="true"></div>
+        <div>
+          <strong>Your family tree stays yours.</strong>
+          <p>Your research is stored in your browser. It will not be copied, sold, or shared with anyone, and you keep full control of your family history.</p>
+        </div>
+      </aside>
+
       <section class="options-section">
         <h2>Choose your next step</h2>
         <p class="section-intro">You can start with a family file, build a tree by hand, explore ancestors, or visit the Store.</p>
@@ -100,7 +107,7 @@
             <input type="file" id="gedcomFile" accept=".ged,.gedcom,.ged.txt,.txt,.zip,.gedzip,application/x-gedcom,application/zip,text/plain,application/octet-stream" required>
           </div>
         </form>
-        <p class="help-text">Supports .ged, .gedcom, text GEDCOM downloads, and .zip files containing a GEDCOM file.</p>
+        <p id="gedcomUploadLimit" class="help-text">Supports .ged, .gedcom, text GEDCOM downloads, and .zip files containing a GEDCOM file.</p>
         <p id="uploadStatus" class="status-message" aria-live="polite"></p>
         <div id="uploadCompleteActions" class="upload-complete-actions" hidden>
           <button id="continueToTreeReview" type="button" class="btn-add">Continue to Family Tree</button>
