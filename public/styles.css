@@ -611,28 +611,26 @@ select:focus {
 }
 
 .ancestry-tree {
-  align-items: stretch;
-  display: flex;
-  gap: 30px;
+  display: grid;
+  gap: 28px;
   margin-top: 24px;
-  overflow-x: auto;
   padding: 8px 4px;
 }
 
 .ancestry-generation {
-  flex: 0 0 230px;
-  min-width: 230px;
+  min-width: 0;
   position: relative;
 }
 
 .ancestry-generation + .ancestry-generation::before {
   background: #a5b4fc;
   content: '';
-  height: 2px;
-  left: -30px;
+  height: 20px;
+  left: 50%;
   position: absolute;
-  top: 50%;
-  width: 30px;
+  top: -24px;
+  transform: translateX(-50%);
+  width: 2px;
 }
 
 .ancestry-generation-heading {
