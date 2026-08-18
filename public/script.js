@@ -1298,6 +1298,7 @@ function saveTreeData() {
     pendingTreeDatabaseSave = Promise.resolve(true);
     return true;
   } catch (error) {
+    localStorage.removeItem(STORAGE_KEY);
     pendingTreeDatabaseSave = window.familyTreeClientStorage?.saveTreeInDatabase(STORAGE_KEY, treeData)
       .then(() => true)
       .catch((databaseError) => {

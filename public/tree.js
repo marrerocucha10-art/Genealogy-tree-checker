@@ -73,6 +73,7 @@ function saveTreeData(treeData) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(treeData));
     void window.familyTreeClientStorage?.removeTreeFromDatabase?.(STORAGE_KEY);
   } catch (error) {
+    localStorage.removeItem(STORAGE_KEY);
     void window.familyTreeClientStorage?.saveTreeInDatabase?.(STORAGE_KEY, treeData);
   }
 }

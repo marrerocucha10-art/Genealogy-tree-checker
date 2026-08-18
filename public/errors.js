@@ -24,6 +24,7 @@ function saveTreeData(treeData) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(treeData));
     void window.familyTreeClientStorage?.removeTreeFromDatabase?.(STORAGE_KEY);
   } catch (error) {
+    localStorage.removeItem(STORAGE_KEY);
     void window.familyTreeClientStorage?.saveTreeInDatabase?.(STORAGE_KEY, treeData);
   }
 }
@@ -45,32 +46,35 @@ function getIssueId(issue) {
 }
 
 function getProgress() {
+  let progress;
   try {
-    const progress = JSON.parse(localStorage.getItem(ERROR_PROGRESS_STORAGE_KEY) || '{}');
-    return {
-      completedIssueIds: Array.isArray(progress.completedIssueIds) ? progress.completedIssueIds : [],
-      completedNonDuplicateIssueIds: Array.isArray(progress.completedNonDuplicateIssueIds)
-        ? progress.completedNonDuplicateIssueIds
-        : [],
-      pendingIssueIds: Array.isArray(progress.pendingIssueIds) ? progress.pendingIssueIds : [],
-      activeGroupIds: progress.batchMode === 'people' && Array.isArray(progress.activeGroupIds) ? progress.activeGroupIds : [],
-      batchMode: 'people',
-      reviewOrderVersion: Number(progress.reviewOrderVersion) || 0,
-    };
+    progress = JSON.parse(localStorage.getItem(ERROR_PROGRESS_STORAGE_KEY) || 'null');
   } catch (error) {
-    return {
-      completedIssueIds: [],
-      completedNonDuplicateIssueIds: [],
-      pendingIssueIds: [],
-      activeGroupIds: [],
-      batchMode: 'people',
-      reviewOrderVersion: 0,
-    };
+    progress = null;
   }
+
+  const savedProgress = progress || getTreeData()?.errorProgress || {};
+  return {
+    completedIssueIds: Array.isArray(savedProgress.completedIssueIds) ? savedProgress.completedIssueIds : [],
+    completedNonDuplicateIssueIds: Array.isArray(savedProgress.completedNonDuplicateIssueIds)
+      ? savedProgress.completedNonDuplicateIssueIds
+      : [],
+    pendingIssueIds: Array.isArray(savedProgress.pendingIssueIds) ? savedProgress.pendingIssueIds : [],
+    activeGroupIds: savedProgress.batchMode === 'people' && Array.isArray(savedProgress.activeGroupIds) ? savedProgress.activeGroupIds : [],
+    batchMode: 'people',
+    reviewOrderVersion: Number(savedProgress.reviewOrderVersion) || 0,
+  };
 }
 
 function saveProgress(progress) {
-  localStorage.setItem(ERROR_PROGRESS_STORAGE_KEY, JSON.stringify(progress));
+  try {
+    localStorage.setItem(ERROR_PROGRESS_STORAGE_KEY, JSON.stringify(progress));
+  } catch (error) {
+    const treeData = getTreeData();
+    if (!treeData) throw error;
+    treeData.errorProgress = progress;
+    saveTreeData(treeData);
+  }
 }
 
 function getResolvedIssueIds(progress) {
