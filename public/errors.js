@@ -608,6 +608,11 @@ function renderWorkspace() {
     : isBasicPlan
       ? allErrors.slice(0, BASIC_ERROR_REVIEW_LIMIT)
       : allErrors;
+  if (isBasicPlan && duplicateIssues.length && progress.duplicateReviewMode !== 'batch') {
+    progress.duplicateReviewMode = 'batch';
+    progress.activeGroupIds = [];
+    saveProgress(progress);
+  }
   const duplicateMergeUndo = getDuplicateMergeUndo();
   const canUndoDuplicateMerge = Boolean(duplicateMergeUndo);
   const undoButton = canUndoDuplicateMerge && !duplicateMergeUndo.mergeSummary
@@ -634,7 +639,7 @@ function renderWorkspace() {
     return;
   }
 
-  if (duplicateIssues.length && !progress.duplicateReviewMode) {
+  if (!isBasicPlan && duplicateIssues.length && !progress.duplicateReviewMode) {
     workspace.innerHTML = renderDuplicateReviewChoice(duplicateIssues);
     return;
   }
@@ -684,7 +689,7 @@ function renderWorkspace() {
         <h2>Current people batch</h2>
         <span>${activeGroups.length} of ${ERROR_BATCH_SIZE} selected</span>
       </div>
-      <p class="batch-help">${isBasicPlan && duplicateIssues.length ? `Your free preview includes up to ${FREE_DUPLICATE_FIX_LIMIT} reviewed duplicate corrections. Confirm each merge carefully, then continue building a clearer family tree. Upgrade to Family Builder when you are ready to correct more duplicates.` : isBasicPlan ? `Your first ${BASIC_ERROR_REVIEW_LIMIT} manual fixes are included at no charge. Use the review guidance below, then mark each corrected record solved. Upgrade to Family Builder to fix the rest, or choose Pro / Researcher for safe automatic fixes.` : 'Each person includes all of their unresolved errors. Mark an error solved only after correcting it in the source GEDCOM or completing its recommended fix. The next batch stays locked until this batch is complete.'}</p>
+      <p class="batch-help">${isBasicPlan && duplicateIssues.length ? `Your free preview shows up to ${FREE_DUPLICATE_FIX_LIMIT} possible duplicate corrections together. Open any record below to review it carefully before confirming its merge. Upgrade to Family Builder when you are ready to correct more duplicates.` : isBasicPlan ? `Your first ${BASIC_ERROR_REVIEW_LIMIT} manual fixes are included at no charge. Use the review guidance below, then mark each corrected record solved. Upgrade to Family Builder to fix the rest, or choose Pro / Researcher for safe automatic fixes.` : 'Each person includes all of their unresolved errors. Mark an error solved only after correcting it in the source GEDCOM or completing its recommended fix. The next batch stays locked until this batch is complete.'}</p>
       ${duplicateMergeReview}
       ${encouragement}
       ${pendingResearch}
