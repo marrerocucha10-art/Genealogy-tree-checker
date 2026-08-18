@@ -4,8 +4,10 @@ const STORAGE_KEY = WORKSPACE_PREVIEW_MODE
   : window.familyTreeClientStorage?.getActiveTreeKey() || 'familyTreeData';
 const workspace = document.getElementById('ancestorDiscovery');
 const requestedFocusPersonId = new URLSearchParams(window.location.search).get('focus') || '';
+let loadedTreeData = null;
 
 function getTreeData() {
+  if (loadedTreeData) return loadedTreeData;
   try {
     return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
   } catch (error) {
@@ -38,14 +40,20 @@ function getSearchLinks(person) {
   };
 }
 
-function renderDiscovery() {
-  const allPeople = getTreeData()?.people || [];
+function renderDiscovery(treeData = loadedTreeData || getTreeData()) {
+  const allPeople = treeData?.people || [];
   const focusedPerson = allPeople.find((person) => person.id === requestedFocusPersonId);
   const people = focusedPerson
     ? [focusedPerson]
-    : allPeople.filter((person) => person.birthPlace || person.birthDate || person.deathDate);
+    : allPeople;
   if (!people.length) {
-    workspace.innerHTML = '<p class="empty-message">Parse a GEDCOM with life dates or places before opening ancestor research leads.</p>';
+    workspace.innerHTML = `
+      <section class="ancestor-discovery">
+        <h2>Start your ancestor research</h2>
+        <p class="ancestor-discovery-intro">Upload a GEDCOM file first. Then choose any person here to open Census, vital, church, immigration, Ancestry, FamilySearch, and archive research paths.</p>
+        <a class="btn-add" href="/?start=upload">Upload Your GEDCOM</a>
+      </section>
+    `;
     return;
   }
   workspace.innerHTML = `
@@ -75,4 +83,17 @@ function renderDiscovery() {
   `;
 }
 
-renderDiscovery();
+const storedTreeData = getTreeData();
+if (storedTreeData?.people?.length) {
+  renderDiscovery(storedTreeData);
+} else if (window.familyTreeClientStorage?.loadTreeFromDatabase) {
+  workspace.innerHTML = '<p class="empty-message">Opening your ancestor research leads...</p>';
+  window.familyTreeClientStorage.loadTreeFromDatabase(STORAGE_KEY)
+    .then((treeData) => {
+      loadedTreeData = treeData;
+      renderDiscovery(treeData);
+    })
+    .catch(() => renderDiscovery());
+} else {
+  renderDiscovery();
+}
