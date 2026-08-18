@@ -85,6 +85,7 @@ function getProgress() {
     activeGroupIds: savedProgress.batchMode === 'people' && Array.isArray(savedProgress.activeGroupIds) ? savedProgress.activeGroupIds : [],
     batchMode: 'people',
     reviewOrderVersion: Number(savedProgress.reviewOrderVersion) || 0,
+    duplicateReviewMode: ['single', 'batch'].includes(savedProgress.duplicateReviewMode) ? savedProgress.duplicateReviewMode : '',
   };
 }
 
@@ -241,6 +242,17 @@ function renderPendingDuplicateMergeReview(treeData) {
   if (!survivor || !duplicates.length) {
     pendingDuplicateMerge = null;
     return '';
+  }
+
+  function renderDuplicateReviewChoice(duplicateIssues) {
+    return `
+      <section class="duplicate-merge-review">
+        <h2>How would you like to review possible duplicates?</h2>
+        <p>We found ${duplicateIssues.length} possible duplicate record${duplicateIssues.length === 1 ? '' : 's'} in this review. You will always confirm each merge separately before anything changes.</p>
+        <button type="button" class="btn-add" data-duplicate-review-mode="single">Review One Duplicate Group at a Time</button>
+        <button type="button" class="btn-secondary" data-duplicate-review-mode="batch">Review All Duplicate Groups in This Batch</button>
+      </section>
+    `;
   }
 
   const personDetails = (person) => [
@@ -489,9 +501,11 @@ function getActiveIssueGroups(treeData, errors, progress) {
     return activeIds.map((id) => groupsById.get(id));
   }
 
-  const nextGroups = getOrderedIssueGroups(treeData, errors)
-    .filter((group) => group.issues.some((issue) => !resolved.has(getIssueId(issue))))
-    .slice(0, ERROR_BATCH_SIZE);
+  const availableGroups = getOrderedIssueGroups(treeData, errors)
+    .filter((group) => group.issues.some((issue) => !resolved.has(getIssueId(issue))));
+  const reviewingDuplicatesOneByOne = progress.duplicateReviewMode === 'single'
+    && isDuplicateIssue(availableGroups[0]?.issues[0]);
+  const nextGroups = availableGroups.slice(0, reviewingDuplicatesOneByOne ? 1 : ERROR_BATCH_SIZE);
   progress.activeGroupIds = nextGroups.map((group) => group.id);
   saveProgress(progress);
   return nextGroups;
@@ -620,6 +634,11 @@ function renderWorkspace() {
     return;
   }
 
+  if (duplicateIssues.length && !progress.duplicateReviewMode) {
+    workspace.innerHTML = renderDuplicateReviewChoice(duplicateIssues);
+    return;
+  }
+
   if (!errors.length) {
     workspace.innerHTML = `${duplicateMergeReview}${encouragement}${pendingResearch}<p class="empty-message">No validation errors are currently available. Return to the family tree to review warnings and notes.</p><button id="printProgressChart" type="button" class="btn-secondary">Print Progress Chart</button><button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Errors Chart</button>${renderUpdatedTreeOffer()}${undoButton}${assistanceOptions}`;
     return;
@@ -719,6 +738,16 @@ function renderWorkspace() {
 }
 
 workspace.addEventListener('click', (event) => {
+  const duplicateReviewModeButton = event.target.closest('[data-duplicate-review-mode]');
+  if (duplicateReviewModeButton) {
+    const progress = getProgress();
+    progress.duplicateReviewMode = duplicateReviewModeButton.dataset.duplicateReviewMode;
+    progress.activeGroupIds = [];
+    saveProgress(progress);
+    renderWorkspace();
+    return;
+  }
+
   const applySafeFixButton = event.target.closest('[data-apply-safe-fix]');
   if (applySafeFixButton) {
     const issueId = decodeURIComponent(applySafeFixButton.dataset.applySafeFix);
