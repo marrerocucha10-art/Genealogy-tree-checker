@@ -148,6 +148,27 @@ function updateLayoutButtons() {
   });
 }
 
+function getFixErrorsModal() {
+  return familyTreeDiv.querySelector('[data-fix-errors-modal]');
+}
+
+function openFixErrorsModal() {
+  const modal = getFixErrorsModal();
+  if (!modal) {
+    setStatus('No current errors to review.', 'info');
+    return;
+  }
+
+  modal.hidden = false;
+  const dialog = modal.querySelector('.fix-errors-modal');
+  dialog?.focus();
+}
+
+function closeFixErrorsModal() {
+  const modal = getFixErrorsModal();
+  if (modal) modal.hidden = true;
+}
+
 familyTreeDiv.addEventListener('click', (event) => {
   const removeButton = event.target.closest('[data-remove-person-id]');
   const autoFixButton = event.target.closest('[data-apply-auto-fixes]');
@@ -169,23 +190,17 @@ familyTreeDiv.addEventListener('click', (event) => {
   }
 
   if (event.target.closest('[data-open-error-modal]')) {
-    const modal = familyTreeDiv.querySelector('[data-fix-errors-modal]');
-    if (!modal) {
-      window.location.href = 'errors.html';
-      return;
-    }
-    modal.hidden = false;
+    openFixErrorsModal();
     return;
   }
 
   if (event.target.closest('[data-close-error-modal]')) {
-    const modal = familyTreeDiv.querySelector('[data-fix-errors-modal]');
-    if (modal) modal.hidden = true;
+    closeFixErrorsModal();
     return;
   }
 
   if (event.target.matches('[data-fix-errors-modal]')) {
-    event.target.hidden = true;
+    closeFixErrorsModal();
     return;
   }
 
@@ -194,7 +209,12 @@ familyTreeDiv.addEventListener('click', (event) => {
     return;
   }
 
-  if (event.target.closest('[data-open-error-workspace]') || event.target.closest('[data-modal-open-error-workspace]')) {
+  if (event.target.closest('[data-open-error-workspace]')) {
+    window.open('errors.html', '_blank', 'noopener');
+    return;
+  }
+
+  if (event.target.closest('[data-modal-open-error-workspace]')) {
     window.location.href = 'errors.html';
     return;
   }
@@ -253,6 +273,13 @@ familyTreeDiv.addEventListener('click', (event) => {
   if (event.target.closest('[data-download-poster-artwork]')) {
     downloadPosterArtwork();
   }
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.key !== 'Escape') return;
+  const modal = getFixErrorsModal();
+  if (!modal || modal.hidden) return;
+  closeFixErrorsModal();
 });
 
 familyTreeDiv.addEventListener('change', (event) => {
@@ -1560,7 +1587,9 @@ function renderWorkflowOverview() {
       <h3>Choose your next step</h3>
       <p>Your parsed GED is saved in this browser. Continue with one focused workspace at a time.</p>
       <div class="workflow-actions">
-        <button type="button" class="btn-add" data-open-error-modal>Fix errors${issueCount ? ` (${issueCount})` : ''}</button>
+        ${issueCount
+    ? `<button type="button" class="btn-add" data-open-error-modal>Fix errors (${issueCount})</button>`
+    : '<button type="button" class="btn-secondary" disabled>No current errors</button>'}
         <a class="btn-secondary" href="manual.html">Work on the tree manually</a>
         <a class="btn-secondary" href="ancestor.html">Open Ancestor Discovery</a>
       </div>
@@ -1585,8 +1614,8 @@ function renderFixErrorsModal(report) {
 
   return `
     <div class="fix-errors-modal-overlay" data-fix-errors-modal hidden>
-      <section class="fix-errors-modal" role="dialog" aria-modal="true" aria-labelledby="fixErrorsModalTitle">
-        <h4 id="fixErrorsModalTitle">First batch to review (${workspaceIssues.length} total error${workspaceIssues.length === 1 ? '' : 's'})</h4>
+      <section class="fix-errors-modal" role="dialog" aria-modal="true" aria-labelledby="fixErrorsModalTitle" tabindex="-1">
+        <h4 id="fixErrorsModalTitle">First batch to review</h4>
         <p class="muted">Start with the most important records below, then choose how you want to continue.</p>
         <ol class="fix-errors-modal-list">
           ${previewIssues.map((issue) => `
