@@ -5,7 +5,7 @@ const SUBSCRIPTION_STORAGE_KEY = 'familyTreeSubscriptionTier';
 const PLAN_SELECTION_STORAGE_KEY = 'familyTreePlanSelected';
 const ERROR_BATCH_SIZE = 10;
 const BASIC_ERROR_REVIEW_LIMIT = 5;
-const ERROR_REVIEW_ORDER_VERSION = 2;
+const ERROR_REVIEW_ORDER_VERSION = 3;
 const workspace = document.getElementById('errorWorkspace');
 let loadedTreeData = null;
 
@@ -384,9 +384,11 @@ function getOrderedIssueGroups(treeData, errors) {
   return getIssueGroups(errors)
     .map((group, index) => ({ group, index }))
     .sort((left, right) => {
+      const leftDuplicateRank = isDuplicateIssue(left.group.issues[0]) ? 0 : 1;
+      const rightDuplicateRank = isDuplicateIssue(right.group.issues[0]) ? 0 : 1;
       const leftOrder = descendantOrder.get(left.group.issues[0]?.subject) ?? Number.MAX_SAFE_INTEGER;
       const rightOrder = descendantOrder.get(right.group.issues[0]?.subject) ?? Number.MAX_SAFE_INTEGER;
-      return leftOrder - rightOrder || left.index - right.index;
+      return leftDuplicateRank - rightDuplicateRank || leftOrder - rightOrder || left.index - right.index;
     })
     .map(({ group }) => group);
 }
@@ -557,9 +559,12 @@ function renderWorkspace() {
                   const isResolved = isCompleted || isPending;
                   const hasSafeAutomaticFix = Boolean(issue.autoFix) && !isDuplicateIssue(issue);
                   const issueActions = `
+                    ${isDuplicateIssue(issue) ? `
+                    <div class="issue-fix-actions">
+                    <button type="button" class="btn-secondary" data-merge-duplicates="${encodeURIComponent(JSON.stringify(issue.autoFix))}">Review and merge possible duplicates</button>
+                    </div>` : ''}
                     ${isBasicPlan ? '' : `
                     <div class="issue-fix-actions">
-                    ${isDuplicateIssue(issue) ? `<button type="button" class="btn-secondary" data-merge-duplicates="${encodeURIComponent(JSON.stringify(issue.autoFix))}">Merge duplicate people for review</button>` : ''}
                     <button type="button" class="btn-secondary" data-apply-safe-fix="${encodeURIComponent(issueId)}" ${!hasSafeAutomaticFix || !canUseSafeAutomaticFixes() || isResolved ? 'disabled' : ''}>${hasSafeAutomaticFix && canUseSafeAutomaticFixes() ? 'Apply safe automatic fix' : 'No safe automatic fix'}</button>
                     </div>`}
                     <div class="issue-fix-actions">
