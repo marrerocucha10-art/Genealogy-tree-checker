@@ -657,6 +657,19 @@ select:focus {
   margin: 10px 0 18px;
 }
 
+.tree-summary-actions,
+.tree-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tree-summary-actions .btn-secondary,
+.tree-review-actions .btn-secondary {
+  margin-top: 0;
+  text-decoration: none;
+}
+
 .tree-review-family,
 .tree-review-person {
   border-top: 1px solid #e5e7eb;
@@ -752,6 +765,16 @@ select:focus {
 }
 
 @media (max-width: 600px) {
+  .tree-summary-actions,
+  .tree-review-actions {
+    flex-direction: column;
+  }
+
+  .tree-summary-actions .btn-secondary,
+  .tree-review-actions .btn-secondary {
+    width: 100%;
+  }
+
   .tree-next-step {
     align-items: stretch;
     flex-direction: column;

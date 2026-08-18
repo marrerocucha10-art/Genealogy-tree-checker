@@ -201,7 +201,9 @@ function renderGenerations(treeData, peopleById, families) {
   return `
     <section class="tree-review-list">
       <h2>Your working tree preview</h2>
-      <button class="btn-secondary" type="button" data-open-primary-person-picker>Choose a different direct line</button>
+      <div class="tree-review-actions">
+        <button class="btn-secondary" type="button" data-open-primary-person-picker>Choose a Different Direct Line</button>
+      </div>
       <div id="primaryPersonPicker" hidden>
         <label for="primaryPerson">Start this tree with</label>
         <input id="primaryPerson" type="search" placeholder="Type a person's name" autocomplete="off">
@@ -212,7 +214,6 @@ function renderGenerations(treeData, peopleById, families) {
       <p class="muted">This quick preview starts with two generations. Add more only when you need them, or choose a different direct line.</p>
       <div class="tree-next-step">
         ${loadMore}
-        <a class="btn-add" href="errors.html">Continue to Fixing Errors</a>
       </div>
       <div class="ancestry-tree" aria-label="Family ancestry tree">
         ${sections.join('')}
@@ -249,7 +250,9 @@ function renderTreeReview(treeData = loadedTreeData || getTreeData()) {
       </div>
       <h2>${issueCount} error${issueCount === 1 ? '' : 's'} to fix</h2>
       <p>Fixing these items helps make your family tree more complete and reliable.</p>
-      <a class="btn-secondary" href="errors.html">Return to Error Workspace</a>
+      <div class="tree-summary-actions">
+        <a class="btn-secondary" href="errors.html">Return to Error Workspace</a>
+      </div>
     </section>
     ${renderGenerations(treeData, peopleById, families)}
   `;
