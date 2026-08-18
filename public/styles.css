@@ -411,7 +411,7 @@ main {
   }
 }
 
-.app-preview-access {
+.subscription-preview-access {
   align-items: center;
   background: linear-gradient(135deg, #ecfdf5, #eff6ff);
   border: 1px solid #86efac;
@@ -423,19 +423,19 @@ main {
   padding: 22px 26px;
 }
 
-.app-preview-access h2 {
+.subscription-preview-access h3 {
   color: #166534;
   font-size: 1.35rem;
   margin-bottom: 6px;
 }
 
-.app-preview-access p:not(.eyebrow) {
+.subscription-preview-access p:not(.eyebrow) {
   color: #475569;
   margin: 0;
   max-width: 700px;
 }
 
-.app-preview-access .btn-add {
+.subscription-preview-access .btn-secondary {
   flex: 0 0 auto;
   text-align: center;
   text-decoration: none;
@@ -450,13 +450,13 @@ main {
     padding: 22px;
   }
 
-  .app-preview-access {
+  .subscription-preview-access {
     align-items: stretch;
     flex-direction: column;
     padding: 20px;
   }
 
-  .app-preview-access .btn-add {
+  .subscription-preview-access .btn-secondary {
     width: 100%;
   }
 
