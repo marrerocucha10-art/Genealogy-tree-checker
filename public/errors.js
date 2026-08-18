@@ -108,9 +108,9 @@ function renderBasicPlanOptions(errors) {
   return `
     <section class="assistance-options">
       <h2>Great news - these details can be fixed.</h2>
-      <p>We spotted ${reviewedCount} error${reviewedCount === 1 ? '' : 's'} for you to review in your family tree. An accurate tree is a wonderful way to share your family's story with relatives and friends, while honoring your ancestors and their contributions to society.</p>
-      <p>${remainingErrors ? `Upgrade to Family Builder to review and fix the remaining ${remainingErrors} error${remainingErrors === 1 ? '' : 's'}, so you can share your family history with confidence.` : 'Upgrade to Family Builder whenever you are ready to fix errors and continue preserving your family history.'}</p>
-      <a class="btn-secondary assistance-upgrade-link" href="store.html#subscriptions">Upgrade to review and fix the rest</a>
+      <p>We found ${reviewedCount} error${reviewedCount === 1 ? '' : 's'} you can manually fix at no charge. An accurate tree is a wonderful way to share your family's story with relatives and friends, while honoring your ancestors and their contributions to society.</p>
+      <p>${remainingErrors ? `Upgrade to Family Builder to fix the remaining ${remainingErrors} error${remainingErrors === 1 ? '' : 's'}, and choose Pro / Researcher when you want safe automatic fixes.` : 'Upgrade to Family Builder whenever you are ready to continue fixing errors and preserving your family history.'}</p>
+      <a class="btn-secondary assistance-upgrade-link" href="store.html#subscriptions">Choose a plan to fix the rest</a>
     </section>
   `;
 }
@@ -137,7 +137,7 @@ function renderProgressEncouragement(errors, progress) {
   const tierMessage = tier === 'personal'
     ? ' Family Builder gives you room to keep reviewing and organizing without a fix limit.'
     : tier === 'free'
-      ? ' Basic lets you review your first five errors. Upgrade to Family Builder to review and fix the rest.'
+      ? ' Your first five manual fixes are included at no charge. Upgrade to Family Builder to fix the rest, or choose Pro / Researcher for safe automatic fixes.'
       : ' Your plan includes safe automatic fixes alongside the manual review tools.';
 
   return `
@@ -490,7 +490,7 @@ function renderWorkspace() {
         <h2>Current people batch</h2>
         <span>${activeGroups.length} of ${ERROR_BATCH_SIZE} selected</span>
       </div>
-      <p class="batch-help">${isBasicPlan ? `Your free Basic review includes the first ${BASIC_ERROR_REVIEW_LIMIT} errors we found. These details are fixable, and upgrading to Family Builder lets you review and correct the rest before sharing your family story.` : 'Each person includes all of their unresolved errors. Mark an error solved only after correcting it in the source GEDCOM or completing its recommended fix. The next batch stays locked until this batch is complete.'}</p>
+      <p class="batch-help">${isBasicPlan ? `Your first ${BASIC_ERROR_REVIEW_LIMIT} manual fixes are included at no charge. Use the review guidance below, then mark each corrected record solved. Upgrade to Family Builder to fix the rest, or choose Pro / Researcher for safe automatic fixes.` : 'Each person includes all of their unresolved errors. Mark an error solved only after correcting it in the source GEDCOM or completing its recommended fix. The next batch stays locked until this batch is complete.'}</p>
       ${duplicateMergeReview}
       ${encouragement}
       ${pendingResearch}
@@ -508,15 +508,18 @@ function renderWorkspace() {
                   const isPending = progress.pendingIssueIds.includes(issueId);
                   const isResolved = isCompleted || isPending;
                   const hasSafeAutomaticFix = Boolean(issue.autoFix) && !isDuplicateIssue(issue);
-                  const issueActions = isBasicPlan ? '' : `
+                  const issueActions = `
+                    ${isBasicPlan ? '' : `
                     <div class="issue-fix-actions">
-                      ${isDuplicateIssue(issue) ? `<button type="button" class="btn-secondary" data-merge-duplicates="${encodeURIComponent(JSON.stringify(issue.autoFix))}">Merge duplicate people for review</button>` : ''}
-                      <button type="button" class="btn-secondary" data-apply-safe-fix="${encodeURIComponent(issueId)}" ${!hasSafeAutomaticFix || !canUseSafeAutomaticFixes() || isResolved ? 'disabled' : ''}>${hasSafeAutomaticFix && canUseSafeAutomaticFixes() ? 'Apply safe automatic fix' : 'No safe automatic fix'}</button>
-                      <button type="button" class="btn-secondary" data-review-manually>Review manually</button>
-                    </div>
-                    <p class="manual-review-note" hidden>Review the source record and suggestion above, then mark this item solved or pending.</p>
+                    ${isDuplicateIssue(issue) ? `<button type="button" class="btn-secondary" data-merge-duplicates="${encodeURIComponent(JSON.stringify(issue.autoFix))}">Merge duplicate people for review</button>` : ''}
+                    <button type="button" class="btn-secondary" data-apply-safe-fix="${encodeURIComponent(issueId)}" ${!hasSafeAutomaticFix || !canUseSafeAutomaticFixes() || isResolved ? 'disabled' : ''}>${hasSafeAutomaticFix && canUseSafeAutomaticFixes() ? 'Apply safe automatic fix' : 'No safe automatic fix'}</button>
+                    </div>`}
+                    <div class="issue-fix-actions">
+                    <button type="button" class="btn-secondary" data-review-manually>Review manually</button>
                     <button type="button" class="btn-secondary" data-resolve-issue="${encodeURIComponent(issueId)}" data-duplicate-issue="${isDuplicateIssue(issue)}" ${isResolved ? 'disabled' : ''}>${isCompleted ? 'Solved' : isPending ? 'Pending review' : 'Mark solved'}</button>
                     ${isResolved ? '' : `<button type="button" class="btn-secondary" data-pending-issue="${encodeURIComponent(issueId)}">Mark pending and continue</button>`}
+                    </div>
+                    <p class="manual-review-note" hidden>Review the source record and suggestion above, then mark this item solved or pending.</p>
                   `;
                   return `
                     <li>

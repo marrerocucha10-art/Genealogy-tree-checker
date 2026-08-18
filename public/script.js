@@ -40,10 +40,10 @@ const SUBSCRIPTION_TIERS = {
   free: {
     name: 'Basic',
     rank: 0,
-    description: 'Upload a GEDCOM file and review the first five validation errors for free.',
+    description: 'Upload a GEDCOM file and manually fix the first five validation errors at no charge.',
     monthlyPrice: 0,
     annualPrice: 0,
-    features: ['GEDCOM uploads up to 150 MB', 'Review the first 5 validation errors', 'Upgrade to review and fix the remaining errors'],
+    features: ['GEDCOM uploads up to 150 MB', 'Manually fix the first 5 validation errors', 'Upgrade to fix the remaining errors'],
   },
   personal: {
     name: 'Family Builder',
