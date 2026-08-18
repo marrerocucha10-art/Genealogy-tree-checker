@@ -83,10 +83,12 @@ function getActiveTreeKey() {
   return activeId ? `familyTreeClient:${activeId}` : LEGACY_FAMILY_TREE_KEY;
 }
 
-function createClient(name) {
+function createClient(name, surname = '', generation = '') {
   const client = {
     id: `client-${Date.now()}`,
     name,
+    surname,
+    generation,
     createdAt: new Date().toISOString(),
   };
   const clients = getClients();

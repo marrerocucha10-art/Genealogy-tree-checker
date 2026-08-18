@@ -13,11 +13,11 @@ const PLAN_DETAILS = {
   },
   pro: {
     name: 'Pro / Researcher',
-    features: ['Safe automatic fixes', 'Full correction reports', 'Genealogy Pro Package'],
+    features: ['Up to 10 separate family-tree workspaces', 'Surname and generation labels for each workspace', 'Safe automatic fixes', 'Full correction reports', 'Genealogy Pro Package'],
   },
   business: {
     name: 'Business / Genealogist',
-    features: ['Client tree workflow', 'GEDCOM uploads up to 2 GB', 'Separate browser-saved client trees'],
+    features: ['Unlimited separate client workspaces', 'Surname and generation labels for each workspace', 'GEDCOM uploads up to 2 GB', 'Client tree workflow'],
   },
 };
 
@@ -33,6 +33,19 @@ function renderWorkPlace(treeData = getTreeData()) {
   const tier = localStorage.getItem(SUBSCRIPTION_STORAGE_KEY) || 'free';
   const plan = PLAN_DETAILS[tier] || PLAN_DETAILS.free;
   const hasTree = Boolean(treeData?.people?.length);
+  const workspaceReminder = tier === 'pro'
+    ? `<section class="workplace-card">
+         <h2>Keep your family trees easy to find</h2>
+         <p>Your Pro / Researcher plan includes up to 10 separate family-tree workspaces. Label each one by surname or generation so you can keep related branches clearly organized. Business / Genealogist adds unlimited client workspaces.</p>
+         <a class="btn-secondary" href="clients.html">Organize Your Family Trees</a>
+       </section>`
+    : tier === 'business'
+      ? `<section class="workplace-card">
+           <h2>Keep every client tree organized</h2>
+           <p>Your Business / Genealogist plan includes unlimited separate client workspaces. Use surname and generation labels to keep each family branch easy to return to.</p>
+           <a class="btn-secondary" href="clients.html">Organize Client Trees</a>
+         </section>`
+      : '';
 
   workPlace.innerHTML = `
     <section class="workplace-card">
@@ -52,6 +65,7 @@ function renderWorkPlace(treeData = getTreeData()) {
         : `<p>Start by uploading your GEDCOM file. After it is read, your tree and guided error review will be ready here.</p>
            <a class="btn-add" href="/?start=upload">Step 1: Upload Your GEDCOM</a>`}
     </section>
+    ${workspaceReminder}
   `;
 }
 

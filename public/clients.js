@@ -1,6 +1,7 @@
 const SUBSCRIPTION_STORAGE_KEY = 'familyTreeSubscriptionTier';
 const workspace = document.getElementById('clientWorkspace');
 const clientStorage = window.familyTreeClientStorage;
+const PRO_TREE_LIMIT = 10;
 
 function escapeHtml(value = '') {
   return String(value).replace(/[&<>"']/g, (character) => ({
@@ -18,12 +19,14 @@ function getClientPersonCount(clientId) {
 }
 
 function renderWorkspace() {
-  if (localStorage.getItem(SUBSCRIPTION_STORAGE_KEY) !== 'business') {
+  const tier = localStorage.getItem(SUBSCRIPTION_STORAGE_KEY) || 'free';
+  const hasWorkspaceAccess = ['pro', 'business'].includes(tier);
+  if (!hasWorkspaceAccess) {
     workspace.innerHTML = `
       <section class="client-access-gate">
-        <h2>Business / Genealogist feature</h2>
-        <p>Client Workspaces keep each client’s saved tree and error progress separate in this browser.</p>
-        <a class="btn-add" href="store.html#subscriptions">Choose the Business / Genealogist plan</a>
+        <h2>Pro / Researcher feature</h2>
+        <p>Family Tree Workspaces keep each saved tree and its error progress separate in this browser. Pro includes up to ${PRO_TREE_LIMIT} workspaces, organized with family, surname, and generation labels.</p>
+        <a class="btn-add" href="store.html#subscriptions">Choose the Pro / Researcher plan</a>
       </section>
     `;
     return;
@@ -31,24 +34,37 @@ function renderWorkspace() {
 
   const activeClientId = clientStorage.getActiveClientId();
   const clients = clientStorage.getClients();
+  const isAtTreeLimit = tier === 'pro' && clients.length >= PRO_TREE_LIMIT;
+  const workspaceLimitMessage = tier === 'pro'
+    ? `<p class="help-text">Your Pro / Researcher plan includes up to ${PRO_TREE_LIMIT} separate family-tree workspaces. ${clients.length} of ${PRO_TREE_LIMIT} used. Upgrade to Business / Genealogist for unlimited client workspaces.</p>`
+    : '<p class="help-text">Your Business / Genealogist plan includes unlimited separate client workspaces.</p>';
   workspace.innerHTML = `
     <section class="client-workspace">
-      <h2>Create a client folder</h2>
+      <h2>Create a family-tree workspace</h2>
+      ${workspaceLimitMessage}
       <form id="clientForm">
         <div class="form-group">
-          <label for="clientName">Client name</label>
+          <label for="clientName">Family or tree name</label>
           <input id="clientName" type="text" placeholder="e.g., Morgan Family" required>
         </div>
-        <button class="btn-add" type="submit">Create client folder</button>
+        <div class="form-group">
+          <label for="clientSurname">Surname label (optional)</label>
+          <input id="clientSurname" type="text" placeholder="e.g., Morgan">
+        </div>
+        <div class="form-group">
+          <label for="clientGeneration">Generation label (optional)</label>
+          <input id="clientGeneration" type="text" placeholder="e.g., Great-grandparents">
+        </div>
+        <button class="btn-add" type="submit" ${isAtTreeLimit ? 'disabled' : ''}>${isAtTreeLimit ? 'Pro workspace limit reached' : 'Create family-tree workspace'}</button>
       </form>
     </section>
     <section class="client-workspace">
-      <h2>Saved client trees</h2>
+      <h2>Saved family-tree workspaces</h2>
       ${clients.length ? `<div class="client-list">${clients.map((client) => `
         <article class="client-card ${client.id === activeClientId ? 'active-client' : ''}">
           <div>
             <h3>${escapeHtml(client.name)}</h3>
-            <p>${getClientPersonCount(client.id)} saved people${client.id === activeClientId ? ' · Active workspace' : ''}</p>
+            <p>${[client.surname && `Surname: ${escapeHtml(client.surname)}`, client.generation && `Generation: ${escapeHtml(client.generation)}`, `${getClientPersonCount(client.id)} saved people`, client.id === activeClientId && 'Active workspace'].filter(Boolean).join(' · ')}</p>
           </div>
           <div class="client-card-actions">
             <button type="button" class="btn-secondary" data-open-client="${escapeHtml(client.id)}">Open</button>
@@ -66,7 +82,16 @@ workspace.addEventListener('submit', (event) => {
   const input = document.getElementById('clientName');
   const name = input.value.trim();
   if (!name) return;
-  clientStorage.createClient(name);
+  const tier = localStorage.getItem(SUBSCRIPTION_STORAGE_KEY) || 'free';
+  if (tier === 'pro' && clientStorage.getClients().length >= PRO_TREE_LIMIT) {
+    renderWorkspace();
+    return;
+  }
+  clientStorage.createClient(
+    name,
+    document.getElementById('clientSurname').value.trim(),
+    document.getElementById('clientGeneration').value.trim(),
+  );
   window.location.href = '/?start=upload';
 });
 

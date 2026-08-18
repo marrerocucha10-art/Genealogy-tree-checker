@@ -145,8 +145,8 @@ function updatePlanErrorWorkspaceMessage() {
   const messages = {
     free: 'Your first five manual fixes are included at no charge. Upgrade when you are ready to correct the rest or use safe automatic fixes.',
     personal: 'Your Family Builder plan includes unlimited manual error review and correction. Continue at your own pace, one clear step at a time.',
-    pro: 'Your Pro / Researcher plan includes unlimited review, safe automatic fixes, and advanced correction support.',
-    business: 'Your Business / Genealogist plan includes client-focused review tools and room to keep each family tree organized.',
+    pro: 'Your Pro / Researcher plan includes unlimited review, safe automatic fixes, and up to 10 separately organized family-tree workspaces.',
+    business: 'Your Business / Genealogist plan includes client-focused review tools and unlimited separately organized family-tree workspaces.',
   };
   planErrorWorkspaceMessage.textContent = messages[getCurrentTier()] || messages.free;
 }
@@ -356,16 +356,32 @@ function renderPendingResearch(errors, progress) {
   `;
 }
 
-function renderProgressTools(progress) {
+function renderProgressTools(progress, errors = []) {
   const correctedItems = progress.resolvedItems || [];
+  const completed = new Set(progress.completedIssueIds);
+  const pending = new Set(progress.pendingIssueIds);
+  const unresolvedIssues = errors.filter((issue) => !completed.has(getIssueId(issue)) && !pending.has(getIssueId(issue)));
+  const nextStep = pending.size
+    ? 'Continue with the open items below, then return to Fix Later when you have more records or research.'
+    : unresolvedIssues.length
+      ? 'Continue with the open items below. Each suggested fix explains the next action to take.'
+      : 'Your current review is complete. Open your family tree to see the corrections so far.';
   return `
     <section class="progress-tools">
-      <h2>Your correction progress</h2>
-      <p>Preview the work you have completed so far, or print a chart to keep with your research notes.</p>
+      <h2>Choose how to review your progress</h2>
+      <p>Use a printable chart for handwritten research notes, or open a computer report for a clear summary and your next step.</p>
       <div class="issue-fix-actions">
-        <button id="printProgressChart" type="button" class="btn-secondary">Print Progress Chart</button>
-        <button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Items Chart</button>
+        <button id="printProgressChart" type="button" class="btn-secondary">Print a Chart for Manual Review</button>
+        <button id="openProgressReport" type="button" class="btn-secondary">Open Your Computer Progress Report</button>
       </div>
+      <section id="computerProgressReport" class="corrected-items-preview" hidden>
+        <h3>Your computer progress report</h3>
+        <p><strong>${completed.size}</strong> solved · <strong>${pending.size}</strong> saved for later · <strong>${unresolvedIssues.length}</strong> open</p>
+        <p><strong>Your next step:</strong> ${escapeHtml(nextStep)}</p>
+        ${unresolvedIssues.length
+          ? `<h4>Next items to review</h4><ul>${unresolvedIssues.slice(0, 3).map((issue) => `<li><strong>${escapeHtml(issue.subject || issue.category)}:</strong> ${escapeHtml(issue.suggestion || issue.message)}</li>`).join('')}</ul>`
+          : ''}
+      </section>
       <div class="corrected-items-preview">
         <h3>Corrected items preview</h3>
         ${correctedItems.length
@@ -742,7 +758,7 @@ function renderWorkspace() {
         ${undoButton}
         ${encouragement}
         ${pendingResearch}
-        ${renderProgressTools(progress)}
+        ${renderProgressTools(progress, allErrors)}
         ${assistanceOptions}
       </section>
     `;
@@ -753,7 +769,7 @@ function renderWorkspace() {
     const pendingMessage = progress.pendingIssueIds.length
       ? ` You also have ${progress.pendingIssueIds.length} item${progress.pendingIssueIds.length === 1 ? '' : 's'} in Fix Later (Pending), which did not block your progress.`
       : '';
-    workspace.innerHTML = `${duplicateMergeReview}<section class="batch-complete"><h2>Active error review complete</h2><p>You completed every active issue in this workspace.${pendingMessage} Take a moment to print your progress, save your fixed-errors chart, and celebrate the progress.</p><button id="printProgressChart" type="button" class="btn-secondary">Print Progress Chart</button><button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Errors Chart</button>${undoButton}</section>${pendingResearch}${renderUpdatedTreeOffer()}${encouragement}${assistanceOptions}`;
+    workspace.innerHTML = `${duplicateMergeReview}<section class="batch-complete"><h2>Active error review complete</h2><p>You completed every active issue in this workspace.${pendingMessage} Choose a printable chart for manual notes or open your computer progress report for a summary and your next step.</p>${renderProgressTools(progress, allErrors)}${undoButton}</section>${pendingResearch}${renderUpdatedTreeOffer()}${encouragement}${assistanceOptions}`;
     return;
   }
 
@@ -769,7 +785,7 @@ function renderWorkspace() {
       ${pendingResearch}
       ${undoButton}
       ${assistanceOptions}
-      ${renderProgressTools(progress)}
+      ${renderProgressTools(progress, allErrors)}
       <ol class="error-batch-list">
         ${activeGroups.map((group) => {
           return `
@@ -1005,6 +1021,17 @@ workspace.addEventListener('click', (event) => {
     progress.activeGroupIds = [];
     saveProgress(progress);
     renderWorkspace();
+    return;
+  }
+
+  if (event.target.closest('#openProgressReport')) {
+    const report = document.getElementById('computerProgressReport');
+    if (report) {
+      report.hidden = !report.hidden;
+      event.target.closest('#openProgressReport').textContent = report.hidden
+        ? 'Open Your Computer Progress Report'
+        : 'Hide Your Computer Progress Report';
+    }
     return;
   }
 

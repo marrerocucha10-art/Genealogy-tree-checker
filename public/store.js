@@ -22,15 +22,15 @@ const tiers = {
   },
   pro: {
     name: 'Pro / Researcher',
-    description: 'Unlock advanced cleanup, reporting, and the Genealogy Pro Package.',
+    description: 'Unlock advanced cleanup, reporting, the Genealogy Pro Package, and up to 10 separately organized family trees.',
     prices: { monthly: 29.99, annual: 29.99 },
-    features: ['GEDCOM uploads up to 500 MB', 'Safe automatic fixes', 'Full correction report', 'Advanced validation workflow', 'Genealogy Pro Package'],
+    features: ['Up to 10 separate family-tree workspaces', 'Surname and generation labels for each workspace', 'GEDCOM uploads up to 500 MB', 'Safe automatic fixes', 'Full correction report', 'Advanced validation workflow', 'Genealogy Pro Package'],
   },
   business: {
     name: 'Business / Genealogist',
     description: 'Support client-facing genealogy workflows.',
     prices: { monthly: 39.99, annual: 39.99 },
-    features: ['GEDCOM uploads up to 2 GB', 'Separate client folders and browser-saved trees', 'Client tree workflow', 'Branded reports roadmap'],
+    features: ['Unlimited separate client workspaces', 'Surname and generation labels for each workspace', 'GEDCOM uploads up to 2 GB', 'Client tree workflow', 'Branded reports roadmap'],
   },
 };
 

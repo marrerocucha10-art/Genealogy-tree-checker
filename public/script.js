@@ -56,10 +56,10 @@ const SUBSCRIPTION_TIERS = {
   pro: {
     name: 'Pro / Researcher',
     rank: 2,
-    description: 'For deeper genealogy cleanup, reporting, and the Genealogy Pro Package included free with subscription.',
+    description: 'For deeper genealogy cleanup, reporting, and up to 10 separately organized family trees.',
     monthlyPrice: 29.99,
     annualPrice: 29.99,
-    features: ['GEDCOM uploads up to 500 MB', 'Safe automatic fixes', 'Full correction report', 'Advanced validation workflow', 'Ancestor Discovery research prompts', 'Free Genealogy Pro Package included', 'Digital report package', 'Printed tree and chart package', 'Researcher review service package', 'Memory keepsake package', 'Research journals and worksheets'],
+    features: ['Up to 10 separate family-tree workspaces', 'Surname and generation labels for each workspace', 'GEDCOM uploads up to 500 MB', 'Safe automatic fixes', 'Full correction report', 'Advanced validation workflow', 'Ancestor Discovery research prompts', 'Free Genealogy Pro Package included', 'Digital report package', 'Printed tree and chart package', 'Researcher review service package', 'Memory keepsake package', 'Research journals and worksheets'],
   },
   business: {
     name: 'Business / Genealogist',
@@ -67,7 +67,7 @@ const SUBSCRIPTION_TIERS = {
     description: 'For client-facing genealogy workflows.',
     monthlyPrice: 39.99,
     annualPrice: 39.99,
-    features: ['GEDCOM uploads up to 2 GB', 'Client tree workflow', 'Ancestor Discovery research prompts', 'Branded reports roadmap'],
+    features: ['Unlimited separate client workspaces', 'Surname and generation labels for each workspace', 'GEDCOM uploads up to 2 GB', 'Client tree workflow', 'Ancestor Discovery research prompts', 'Branded reports roadmap'],
   },
 };
 
