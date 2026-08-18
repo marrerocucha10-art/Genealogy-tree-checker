@@ -116,6 +116,105 @@ main {
   margin-bottom: 40px;
 }
 
+.privacy-assurance {
+  align-items: flex-start;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 14px;
+  color: #14532d;
+  display: flex;
+  gap: 14px;
+  margin-bottom: 32px;
+  padding: 18px 20px;
+}
+
+.privacy-assurance strong {
+  display: block;
+  font-size: 1.05rem;
+  margin-bottom: 4px;
+}
+
+.privacy-assurance p {
+  color: #166534;
+  line-height: 1.5;
+}
+
+.privacy-icon {
+  background: #22c55e;
+  border-radius: 5px;
+  flex: 0 0 auto;
+  height: 22px;
+  margin-top: 2px;
+  position: relative;
+  width: 18px;
+}
+
+.privacy-icon::before {
+  border: 3px solid #22c55e;
+  border-bottom: 0;
+  border-radius: 9px 9px 0 0;
+  content: '';
+  height: 11px;
+  left: 2px;
+  position: absolute;
+  top: -9px;
+  width: 10px;
+}
+
+.privacy-icon::after {
+  border-bottom: 2px solid #ffffff;
+  border-right: 2px solid #ffffff;
+  content: '';
+  height: 7px;
+  left: 6px;
+  position: absolute;
+  top: 5px;
+  transform: rotate(45deg);
+  width: 4px;
+}
+
+.research-video-preview {
+  background: linear-gradient(145deg, #f8f7ff, #eef6ff);
+  border: 1px solid #dbeafe;
+  border-radius: 18px;
+  margin-bottom: 32px;
+  overflow: hidden;
+  padding: 28px;
+}
+
+.research-video-copy {
+  text-align: center;
+}
+
+.research-video-copy h2 {
+  color: #312e81;
+  margin-bottom: 8px;
+}
+
+.research-video-copy > p:not(.eyebrow) {
+  color: #4b5563;
+  line-height: 1.5;
+  margin: 0 auto;
+  max-width: 600px;
+}
+
+.research-video {
+  background: #1e1b4b;
+  border-radius: 14px;
+  display: block;
+  margin: 24px auto 0;
+  max-height: 380px;
+  max-width: 720px;
+  width: 100%;
+}
+
+.video-credit {
+  color: #64748b;
+  font-size: 0.75rem;
+  margin-top: 9px;
+  text-align: right;
+}
+
 .workflow-preview {
   border-bottom: 1px solid #e0e7ff;
   border-top: 1px solid #e0e7ff;
@@ -214,6 +313,14 @@ main {
 }
 
 @media (max-width: 700px) {
+  .privacy-assurance {
+    padding: 16px;
+  }
+
+  .research-video-preview {
+    padding: 22px;
+  }
+
   .workflow-preview {
     margin-left: -22px;
     margin-right: -22px;
