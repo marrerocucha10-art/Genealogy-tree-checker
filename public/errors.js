@@ -5,6 +5,7 @@ const SUBSCRIPTION_STORAGE_KEY = 'familyTreeSubscriptionTier';
 const PLAN_SELECTION_STORAGE_KEY = 'familyTreePlanSelected';
 const ERROR_BATCH_SIZE = 10;
 const BASIC_ERROR_REVIEW_LIMIT = 5;
+const ERROR_REVIEW_ORDER_VERSION = 2;
 const workspace = document.getElementById('errorWorkspace');
 let loadedTreeData = null;
 
@@ -54,6 +55,7 @@ function getProgress() {
       pendingIssueIds: Array.isArray(progress.pendingIssueIds) ? progress.pendingIssueIds : [],
       activeGroupIds: progress.batchMode === 'people' && Array.isArray(progress.activeGroupIds) ? progress.activeGroupIds : [],
       batchMode: 'people',
+      reviewOrderVersion: Number(progress.reviewOrderVersion) || 0,
     };
   } catch (error) {
     return {
@@ -62,6 +64,7 @@ function getProgress() {
       pendingIssueIds: [],
       activeGroupIds: [],
       batchMode: 'people',
+      reviewOrderVersion: 0,
     };
   }
 }
@@ -347,8 +350,53 @@ function getIssueGroups(errors) {
   return Array.from(groups.values());
 }
 
-function getActiveIssueGroups(errors, progress) {
-  const groupsById = new Map(getIssueGroups(errors).map((group) => [group.id, group]));
+function getDescendantReviewOrder(treeData) {
+  const peopleById = new Map((treeData?.people || []).map((person) => [person.id, person]));
+  const childrenByParentId = new Map();
+
+  for (const family of treeData?.families || []) {
+    const parentIds = [family.husbandId, family.wifeId].filter((id) => peopleById.has(id));
+    const childIds = (family.childrenIds || []).filter((id) => peopleById.has(id));
+    for (const parentId of parentIds) {
+      if (!childrenByParentId.has(parentId)) childrenByParentId.set(parentId, []);
+      childrenByParentId.get(parentId).push(...childIds);
+    }
+  }
+
+  const primaryPersonId = peopleById.has(treeData?.primaryPersonId)
+    ? treeData.primaryPersonId
+    : treeData?.people?.[0]?.id;
+  const queue = primaryPersonId ? [primaryPersonId] : [];
+  const orderedPeople = new Map();
+
+  for (let queueIndex = 0; queueIndex < queue.length; queueIndex += 1) {
+    const personId = queue[queueIndex];
+    if (orderedPeople.has(personId)) continue;
+    orderedPeople.set(personId, orderedPeople.size);
+    queue.push(...(childrenByParentId.get(personId) || []));
+  }
+
+  return orderedPeople;
+}
+
+function getOrderedIssueGroups(treeData, errors) {
+  const descendantOrder = getDescendantReviewOrder(treeData);
+  return getIssueGroups(errors)
+    .map((group, index) => ({ group, index }))
+    .sort((left, right) => {
+      const leftOrder = descendantOrder.get(left.group.issues[0]?.subject) ?? Number.MAX_SAFE_INTEGER;
+      const rightOrder = descendantOrder.get(right.group.issues[0]?.subject) ?? Number.MAX_SAFE_INTEGER;
+      return leftOrder - rightOrder || left.index - right.index;
+    })
+    .map(({ group }) => group);
+}
+
+function getActiveIssueGroups(treeData, errors, progress) {
+  if (progress.reviewOrderVersion !== ERROR_REVIEW_ORDER_VERSION) {
+    progress.activeGroupIds = [];
+    progress.reviewOrderVersion = ERROR_REVIEW_ORDER_VERSION;
+  }
+  const groupsById = new Map(getOrderedIssueGroups(treeData, errors).map((group) => [group.id, group]));
   const resolved = getResolvedIssueIds(progress);
   const activeIds = progress.activeGroupIds.filter((id) => groupsById.has(id));
 
@@ -356,7 +404,7 @@ function getActiveIssueGroups(errors, progress) {
     return activeIds.map((id) => groupsById.get(id));
   }
 
-  const nextGroups = getIssueGroups(errors)
+  const nextGroups = getOrderedIssueGroups(treeData, errors)
     .filter((group) => group.issues.some((issue) => !resolved.has(getIssueId(issue))))
     .slice(0, ERROR_BATCH_SIZE);
   progress.activeGroupIds = nextGroups.map((group) => group.id);
@@ -450,13 +498,13 @@ function renderWorkspace() {
     return;
   }
 
-  const activeGroups = getActiveIssueGroups(errors, progress);
+  const activeGroups = getActiveIssueGroups(treeData, errors, progress);
   const completed = new Set(progress.completedIssueIds);
   const resolved = getResolvedIssueIds(progress);
   const activeDone = activeGroups.length === 0 || activeGroups.every((group) => (
     group.issues.every((issue) => resolved.has(getIssueId(issue)))
   ));
-  const remainingGroups = getIssueGroups(errors).filter((group) => (
+  const remainingGroups = getOrderedIssueGroups(treeData, errors).filter((group) => (
     group.issues.some((issue) => !resolved.has(getIssueId(issue)))
   )).length;
 
@@ -577,7 +625,7 @@ workspace.addEventListener('click', (event) => {
       ...(treeData?.validationReport?.errors || []),
       ...(treeData?.validationReport?.warnings || []).filter(isDuplicateIssue),
     ];
-    const appliedCount = applySafeBatchFixes(treeData, getActiveIssueGroups(errors, progress), progress);
+    const appliedCount = applySafeBatchFixes(treeData, getActiveIssueGroups(treeData, errors, progress), progress);
     alert(appliedCount ? `${appliedCount} safe automatic fix${appliedCount === 1 ? '' : 'es'} applied.` : 'No safe automatic fixes are available in this batch. Review the suggested fixes manually.');
     renderWorkspace();
     return;
@@ -706,7 +754,7 @@ workspace.addEventListener('click', (event) => {
   if (event.target.closest('#printProgressChart')) {
     const treeData = getTreeData();
     const progress = getProgress();
-    const allGroups = getIssueGroups([
+    const allGroups = getOrderedIssueGroups(treeData, [
       ...(treeData?.validationReport?.errors || []),
       ...(treeData?.validationReport?.warnings || []).filter(isDuplicateIssue),
     ]);
@@ -717,7 +765,7 @@ workspace.addEventListener('click', (event) => {
   if (event.target.closest('#printFixedProgressChart')) {
     const treeData = getTreeData();
     const progress = getProgress();
-    const allGroups = getIssueGroups([
+    const allGroups = getOrderedIssueGroups(treeData, [
       ...(treeData?.validationReport?.errors || []),
       ...(treeData?.validationReport?.warnings || []).filter(isDuplicateIssue),
     ]);
