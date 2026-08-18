@@ -2119,6 +2119,42 @@ input[type="file"] {
   padding: 8px;
 }
 
+.pending-research {
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  border-radius: 12px;
+  margin: 16px 0;
+  padding: 16px;
+}
+
+.pending-research h2 {
+  color: #9a3412;
+  font-size: 1.15em;
+  margin-bottom: 6px;
+}
+
+.pending-research > p {
+  color: #9a3412;
+  margin-bottom: 12px;
+}
+
+.pending-research ul {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+}
+
+.pending-research li {
+  background: #ffffff;
+  border-radius: 8px;
+  color: #7c2d12;
+  padding: 10px;
+}
+
+.pending-research .btn-secondary {
+  margin: 8px 0 0;
+}
+
 .assistance-options {
   background: #eff6ff;
   border: 1px solid #93c5fd;

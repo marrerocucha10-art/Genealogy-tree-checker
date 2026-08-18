@@ -193,11 +193,35 @@ function escapeHtml(value = '') {
   }[char]));
 }
 
-function printProgressChart(groups, completed, fixedOnly = false) {
+function renderPendingResearch(errors, progress) {
+  const pendingIssues = errors.filter((issue) => progress.pendingIssueIds.includes(getIssueId(issue)));
+  if (!pendingIssues.length) return '';
+
+  return `
+    <section class="pending-research">
+      <h2>Pending research</h2>
+      <p>${pendingIssues.length} item${pendingIssues.length === 1 ? '' : 's'} can be revisited whenever you have more records or information.</p>
+      <ul>
+        ${pendingIssues.map((issue) => `
+          <li>
+            <strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(issue.message)}
+            <button type="button" class="btn-secondary" data-resume-pending-issue="${encodeURIComponent(getIssueId(issue))}">Return to active review</button>
+          </li>
+        `).join('')}
+      </ul>
+    </section>
+  `;
+}
+
+function printProgressChart(groups, completed, fixedOnly = false, pending = new Set()) {
   const rows = groups.flatMap((group) => group.issues
     .filter((issue) => !fixedOnly || completed.has(getIssueId(issue)))
     .map((issue) => {
-      const status = completed.has(getIssueId(issue)) ? 'Solved' : 'Open';
+      const status = completed.has(getIssueId(issue))
+        ? 'Solved'
+        : pending.has(getIssueId(issue))
+          ? 'Pending research'
+          : 'Open';
       return `
         <tr>
           <td>${escapeHtml(group.label)}</td>
@@ -409,6 +433,7 @@ function renderWorkspace() {
   const duplicateMergeReview = renderDuplicateMergeReview();
   const assistanceOptions = renderBasicPlanOptions(allErrors);
   const encouragement = renderProgressEncouragement(errors, progress);
+  const pendingResearch = renderPendingResearch(allErrors, progress);
 
   if (!treeData?.people?.length) {
     workspace.innerHTML = '<p class="empty-message">Upload a GEDCOM file before opening the error workspace.</p>';
@@ -421,7 +446,7 @@ function renderWorkspace() {
   }
 
   if (!errors.length) {
-    workspace.innerHTML = `${duplicateMergeReview}${encouragement}<p class="empty-message">No validation errors are currently available. Return to the family tree to review warnings and notes.</p><button id="printProgressChart" type="button" class="btn-secondary">Print Progress Chart</button><button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Errors Chart</button>${renderUpdatedTreeOffer()}${undoButton}${assistanceOptions}`;
+    workspace.innerHTML = `${duplicateMergeReview}${encouragement}${pendingResearch}<p class="empty-message">No validation errors are currently available. Return to the family tree to review warnings and notes.</p><button id="printProgressChart" type="button" class="btn-secondary">Print Progress Chart</button><button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Errors Chart</button>${renderUpdatedTreeOffer()}${undoButton}${assistanceOptions}`;
     return;
   }
 
@@ -444,6 +469,7 @@ function renderWorkspace() {
         <button id="loadNextBatch" type="button" class="btn-add">Load next ${Math.min(ERROR_BATCH_SIZE, remainingGroups)} people</button>
         ${undoButton}
         ${encouragement}
+        ${pendingResearch}
         ${assistanceOptions}
       </section>
     `;
@@ -451,7 +477,10 @@ function renderWorkspace() {
   }
 
   if (activeDone) {
-    workspace.innerHTML = `${duplicateMergeReview}<section class="batch-complete"><h2>All errors completed</h2><p>You completed every issue in this workspace. Take a moment to print your progress, save your fixed-errors chart, and celebrate the progress.</p><button id="printProgressChart" type="button" class="btn-secondary">Print Progress Chart</button><button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Errors Chart</button>${undoButton}</section>${renderUpdatedTreeOffer()}${encouragement}${assistanceOptions}`;
+    const pendingMessage = progress.pendingIssueIds.length
+      ? ` You also have ${progress.pendingIssueIds.length} item${progress.pendingIssueIds.length === 1 ? '' : 's'} saved for later research.`
+      : '';
+    workspace.innerHTML = `${duplicateMergeReview}<section class="batch-complete"><h2>Active error review complete</h2><p>You completed every active issue in this workspace.${pendingMessage} Take a moment to print your progress, save your fixed-errors chart, and celebrate the progress.</p><button id="printProgressChart" type="button" class="btn-secondary">Print Progress Chart</button><button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Errors Chart</button>${undoButton}</section>${pendingResearch}${renderUpdatedTreeOffer()}${encouragement}${assistanceOptions}`;
     return;
   }
 
@@ -464,6 +493,7 @@ function renderWorkspace() {
       <p class="batch-help">${isBasicPlan ? `Your free Basic review includes the first ${BASIC_ERROR_REVIEW_LIMIT} errors we found. These details are fixable, and upgrading to Family Builder lets you review and correct the rest before sharing your family story.` : 'Each person includes all of their unresolved errors. Mark an error solved only after correcting it in the source GEDCOM or completing its recommended fix. The next batch stays locked until this batch is complete.'}</p>
       ${duplicateMergeReview}
       ${encouragement}
+      ${pendingResearch}
       ${undoButton}
       ${assistanceOptions}
       <ol class="error-batch-list">
@@ -493,9 +523,6 @@ function renderWorkspace() {
                       <strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(issue.message)}
                       ${issue.suggestion ? `<p class="fix-suggestion">${escapeHtml(issue.suggestion)}</p>` : ''}
                       ${issueActions}
-                      ${true ? '' : `${isDuplicateIssue(issue) ? `<button type="button" class="btn-secondary" data-merge-duplicates="${encodeURIComponent(JSON.stringify(issue.autoFix))}">Merge duplicate people for review</button>` : ''}
-                      <button type="button" class="btn-secondary" data-resolve-issue="${encodeURIComponent(issueId)}" data-duplicate-issue="${isDuplicateIssue(issue)}" ${isResolved ? 'disabled' : ''}>${isCompleted ? 'Solved' : isPending ? 'Pending review' : 'Mark solved'}</button>
-                      ${isResolved ? '' : `<button type="button" class="btn-secondary" data-pending-issue="${encodeURIComponent(issueId)}">Mark pending and continue</button>`}`}`}
                     </li>
                   `;
                 }).join('')}
@@ -648,6 +675,23 @@ workspace.addEventListener('click', (event) => {
     return;
   }
 
+  const resumePendingButton = event.target.closest('[data-resume-pending-issue]');
+  if (resumePendingButton) {
+    const issueId = decodeURIComponent(resumePendingButton.dataset.resumePendingIssue);
+    const treeData = getTreeData();
+    const errors = [
+      ...(treeData?.validationReport?.errors || []),
+      ...(treeData?.validationReport?.warnings || []).filter(isDuplicateIssue),
+    ];
+    const issue = errors.find((item) => getIssueId(item) === issueId);
+    const progress = getProgress();
+    progress.pendingIssueIds = progress.pendingIssueIds.filter((id) => id !== issueId);
+    progress.activeGroupIds = issue ? [getIssueGroupId(issue)] : [];
+    saveProgress(progress);
+    renderWorkspace();
+    return;
+  }
+
   if (event.target.closest('#loadNextBatch')) {
     const progress = getProgress();
     progress.activeGroupIds = [];
@@ -659,11 +703,11 @@ workspace.addEventListener('click', (event) => {
   if (event.target.closest('#printProgressChart')) {
     const treeData = getTreeData();
     const progress = getProgress();
-    const activeGroups = getActiveIssueGroups([
+    const allGroups = getIssueGroups([
       ...(treeData?.validationReport?.errors || []),
       ...(treeData?.validationReport?.warnings || []).filter(isDuplicateIssue),
-    ], progress);
-    printProgressChart(activeGroups, new Set(progress.completedIssueIds));
+    ]);
+    printProgressChart(allGroups, new Set(progress.completedIssueIds), false, new Set(progress.pendingIssueIds));
     return;
   }
 
@@ -674,7 +718,7 @@ workspace.addEventListener('click', (event) => {
       ...(treeData?.validationReport?.errors || []),
       ...(treeData?.validationReport?.warnings || []).filter(isDuplicateIssue),
     ]);
-    printProgressChart(allGroups, new Set(progress.completedIssueIds), true);
+    printProgressChart(allGroups, new Set(progress.completedIssueIds), true, new Set(progress.pendingIssueIds));
   }
 });
 
