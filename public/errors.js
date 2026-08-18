@@ -120,18 +120,18 @@ function renderProgressEncouragement(errors, progress) {
   const total = errors.length;
   const solved = errors.filter((issue) => completed.has(getIssueId(issue))).length;
   const tier = getCurrentTier();
-  let message = 'Every corrected record makes the next research step clearer.';
+  let message = 'You have chosen to care for your family story, and every corrected record helps preserve names, connections, and memories for the people who come after you.';
 
   if (!total) {
-    message = 'Your current report is clear. Keep this chart as a record of the careful work you have completed.';
+    message = 'What a meaningful beginning. Your current report is clear, and this chart can become a lasting record of the care you have given your family history.';
   } else if (!solved) {
-    message = 'You are off to a great start. Choose one issue, follow the recommendation, and build momentum from there.';
+    message = 'You have taken a wonderful first step by reviewing your family tree. Choose one issue, follow the recommendation, and watch your family story become clearer with every discovery.';
   } else if (solved === total) {
-    message = 'Wonderful work - this report is complete. Your family story is now one step clearer.';
+    message = 'Wonderful work - this report is complete. You have honored your family story by making it clearer and easier to share with relatives and future generations.';
   } else if (solved >= Math.ceil(total / 2)) {
-    message = 'You are more than halfway through this report. Keep going - the remaining steps are already in view.';
+    message = 'You are more than halfway through this report. Keep going - every detail you clarify brings your family’s journey into sharper focus for the people who will treasure it.';
   } else {
-    message = `Nice progress - you have solved ${solved} issue${solved === 1 ? '' : 's'} so far.`;
+    message = `Wonderful progress - you have solved ${solved} issue${solved === 1 ? '' : 's'} so far. Each one is a meaningful step toward a family tree you can share with pride.`;
   }
 
   const tierMessage = tier === 'personal'
@@ -142,7 +142,7 @@ function renderProgressEncouragement(errors, progress) {
 
   return `
     <aside class="progress-encouragement" aria-live="polite">
-      <strong>Keep building your family story</strong>
+      <strong>You are preserving something meaningful</strong>
       <p>${message}${tierMessage}</p>
     </aside>
   `;
