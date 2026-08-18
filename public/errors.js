@@ -135,10 +135,13 @@ function renderBasicPlanOptions(errors, progress) {
   const completedDuplicateFixes = progress.completedDuplicateIssueIds.length;
   if (duplicateIssues.length || completedDuplicateFixes) {
     const remainingDuplicateFixes = Math.max(FREE_DUPLICATE_FIX_LIMIT - completedDuplicateFixes, 0);
+    const duplicateProgressMessage = remainingDuplicateFixes
+      ? `You have completed ${completedDuplicateFixes} of ${FREE_DUPLICATE_FIX_LIMIT} so far, with ${remainingDuplicateFixes} still available.`
+      : `You have completed all ${FREE_DUPLICATE_FIX_LIMIT} duplicate corrections included in your free preview. Upgrade to continue reviewing and fixing possible duplicates throughout your tree.`;
     return `
       <section class="assistance-options">
         <h2>Wonderful progress on your family tree.</h2>
-        <p>Your free preview includes up to ${FREE_DUPLICATE_FIX_LIMIT} reviewed duplicate corrections. You have completed ${completedDuplicateFixes} of ${FREE_DUPLICATE_FIX_LIMIT} so far${remainingDuplicateFixes ? `, with ${remainingDuplicateFixes} still available` : ''}.</p>
+        <p>Your free preview includes up to ${FREE_DUPLICATE_FIX_LIMIT} reviewed duplicate corrections. ${duplicateProgressMessage}</p>
         <p>Family Builder lets you continue reviewing and correcting possible duplicates, so every person has a clearer place in your family story.</p>
         <a class="btn-secondary assistance-upgrade-link" href="store.html#subscriptions">Upgrade for more duplicate corrections</a>
       </section>
@@ -147,11 +150,15 @@ function renderBasicPlanOptions(errors, progress) {
 
   const reviewedCount = Math.min(errors.length, BASIC_ERROR_REVIEW_LIMIT);
   const remainingErrors = Math.max(errors.length - reviewedCount, 0);
+  const completedFreeReviewCount = Math.min(progress.completedIssueIds.length, BASIC_ERROR_REVIEW_LIMIT);
+  const freeReviewMessage = completedFreeReviewCount >= BASIC_ERROR_REVIEW_LIMIT
+    ? `You have completed the ${BASIC_ERROR_REVIEW_LIMIT} corrections included in your free review. Upgrade to continue reviewing and fixing the rest of your family tree.`
+    : `We spotted ${reviewedCount} error${reviewedCount === 1 ? '' : 's'} you can manually fix at no charge.`;
 
   return `
     <section class="assistance-options">
       <h2>Great news - these details can be fixed.</h2>
-      <p>We found ${reviewedCount} error${reviewedCount === 1 ? '' : 's'} you can manually fix at no charge. An accurate tree is a wonderful way to share your family's story with relatives and friends, while honoring your ancestors and their contributions to society.</p>
+      <p>${freeReviewMessage} An accurate tree is a wonderful way to share your family's story with relatives and friends, while honoring your ancestors and their contributions to society.</p>
       <p>${remainingErrors ? `Upgrade to Family Builder to fix the remaining ${remainingErrors} error${remainingErrors === 1 ? '' : 's'}, and choose Pro / Researcher when you want safe automatic fixes.` : 'Upgrade to Family Builder whenever you are ready to continue fixing errors and preserving your family history.'}</p>
       <a class="btn-secondary assistance-upgrade-link" href="store.html#subscriptions">Choose a plan to fix the rest</a>
     </section>
