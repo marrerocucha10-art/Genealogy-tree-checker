@@ -116,6 +116,135 @@ main {
   margin-bottom: 40px;
 }
 
+.workflow-preview {
+  border-bottom: 1px solid #e0e7ff;
+  border-top: 1px solid #e0e7ff;
+  margin: 0 -40px 32px;
+  padding: 28px 40px;
+}
+
+.workflow-preview-heading {
+  text-align: center;
+}
+
+.workflow-preview-heading h2 {
+  color: #312e81;
+  margin-bottom: 8px;
+}
+
+.workflow-preview-heading > p:not(.eyebrow) {
+  color: #4b5563;
+}
+
+.workflow-animation {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  margin: 24px auto 0;
+  max-width: 720px;
+}
+
+.workflow-animation-step {
+  animation: workflow-step 9s ease-in-out infinite;
+  background: #ffffff;
+  border: 1px solid #c7d2fe;
+  border-radius: 14px;
+  box-shadow: 0 8px 18px rgba(79, 70, 229, 0.08);
+  display: grid;
+  gap: 5px;
+  min-height: 130px;
+  padding: 18px;
+  text-align: center;
+  width: 190px;
+}
+
+.workflow-animation-step span {
+  background: #eef2ff;
+  border-radius: 999px;
+  color: #4338ca;
+  font-weight: 700;
+  justify-self: center;
+  padding: 4px 9px;
+}
+
+.workflow-animation-step strong {
+  color: #312e81;
+}
+
+.workflow-animation-step small {
+  color: #64748b;
+}
+
+.workflow-animation i {
+  background: #a5b4fc;
+  height: 2px;
+  position: relative;
+  width: 42px;
+}
+
+.workflow-animation i::after {
+  border-bottom: 5px solid transparent;
+  border-left: 7px solid #a5b4fc;
+  border-top: 5px solid transparent;
+  content: '';
+  position: absolute;
+  right: -2px;
+  top: -4px;
+}
+
+.tree-preview {
+  animation-delay: 3s;
+}
+
+.fix-preview {
+  animation-delay: 6s;
+}
+
+@keyframes workflow-step {
+  0%, 24%, 100% {
+    background: #ffffff;
+    border-color: #c7d2fe;
+    transform: translateY(0);
+  }
+  6%, 18% {
+    background: #eef2ff;
+    border-color: #6366f1;
+    transform: translateY(-5px);
+  }
+}
+
+@media (max-width: 700px) {
+  .workflow-preview {
+    margin-left: -22px;
+    margin-right: -22px;
+    padding: 24px 22px;
+  }
+
+  .workflow-animation {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .workflow-animation-step {
+    width: 100%;
+  }
+
+  .workflow-animation i {
+    height: 25px;
+    margin: 0 auto;
+    width: 2px;
+  }
+
+  .workflow-animation i::after {
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 7px solid #a5b4fc;
+    bottom: -2px;
+    right: -4px;
+    top: auto;
+  }
+}
+
 .options-section h2 {
   color: #333;
   font-size: 1.5em;
