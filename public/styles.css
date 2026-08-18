@@ -635,7 +635,14 @@ select:focus {
 
 .client-card-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
+}
+
+.client-card-actions .btn-secondary {
+  margin-top: 0;
+  text-decoration: none;
+  width: auto;
 }
 
 @media (max-width: 600px) {
@@ -643,6 +650,16 @@ select:focus {
     align-items: flex-start;
     flex-direction: column;
     gap: 12px;
+  }
+
+  .client-card-actions {
+    width: 100%;
+  }
+
+  .client-card-actions .btn-secondary {
+    flex: 1;
+    margin-top: 0;
+    width: auto;
   }
 }
 
