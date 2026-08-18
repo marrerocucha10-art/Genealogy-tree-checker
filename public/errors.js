@@ -204,6 +204,7 @@ function getRecordResearchLinks(issue, person) {
   const searchTerms = [personName, person?.birthPlace, person?.birthDate, 'genealogy'].filter(Boolean).join(' ');
   return {
     familySearch: `https://www.familysearch.org/search/record/results?count=20&q.any=${encodeURIComponent(searchTerms)}`,
+    ancestry: `https://www.ancestry.com/search/?name=${encodeURIComponent(personName)}`,
     census: 'https://www.archives.gov/research/census',
     vital: 'https://www.familysearch.org/en/wiki/United_States_Vital_Records',
     church: 'https://www.familysearch.org/en/wiki/Church_records',
@@ -222,6 +223,7 @@ function renderRecordReviewOptions(issue, person) {
       <button type="button" class="btn-secondary" data-open-record-sources="${resourceKey}">Choose a Record Source</button>
       <div class="record-source-options" data-record-source-options="${resourceKey}" hidden>
         <a class="btn-secondary" href="${links.familySearch}" target="_blank" rel="noopener">Search FamilySearch</a>
+        <a class="btn-secondary" href="${links.ancestry}" target="_blank" rel="noopener">Search Ancestry</a>
         <a class="btn-secondary" href="${links.census}" target="_blank" rel="noopener">Census Records</a>
         <a class="btn-secondary" href="${links.vital}" target="_blank" rel="noopener">Vital Records</a>
         <a class="btn-secondary" href="${links.church}" target="_blank" rel="noopener">Church Records</a>

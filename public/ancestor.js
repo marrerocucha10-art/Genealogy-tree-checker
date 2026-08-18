@@ -29,6 +29,7 @@ function getSearchLinks(person) {
   const placeTerms = person.birthPlace || `${person.name || person.id} family history`;
   return {
     familySearch: `https://www.familysearch.org/search/record/results?count=20&q.any=${encodeURIComponent(searchTerms)}`,
+    ancestry: `https://www.ancestry.com/search/?name=${encodeURIComponent(person.name || person.id)}`,
     census: 'https://www.archives.gov/research/census',
     vital: 'https://www.familysearch.org/en/wiki/United_States_Vital_Records',
     church: 'https://www.familysearch.org/en/wiki/Church_records',
@@ -60,6 +61,7 @@ function renderDiscovery() {
             <p class="ancestor-meta">${escapeHtml([person.birthPlace, years].filter(Boolean).join(' · ') || 'Add a place or life date to tailor this lead.')}</p>
             <div class="ancestor-resource-links">
               <a class="btn-secondary" href="${links.familySearch}" target="_blank" rel="noopener">Search FamilySearch Records</a>
+              <a class="btn-secondary" href="${links.ancestry}" target="_blank" rel="noopener">Search Ancestry</a>
               <a class="btn-secondary" href="${links.census}" target="_blank" rel="noopener">Open Census Records Guide</a>
               <a class="btn-secondary" href="${links.vital}" target="_blank" rel="noopener">Find Vital Records</a>
               <a class="btn-secondary" href="${links.church}" target="_blank" rel="noopener">Find Church Records</a>
