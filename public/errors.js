@@ -158,9 +158,20 @@ function saveProgress(progress) {
 
 function updateReturnToTreeLink(progress = getProgress()) {
   if (!returnToTreeLink) return;
-  returnToTreeLink.href = progress.lastReviewedSubject
-    ? `tree.html?focus=${encodeURIComponent(progress.lastReviewedSubject)}`
-    : 'tree.html';
+  const parameters = new URLSearchParams();
+  if (WORKSPACE_PREVIEW_MODE) parameters.set('demo', 'workspace');
+  if (progress.lastReviewedSubject) parameters.set('focus', progress.lastReviewedSubject);
+  returnToTreeLink.href = parameters.size ? `tree.html?${parameters}` : 'tree.html';
+}
+
+function updateWorkspaceTreeLinks(progress = getProgress()) {
+  const parameters = new URLSearchParams();
+  if (WORKSPACE_PREVIEW_MODE) parameters.set('demo', 'workspace');
+  if (progress.lastReviewedSubject) parameters.set('focus', progress.lastReviewedSubject);
+  const treeUrl = parameters.size ? `tree.html?${parameters}` : 'tree.html';
+  document.querySelectorAll('[data-workspace-tree-preview]').forEach((link) => {
+    link.href = treeUrl;
+  });
 }
 
 function rememberLastReviewedSubject(subject) {
@@ -452,9 +463,10 @@ function renderWorkspaceDesk(errors, progress) {
   const savedWorkMessage = progress.resolvedItems?.length || pending.size
     ? 'Your corrections, saved-for-later research, and review progress are kept with this family tree in this browser so you can return here and continue.'
     : 'This is your saved review desk. As you solve items or save research for later, your progress will remain here with this family tree in this browser.';
-  const workingTreeUrl = progress.lastReviewedSubject
-    ? `tree.html?focus=${encodeURIComponent(progress.lastReviewedSubject)}`
-    : 'tree.html';
+  const workingTreeParameters = new URLSearchParams();
+  if (WORKSPACE_PREVIEW_MODE) workingTreeParameters.set('demo', 'workspace');
+  if (progress.lastReviewedSubject) workingTreeParameters.set('focus', progress.lastReviewedSubject);
+  const workingTreeUrl = workingTreeParameters.size ? `tree.html?${workingTreeParameters}` : 'tree.html';
 
   return `
     <section class="review-desk">
@@ -784,6 +796,7 @@ function renderWorkspace() {
   const isBasicPlan = getCurrentTier() === 'free';
   const progress = getProgress();
   updateReturnToTreeLink(progress);
+  updateWorkspaceTreeLinks(progress);
   const errors = isBasicPlan && duplicateIssues.length
     ? duplicateIssues.slice(0, FREE_DUPLICATE_FIX_LIMIT)
     : isBasicPlan
@@ -1164,7 +1177,10 @@ workspace.addEventListener('click', (event) => {
   }
 });
 
-if (WORKSPACE_PREVIEW_MODE) loadedTreeData = createWorkspacePreviewTree();
+if (WORKSPACE_PREVIEW_MODE) {
+  loadedTreeData = createWorkspacePreviewTree();
+  saveTreeData(loadedTreeData);
+}
 const storedTreeData = getTreeData();
 if (storedTreeData?.people?.length) {
   renderWorkspace();

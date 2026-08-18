@@ -1,10 +1,14 @@
-const STORAGE_KEY = window.familyTreeClientStorage?.getActiveTreeKey() || 'familyTreeData';
+const WORKSPACE_PREVIEW_MODE = new URLSearchParams(window.location.search).get('demo') === 'workspace';
+const STORAGE_KEY = WORKSPACE_PREVIEW_MODE
+  ? 'familyTreeWorkspacePreviewData'
+  : window.familyTreeClientStorage?.getActiveTreeKey() || 'familyTreeData';
 const review = document.getElementById('treeReview');
 const GENERATIONS_PER_PAGE = 2;
 let visibleGenerationCount = GENERATIONS_PER_PAGE;
 let loadedTreeData = null;
 let matchingPrimaryPersonIds = [];
 const requestedFocusPersonId = new URLSearchParams(window.location.search).get('focus') || '';
+const errorWorkspaceUrl = WORKSPACE_PREVIEW_MODE ? 'errors.html?demo=workspace' : 'errors.html';
 
 function getTreeData() {
   try {
@@ -251,7 +255,7 @@ function renderTreeReview(treeData = loadedTreeData || getTreeData()) {
       <h2>${issueCount} error${issueCount === 1 ? '' : 's'} to fix</h2>
       <p>Fixing these items helps make your family tree more complete and reliable.</p>
       <div class="tree-summary-actions">
-        <a class="btn-secondary" href="errors.html">Return to Error Workspace</a>
+        <a class="btn-secondary" href="${errorWorkspaceUrl}">Return to Error Workspace</a>
       </div>
     </section>
     ${renderGenerations(treeData, peopleById, families)}
