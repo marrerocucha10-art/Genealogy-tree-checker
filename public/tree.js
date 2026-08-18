@@ -1,7 +1,6 @@
 const STORAGE_KEY = window.familyTreeClientStorage?.getActiveTreeKey() || 'familyTreeData';
 const review = document.getElementById('treeReview');
 const GENERATIONS_PER_PAGE = 5;
-const DIRECT_LINE_SELECTION_VERSION = 1;
 let visibleGenerationCount = GENERATIONS_PER_PAGE;
 let loadedTreeData = null;
 let matchingPrimaryPersonIds = [];
@@ -60,46 +59,11 @@ function getPrimaryPerson(treeData) {
   return treeData.people.find((person) => person.id === treeData.primaryPersonId) || treeData.people[0] || null;
 }
 
-function findDeepestAncestryPerson(treeData) {
-  const peopleById = new Map(treeData.people.map((person) => [person.id, person]));
-  const parentsByChildId = new Map();
-
-  for (const family of treeData.families || []) {
-    const parentIds = [family.husbandId, family.wifeId].filter((id) => peopleById.has(id));
-    for (const childId of family.childrenIds || []) {
-      if (!peopleById.has(childId) || !parentIds.length) continue;
-      if (!parentsByChildId.has(childId)) parentsByChildId.set(childId, new Set());
-      parentIds.forEach((parentId) => parentsByChildId.get(childId).add(parentId));
-    }
-  }
-
-  const depths = new Map();
-  const visiting = new Set();
-  const getDepth = (personId) => {
-    if (depths.has(personId)) return depths.get(personId);
-    if (visiting.has(personId)) return 1;
-
-    visiting.add(personId);
-    const parentDepths = [...(parentsByChildId.get(personId) || [])].map(getDepth);
-    visiting.delete(personId);
-    const depth = 1 + (parentDepths.length ? Math.max(...parentDepths) : 0);
-    depths.set(personId, depth);
-    return depth;
-  };
-
-  return treeData.people.reduce((deepestPerson, person) => (
-    getDepth(person.id) > getDepth(deepestPerson.id) ? person : deepestPerson
-  ), treeData.people[0] || null);
-}
-
-function ensurePrimaryPerson(treeData) {
-  if (!treeData?.people?.length || treeData.directLineSelectionVersion === DIRECT_LINE_SELECTION_VERSION) return;
-
-  const deepestPerson = findDeepestAncestryPerson(treeData);
-  if (!deepestPerson) return;
-  treeData.primaryPersonId = deepestPerson.id;
-  treeData.primaryPersonSelectionMode = 'automatic';
-  treeData.directLineSelectionVersion = DIRECT_LINE_SELECTION_VERSION;
+function restoreDefaultStartingPerson(treeData) {
+  if (treeData?.primaryPersonSelectionMode !== 'automatic') return;
+  treeData.primaryPersonId = treeData.people[0]?.id || '';
+  treeData.primaryPersonSelectionMode = 'manual';
+  delete treeData.directLineSelectionVersion;
   saveTreeData(treeData);
 }
 
@@ -205,7 +169,7 @@ function renderGenerations(treeData, peopleById, families) {
   return `
     <section class="tree-review-list">
       <h2>Family tree</h2>
-      <button class="btn-secondary" type="button" data-open-primary-person-picker>Choose starting person</button>
+      <button class="btn-secondary" type="button" data-open-primary-person-picker>Choose a different direct line</button>
       <div id="primaryPersonPicker" hidden>
         <label for="primaryPerson">Start this tree with</label>
         <input id="primaryPerson" type="search" placeholder="Type a person's name" autocomplete="off">
@@ -213,6 +177,7 @@ function renderGenerations(treeData, peopleById, families) {
         <button class="btn-add" type="button" data-confirm-primary-person>Start tree with first matching person</button>
       </div>
       <p>Showing ${displayedThrough} of ${maximumGeneration} ancestry generations, starting with ${escapeHtml(primaryPerson?.name || 'the main person')}.</p>
+      <p class="muted">This starting person stays locked until you choose a different direct line.</p>
       <div class="tree-next-step">
         ${loadMore}
         <a class="btn-add" href="errors.html">Continue to Fixing Errors</a>
@@ -236,7 +201,7 @@ function renderTreeReview(treeData = loadedTreeData || getTreeData()) {
     `;
     return;
   }
-  ensurePrimaryPerson(treeData);
+  restoreDefaultStartingPerson(treeData);
   const errors = treeData.validationReport?.errors || [];
   const duplicateWarnings = (treeData.validationReport?.warnings || []).filter((issue) => issue.autoFix?.type === 'mergeDuplicatePeople');
   const issueCount = errors.length + duplicateWarnings.length;
