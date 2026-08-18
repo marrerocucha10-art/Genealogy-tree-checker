@@ -755,18 +755,32 @@ function renderWorkspace() {
   const assistanceOptions = renderBasicPlanOptions(allErrors, progress);
   const encouragement = renderProgressEncouragement(errors, progress);
   const pendingResearch = renderPendingResearch(allErrors, progress);
+  const workspaceDesk = renderWorkspaceDesk(allErrors, progress);
 
   if (!treeData?.people?.length) {
-    workspace.innerHTML = '<p class="empty-message">Upload a GEDCOM file before opening the error workspace.</p>';
+    workspace.innerHTML = `
+      ${workspaceDesk}
+      <section id="activeReview" class="batch-complete">
+        <h2>Start your saved review desk</h2>
+        <p>Upload a GEDCOM file first. We will create your family tree, identify items to review, and keep your progress here whenever you return.</p>
+        <a class="btn-add" href="/?start=upload">Step 1: Upload Your GEDCOM</a>
+      </section>
+    `;
     return;
   }
 
   if (!localStorage.getItem(PLAN_SELECTION_STORAGE_KEY)) {
-    workspace.innerHTML = '<p class="empty-message">Choose a subscription plan before starting error fixes. <a href="store.html#subscriptions">Choose a plan in the Store</a>.</p>';
+    workspace.innerHTML = `
+      ${workspaceDesk}
+      <section id="activeReview" class="batch-complete">
+        <h2>Choose your plan to begin reviewing</h2>
+        <p>Your family tree is ready. Select the plan that fits your work, then return here to review, save research for later, and print your progress.</p>
+        <a class="btn-add" href="store.html#subscriptions">Choose a Plan</a>
+      </section>
+    `;
     return;
   }
 
-  const workspaceDesk = renderWorkspaceDesk(allErrors, progress);
   const pendingDuplicateReview = renderPendingDuplicateMergeReview(treeData);
   if (pendingDuplicateReview) {
     workspace.innerHTML = `${workspaceDesk}${pendingDuplicateReview}`;
