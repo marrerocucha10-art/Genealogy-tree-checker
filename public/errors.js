@@ -1323,7 +1323,7 @@ workspace.addEventListener('click', (event) => {
   }
 });
 
-if (WORKSPACE_PREVIEW_MODE) {
+if (WORKSPACE_PREVIEW_MODE && !getTreeData()?.people?.length) {
   loadedTreeData = createWorkspacePreviewTree();
   saveTreeData(loadedTreeData);
 }
