@@ -136,6 +136,11 @@ main {
   font-weight: 700;
 }
 
+.selected-plan-steps h2 {
+  color: #312e81;
+  margin-bottom: 8px;
+}
+
 .guided-steps {
   display: grid;
   gap: 10px;

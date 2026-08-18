@@ -110,6 +110,8 @@ const gedcomUploadLimit = document.getElementById('gedcomUploadLimit');
 const selectedPlanGuidance = document.getElementById('selectedPlanGuidance');
 const selectedPlanWelcome = document.getElementById('selectedPlanWelcome');
 const selectedPlanSteps = document.getElementById('selectedPlanSteps');
+const selectedPlanTitle = document.getElementById('selectedPlanTitle');
+const continuePlanFlowAction = document.getElementById('continuePlanFlowAction');
 const freeReviewInvitation = document.getElementById('freeReviewInvitation');
 const exploreWaysAction = document.getElementById('exploreWaysAction');
 
@@ -129,14 +131,25 @@ function updateGedcomUploadLimit() {
 
 function updateSelectedPlanGuidance() {
   const planName = SUBSCRIPTION_TIERS[currentTier]?.name || 'selected';
+  const hasSelectedPlan = Boolean(localStorage.getItem(PLAN_SELECTION_STORAGE_KEY));
   const hasPaidPlan = ['personal', 'pro', 'business'].includes(currentTier)
-    && Boolean(localStorage.getItem(PLAN_SELECTION_STORAGE_KEY));
+    && hasSelectedPlan;
   const guidance = currentTier === 'free'
     ? 'Wonderful - your free review is ready. You are about to bring your family story into clearer focus.'
     : `Wonderful choice - your ${planName} plan is ready. You are about to bring your family story into clearer focus.`;
   if (selectedPlanGuidance) selectedPlanGuidance.textContent = guidance;
   if (selectedPlanWelcome) selectedPlanWelcome.textContent = guidance;
-  if (selectedPlanSteps) selectedPlanSteps.hidden = !hasPaidPlan;
+  if (selectedPlanTitle) {
+    selectedPlanTitle.textContent = currentTier === 'free'
+      ? 'Welcome to your free family-tree review!'
+      : `Welcome to your ${planName} journey!`;
+  }
+  if (continuePlanFlowAction) {
+    continuePlanFlowAction.textContent = currentTier === 'free'
+      ? 'Begin Your Free Review: Upload Your GEDCOM'
+      : `Continue Your ${planName} Plan: Upload Your GEDCOM`;
+  }
+  if (selectedPlanSteps) selectedPlanSteps.hidden = !hasSelectedPlan;
   if (freeReviewInvitation) freeReviewInvitation.hidden = hasPaidPlan;
   if (exploreWaysAction) exploreWaysAction.hidden = hasPaidPlan;
 }
