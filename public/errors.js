@@ -82,6 +82,7 @@ function getProgress() {
       ? savedProgress.completedDuplicateIssueIds
       : [],
     pendingIssueIds: Array.isArray(savedProgress.pendingIssueIds) ? savedProgress.pendingIssueIds : [],
+    resolvedItems: Array.isArray(savedProgress.resolvedItems) ? savedProgress.resolvedItems : [],
     activeGroupIds: savedProgress.batchMode === 'people' && Array.isArray(savedProgress.activeGroupIds) ? savedProgress.activeGroupIds : [],
     batchMode: 'people',
     reviewOrderVersion: Number(savedProgress.reviewOrderVersion) || 0,
@@ -102,6 +103,18 @@ function saveProgress(progress) {
 
 function getResolvedIssueIds(progress) {
   return new Set([...progress.completedIssueIds, ...progress.pendingIssueIds]);
+}
+
+function recordResolvedItem(progress, issue, correctionType) {
+  const issueId = getIssueId(issue);
+  if (progress.resolvedItems.some((item) => item.issueId === issueId)) return;
+  progress.resolvedItems.push({
+    issueId,
+    category: issue.category || 'Family tree correction',
+    message: issue.message || 'Corrected family-tree item.',
+    subject: issue.subject || 'General validation',
+    correctionType,
+  });
 }
 
 function getCurrentTier() {
@@ -309,6 +322,26 @@ function renderPendingResearch(errors, progress) {
           </li>
         `).join('')}
       </ul>
+    </section>
+  `;
+}
+
+function renderProgressTools(progress) {
+  const correctedItems = progress.resolvedItems || [];
+  return `
+    <section class="progress-tools">
+      <h2>Your correction progress</h2>
+      <p>Preview the work you have completed so far, or print a chart to keep with your research notes.</p>
+      <div class="issue-fix-actions">
+        <button id="printProgressChart" type="button" class="btn-secondary">Print Progress Chart</button>
+        <button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Items Chart</button>
+      </div>
+      <div class="corrected-items-preview">
+        <h3>Corrected items preview</h3>
+        ${correctedItems.length
+          ? `<ul>${correctedItems.map((item) => `<li><strong>${escapeHtml(item.category)}:</strong> ${escapeHtml(item.message)} <span>${escapeHtml(item.correctionType)}</span></li>`).join('')}</ul>`
+          : '<p class="muted">Corrected items will appear here as you work through the review.</p>'}
+      </div>
     </section>
   `;
 }
@@ -555,6 +588,7 @@ function applySafeBatchFixes(treeData, groups, progress) {
       appliedIssueIds.push(issueId);
       if (!progress.completedIssueIds.includes(issueId)) progress.completedIssueIds.push(issueId);
       if (!progress.completedNonDuplicateIssueIds.includes(issueId)) progress.completedNonDuplicateIssueIds.push(issueId);
+      recordResolvedItem(progress, issue, 'Safe automatic fix');
     }
   }
 
@@ -589,6 +623,11 @@ function completeDuplicateMerge(treeData, fix) {
     subject: survivor.id,
   });
   if (!progress.completedIssueIds.includes(mergedIssueId)) progress.completedIssueIds.push(mergedIssueId);
+  recordResolvedItem(progress, {
+    category: 'Possible duplicate',
+    message: `${duplicates.length + 1} people were reviewed and merged into ${survivor.name || survivor.id}.`,
+    subject: survivor.id,
+  }, 'Confirmed duplicate merge');
   if (!progress.completedDuplicateIssueIds.includes(mergedIssueId)) {
     progress.completedDuplicateIssueIds.push(mergedIssueId);
   }
@@ -671,6 +710,7 @@ function renderWorkspace() {
         ${undoButton}
         ${encouragement}
         ${pendingResearch}
+        ${renderProgressTools(progress)}
         ${assistanceOptions}
       </section>
     `;
@@ -697,6 +737,7 @@ function renderWorkspace() {
       ${pendingResearch}
       ${undoButton}
       ${assistanceOptions}
+      ${renderProgressTools(progress)}
       <ol class="error-batch-list">
         ${activeGroups.map((group) => {
           return `
@@ -876,11 +917,17 @@ workspace.addEventListener('click', (event) => {
   if (resolveButton) {
     const issueId = decodeURIComponent(resolveButton.dataset.resolveIssue);
     const progress = getProgress();
+    const treeData = getTreeData();
+    const issue = [
+      ...(treeData?.validationReport?.errors || []),
+      ...(treeData?.validationReport?.warnings || []).filter(isDuplicateIssue),
+    ].find((item) => getIssueId(item) === issueId);
     if (!progress.completedIssueIds.includes(issueId)) {
       progress.completedIssueIds.push(issueId);
       if (resolveButton.dataset.duplicateIssue !== 'true') {
         progress.completedNonDuplicateIssueIds.push(issueId);
       }
+      if (issue) recordResolvedItem(progress, issue, 'Manual review');
       saveProgress(progress);
     }
     renderWorkspace();
