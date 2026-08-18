@@ -249,6 +249,7 @@ function renderTreeReview(treeData = loadedTreeData || getTreeData()) {
       </div>
       <h2>${issueCount} error${issueCount === 1 ? '' : 's'} to fix</h2>
       <p>Fixing these items helps make your family tree more complete and reliable.</p>
+      <a class="btn-secondary" href="errors.html">Return to Error Workspace</a>
     </section>
     ${renderGenerations(treeData, peopleById, families)}
   `;
