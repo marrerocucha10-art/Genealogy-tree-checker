@@ -109,6 +109,9 @@ const goToStoreButton = document.getElementById('goToStore');
 const gedcomUploadLimit = document.getElementById('gedcomUploadLimit');
 const selectedPlanGuidance = document.getElementById('selectedPlanGuidance');
 const selectedPlanWelcome = document.getElementById('selectedPlanWelcome');
+const selectedPlanSteps = document.getElementById('selectedPlanSteps');
+const freeReviewInvitation = document.getElementById('freeReviewInvitation');
+const exploreWaysAction = document.getElementById('exploreWaysAction');
 
 function getGedcomUploadLimitBytes(tier = currentTier) {
   return GEDCOM_UPLOAD_LIMITS[tier] || GEDCOM_UPLOAD_LIMITS.free;
@@ -126,11 +129,16 @@ function updateGedcomUploadLimit() {
 
 function updateSelectedPlanGuidance() {
   const planName = SUBSCRIPTION_TIERS[currentTier]?.name || 'selected';
+  const hasPaidPlan = ['personal', 'pro', 'business'].includes(currentTier)
+    && Boolean(localStorage.getItem(PLAN_SELECTION_STORAGE_KEY));
   const guidance = currentTier === 'free'
     ? 'Wonderful - your free review is ready. You are about to bring your family story into clearer focus.'
     : `Wonderful choice - your ${planName} plan is ready. You are about to bring your family story into clearer focus.`;
   if (selectedPlanGuidance) selectedPlanGuidance.textContent = guidance;
   if (selectedPlanWelcome) selectedPlanWelcome.textContent = guidance;
+  if (selectedPlanSteps) selectedPlanSteps.hidden = !hasPaidPlan;
+  if (freeReviewInvitation) freeReviewInvitation.hidden = hasPaidPlan;
+  if (exploreWaysAction) exploreWaysAction.hidden = hasPaidPlan;
 }
 
 subscriptionPlansDiv?.addEventListener('click', (event) => {
