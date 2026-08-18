@@ -5,6 +5,7 @@ const SUBSCRIPTION_STORAGE_KEY = 'familyTreeSubscriptionTier';
 const PLAN_SELECTION_STORAGE_KEY = 'familyTreePlanSelected';
 const ERROR_BATCH_SIZE = 10;
 const BASIC_ERROR_REVIEW_LIMIT = 5;
+const FREE_DUPLICATE_FIX_LIMIT = 5;
 const ERROR_REVIEW_ORDER_VERSION = 3;
 const workspace = document.getElementById('errorWorkspace');
 let loadedTreeData = null;
@@ -76,6 +77,9 @@ function getProgress() {
     completedNonDuplicateIssueIds: Array.isArray(savedProgress.completedNonDuplicateIssueIds)
       ? savedProgress.completedNonDuplicateIssueIds
       : [],
+    completedDuplicateIssueIds: Array.isArray(savedProgress.completedDuplicateIssueIds)
+      ? savedProgress.completedDuplicateIssueIds
+      : [],
     pendingIssueIds: Array.isArray(savedProgress.pendingIssueIds) ? savedProgress.pendingIssueIds : [],
     activeGroupIds: savedProgress.batchMode === 'people' && Array.isArray(savedProgress.activeGroupIds) ? savedProgress.activeGroupIds : [],
     batchMode: 'people',
@@ -123,8 +127,22 @@ function getCompletedNonDuplicateIssueCount(errors, progress) {
   return completedNonDuplicateIds.size;
 }
 
-function renderBasicPlanOptions(errors) {
+function renderBasicPlanOptions(errors, progress) {
   if (getCurrentTier() !== 'free') return '';
+
+  const duplicateIssues = errors.filter(isDuplicateIssue);
+  const completedDuplicateFixes = progress.completedDuplicateIssueIds.length;
+  if (duplicateIssues.length || completedDuplicateFixes) {
+    const remainingDuplicateFixes = Math.max(FREE_DUPLICATE_FIX_LIMIT - completedDuplicateFixes, 0);
+    return `
+      <section class="assistance-options">
+        <h2>Wonderful progress on your family tree.</h2>
+        <p>Your free preview includes up to ${FREE_DUPLICATE_FIX_LIMIT} reviewed duplicate corrections. You have completed ${completedDuplicateFixes} of ${FREE_DUPLICATE_FIX_LIMIT} so far${remainingDuplicateFixes ? `, with ${remainingDuplicateFixes} still available` : ''}.</p>
+        <p>Family Builder lets you continue reviewing and correcting possible duplicates, so every person has a clearer place in your family story.</p>
+        <a class="btn-secondary assistance-upgrade-link" href="store.html#subscriptions">Upgrade for more duplicate corrections</a>
+      </section>
+    `;
+  }
 
   const reviewedCount = Math.min(errors.length, BASIC_ERROR_REVIEW_LIMIT);
   const remainingErrors = Math.max(errors.length - reviewedCount, 0);
@@ -493,16 +511,21 @@ function renderWorkspace() {
     ...(treeData?.validationReport?.errors || []),
     ...(treeData?.validationReport?.warnings || []).filter((issue) => issue.autoFix?.type === 'mergeDuplicatePeople'),
   ];
+  const duplicateIssues = allErrors.filter(isDuplicateIssue);
   const isBasicPlan = getCurrentTier() === 'free';
-  const errors = isBasicPlan ? allErrors.slice(0, BASIC_ERROR_REVIEW_LIMIT) : allErrors;
   const progress = getProgress();
+  const errors = isBasicPlan && duplicateIssues.length
+    ? duplicateIssues.slice(0, FREE_DUPLICATE_FIX_LIMIT)
+    : isBasicPlan
+      ? allErrors.slice(0, BASIC_ERROR_REVIEW_LIMIT)
+      : allErrors;
   const duplicateMergeUndo = getDuplicateMergeUndo();
   const canUndoDuplicateMerge = Boolean(duplicateMergeUndo);
   const undoButton = canUndoDuplicateMerge && !duplicateMergeUndo.mergeSummary
     ? '<button id="undoDuplicateMerge" type="button" class="btn-secondary">Return to Previous Tree</button>'
     : '';
   const duplicateMergeReview = renderDuplicateMergeReview();
-  const assistanceOptions = renderBasicPlanOptions(allErrors);
+  const assistanceOptions = renderBasicPlanOptions(allErrors, progress);
   const encouragement = renderProgressEncouragement(errors, progress);
   const pendingResearch = renderPendingResearch(allErrors, progress);
 
@@ -561,7 +584,7 @@ function renderWorkspace() {
         <h2>Current people batch</h2>
         <span>${activeGroups.length} of ${ERROR_BATCH_SIZE} selected</span>
       </div>
-      <p class="batch-help">${isBasicPlan ? `Your first ${BASIC_ERROR_REVIEW_LIMIT} manual fixes are included at no charge. Use the review guidance below, then mark each corrected record solved. Upgrade to Family Builder to fix the rest, or choose Pro / Researcher for safe automatic fixes.` : 'Each person includes all of their unresolved errors. Mark an error solved only after correcting it in the source GEDCOM or completing its recommended fix. The next batch stays locked until this batch is complete.'}</p>
+      <p class="batch-help">${isBasicPlan && duplicateIssues.length ? `Your free preview includes up to ${FREE_DUPLICATE_FIX_LIMIT} reviewed duplicate corrections. Confirm each merge carefully, then continue building a clearer family tree. Upgrade to Family Builder when you are ready to correct more duplicates.` : isBasicPlan ? `Your first ${BASIC_ERROR_REVIEW_LIMIT} manual fixes are included at no charge. Use the review guidance below, then mark each corrected record solved. Upgrade to Family Builder to fix the rest, or choose Pro / Researcher for safe automatic fixes.` : 'Each person includes all of their unresolved errors. Mark an error solved only after correcting it in the source GEDCOM or completing its recommended fix. The next batch stays locked until this batch is complete.'}</p>
       ${duplicateMergeReview}
       ${encouragement}
       ${pendingResearch}
@@ -579,10 +602,12 @@ function renderWorkspace() {
                   const isPending = progress.pendingIssueIds.includes(issueId);
                   const isResolved = isCompleted || isPending;
                   const hasSafeAutomaticFix = Boolean(issue.autoFix) && !isDuplicateIssue(issue);
+                  const freeDuplicateLimitReached = isBasicPlan
+                    && progress.completedDuplicateIssueIds.length >= FREE_DUPLICATE_FIX_LIMIT;
                   const issueActions = `
                     ${isDuplicateIssue(issue) ? `
                     <div class="issue-fix-actions">
-                    <button type="button" class="btn-secondary" data-merge-duplicates="${encodeURIComponent(JSON.stringify(issue.autoFix))}">Review and merge possible duplicates</button>
+                    <button type="button" class="btn-secondary" data-merge-duplicates="${encodeURIComponent(JSON.stringify(issue.autoFix))}" ${freeDuplicateLimitReached ? 'disabled' : ''}>${freeDuplicateLimitReached ? 'Upgrade for more duplicate corrections' : 'Review and merge possible duplicates'}</button>
                     </div>` : ''}
                     ${isBasicPlan ? '' : `
                     <div class="issue-fix-actions">
@@ -688,6 +713,11 @@ workspace.addEventListener('click', (event) => {
   const mergeButton = event.target.closest('[data-merge-duplicates]');
   if (mergeButton) {
     const treeData = getTreeData();
+    const progress = getProgress();
+    if (getCurrentTier() === 'free' && progress.completedDuplicateIssueIds.length >= FREE_DUPLICATE_FIX_LIMIT) {
+      alert(`Your free preview includes ${FREE_DUPLICATE_FIX_LIMIT} duplicate corrections. Choose a plan to continue reviewing and correcting possible duplicates.`);
+      return;
+    }
     const fix = JSON.parse(decodeURIComponent(mergeButton.dataset.mergeDuplicates));
     const survivor = treeData?.people?.find((person) => person.id === fix.survivorId);
     const duplicates = treeData?.people?.filter((person) => fix.duplicateIds.includes(person.id)) || [];
@@ -703,7 +733,6 @@ workspace.addEventListener('click', (event) => {
     }
 
     try {
-      const progress = getProgress();
       saveDuplicateMergeUndo(JSON.parse(JSON.stringify(treeData)), progress, {
         survivorName: survivor.name || survivor.id,
         duplicateNames: duplicates.map((person) => person.name || person.id),
@@ -716,6 +745,9 @@ workspace.addEventListener('click', (event) => {
         subject: survivor.id,
       });
       if (!progress.completedIssueIds.includes(mergedIssueId)) progress.completedIssueIds.push(mergedIssueId);
+      if (!progress.completedDuplicateIssueIds.includes(mergedIssueId)) {
+        progress.completedDuplicateIssueIds.push(mergedIssueId);
+      }
       saveTreeData(treeData);
       saveProgress(progress);
       renderWorkspace();
