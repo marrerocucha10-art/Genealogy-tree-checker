@@ -341,7 +341,7 @@ function renderPendingResearch(errors, progress) {
   if (!pendingIssues.length) return '';
 
   return `
-    <section class="pending-research">
+    <section id="researchShelf" class="pending-research">
       <h2>Fix Later (Pending)</h2>
       <p>${pendingIssues.length} item${pendingIssues.length === 1 ? '' : 's'} will not block your progress. Return whenever you have more records or information.</p>
       <ul>
@@ -387,6 +387,50 @@ function renderProgressTools(progress, errors = []) {
         ${correctedItems.length
           ? `<ul>${correctedItems.map((item) => `<li><strong>${escapeHtml(item.category)}:</strong> ${escapeHtml(item.message)} <span>${escapeHtml(item.correctionType)}</span></li>`).join('')}</ul>`
           : '<p class="muted">Corrected items will appear here as you work through the review.</p>'}
+      </div>
+    </section>
+  `;
+}
+
+function renderWorkspaceDesk(errors, progress) {
+  const completed = new Set(progress.completedIssueIds);
+  const pending = new Set(progress.pendingIssueIds);
+  const openCount = errors.filter((issue) => !completed.has(getIssueId(issue)) && !pending.has(getIssueId(issue))).length;
+  const savedWorkMessage = progress.resolvedItems?.length || pending.size
+    ? 'Your corrections, saved-for-later research, and review progress are kept with this family tree in this browser so you can return here and continue.'
+    : 'This is your saved review desk. As you solve items or save research for later, your progress will remain here with this family tree in this browser.';
+
+  return `
+    <section class="review-desk">
+      <div class="review-desk-heading">
+        <div>
+          <p class="eyebrow">Your saved review desk</p>
+          <h2>Your family-tree work is ready when you are</h2>
+          <p>${savedWorkMessage}</p>
+        </div>
+        <a class="btn-secondary" href="tree.html">Open Family Tree</a>
+      </div>
+      <div class="review-desk-metrics" aria-label="Current review progress">
+        <article><strong>${completed.size}</strong><span>Solved</span></article>
+        <article><strong>${pending.size}</strong><span>Saved for later</span></article>
+        <article><strong>${openCount}</strong><span>Open to review</span></article>
+      </div>
+      <div class="review-desk-links">
+        <a href="#activeReview">Continue active review</a>
+        <a href="#researchShelf">Open research shelf</a>
+        <a href="#progressReports">View charts and reports</a>
+      </div>
+      <section class="review-desk-guide" aria-label="How to use your review desk">
+        <h3>Welcome to your Error Workspace</h3>
+        <p>Everything you review here stays organized with this family tree, so you can pause and return whenever you are ready.</p>
+        <ol>
+          <li><strong>Review the active items.</strong> Open the current batch below, read each suggested fix, then mark it solved after you correct the source record.</li>
+          <li><strong>Save research for later.</strong> Move anything that needs more records to the research shelf without losing your place.</li>
+          <li><strong>Check your progress.</strong> Use the chart for handwritten notes or the computer report for your completed work and next step.</li>
+        </ol>
+      </section>
+      <div id="progressReports">
+        ${renderProgressTools(progress, errors)}
       </div>
     </section>
   `;
@@ -722,19 +766,20 @@ function renderWorkspace() {
     return;
   }
 
+  const workspaceDesk = renderWorkspaceDesk(allErrors, progress);
   const pendingDuplicateReview = renderPendingDuplicateMergeReview(treeData);
   if (pendingDuplicateReview) {
-    workspace.innerHTML = pendingDuplicateReview;
+    workspace.innerHTML = `${workspaceDesk}${pendingDuplicateReview}`;
     return;
   }
 
   if (!isBasicPlan && duplicateIssues.length && !progress.duplicateReviewMode) {
-    workspace.innerHTML = renderDuplicateReviewChoice(duplicateIssues);
+    workspace.innerHTML = `${workspaceDesk}${renderDuplicateReviewChoice(duplicateIssues)}`;
     return;
   }
 
   if (!errors.length) {
-    workspace.innerHTML = `${duplicateMergeReview}${encouragement}${pendingResearch}<p class="empty-message">No validation errors are currently available. Return to the family tree to review warnings and notes.</p><button id="printProgressChart" type="button" class="btn-secondary">Print Progress Chart</button><button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Errors Chart</button>${renderUpdatedTreeOffer()}${undoButton}${assistanceOptions}`;
+    workspace.innerHTML = `${workspaceDesk}${duplicateMergeReview}${encouragement}${pendingResearch}<p id="activeReview" class="empty-message">No validation errors are currently available. Return to the family tree to review warnings and notes.</p>${renderUpdatedTreeOffer()}${undoButton}${assistanceOptions}`;
     return;
   }
 
@@ -750,15 +795,15 @@ function renderWorkspace() {
 
   if (activeDone && remainingGroups) {
     workspace.innerHTML = `
+      ${workspaceDesk}
       ${duplicateMergeReview}
-      <section class="batch-complete">
+      <section id="activeReview" class="batch-complete">
         <h2>Batch complete</h2>
         <p>Great job - you completed this group. ${remainingGroups} person${remainingGroups === 1 ? '' : 's'} or record${remainingGroups === 1 ? '' : 's'} remain.</p>
         <button id="loadNextBatch" type="button" class="btn-add">Load next ${Math.min(ERROR_BATCH_SIZE, remainingGroups)} people</button>
         ${undoButton}
         ${encouragement}
         ${pendingResearch}
-        ${renderProgressTools(progress, allErrors)}
         ${assistanceOptions}
       </section>
     `;
@@ -769,12 +814,13 @@ function renderWorkspace() {
     const pendingMessage = progress.pendingIssueIds.length
       ? ` You also have ${progress.pendingIssueIds.length} item${progress.pendingIssueIds.length === 1 ? '' : 's'} in Fix Later (Pending), which did not block your progress.`
       : '';
-    workspace.innerHTML = `${duplicateMergeReview}<section class="batch-complete"><h2>Active error review complete</h2><p>You completed every active issue in this workspace.${pendingMessage} Choose a printable chart for manual notes or open your computer progress report for a summary and your next step.</p>${renderProgressTools(progress, allErrors)}${undoButton}</section>${pendingResearch}${renderUpdatedTreeOffer()}${encouragement}${assistanceOptions}`;
+    workspace.innerHTML = `${workspaceDesk}${duplicateMergeReview}<section id="activeReview" class="batch-complete"><h2>Active error review complete</h2><p>You completed every active issue in this workspace.${pendingMessage} Your saved review desk above has both your printable chart and your computer progress report.</p>${undoButton}</section>${pendingResearch}${renderUpdatedTreeOffer()}${encouragement}${assistanceOptions}`;
     return;
   }
 
   workspace.innerHTML = `
-    <section class="error-batch">
+    ${workspaceDesk}
+    <section id="activeReview" class="error-batch">
       <div class="report-heading">
         <h2>Current people batch</h2>
         <span>${activeGroups.length} of ${ERROR_BATCH_SIZE} selected</span>
@@ -785,7 +831,6 @@ function renderWorkspace() {
       ${pendingResearch}
       ${undoButton}
       ${assistanceOptions}
-      ${renderProgressTools(progress, allErrors)}
       <ol class="error-batch-list">
         ${activeGroups.map((group) => {
           return `

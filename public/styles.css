@@ -2225,6 +2225,102 @@ input[type="file"] {
   margin: 8px 0 0;
 }
 
+.review-desk {
+  background: linear-gradient(135deg, #eef6ff, #f8fffb);
+  border: 1px solid #93c5fd;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(30, 64, 175, 0.09);
+  margin: 18px 0;
+  padding: 22px;
+}
+
+.review-desk-heading {
+  align-items: flex-start;
+  display: flex;
+  gap: 18px;
+  justify-content: space-between;
+}
+
+.review-desk-heading h2 {
+  color: #1e3a8a;
+  margin-bottom: 6px;
+}
+
+.review-desk-heading p {
+  color: #334155;
+  margin-bottom: 0;
+  max-width: 780px;
+}
+
+.review-desk-metrics {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 20px 0 14px;
+}
+
+.review-desk-metrics article {
+  background: #ffffff;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.review-desk-metrics strong,
+.review-desk-metrics span {
+  display: block;
+}
+
+.review-desk-metrics strong {
+  color: #1d4ed8;
+  font-size: 1.55rem;
+}
+
+.review-desk-metrics span {
+  color: #475569;
+  font-size: 0.9rem;
+  margin-top: 3px;
+}
+
+.review-desk-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 8px 0 18px;
+}
+
+.review-desk-links a {
+  color: #1d4ed8;
+  font-weight: 700;
+}
+
+.review-desk-guide {
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  margin: 18px 0;
+  padding: 16px;
+}
+
+.review-desk-guide h3 {
+  color: #1e3a8a;
+  margin-bottom: 4px;
+}
+
+.review-desk-guide p {
+  margin-bottom: 12px;
+}
+
+.review-desk-guide ol {
+  display: grid;
+  gap: 10px;
+  list-style-position: inside;
+}
+
+.review-desk-guide li {
+  color: #334155;
+}
+
 .progress-tools {
   background: #f0fdf4;
   border: 1px solid #86efac;
@@ -2259,6 +2355,20 @@ input[type="file"] {
   display: block;
   font-size: 0.9rem;
   margin-top: 4px;
+}
+
+@media (max-width: 700px) {
+  .review-desk-heading {
+    flex-direction: column;
+  }
+
+  .review-desk-heading .btn-secondary {
+    width: 100%;
+  }
+
+  .review-desk-metrics {
+    grid-template-columns: 1fr;
+  }
 }
 
 .assistance-options {
