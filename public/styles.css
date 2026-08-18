@@ -2330,6 +2330,82 @@ input[type="file"] {
   color: #334155;
 }
 
+.workspace-flow-chart {
+  border-top: 1px solid #bfdbfe;
+  margin: 22px 0;
+  padding-top: 18px;
+}
+
+.workspace-flow-heading h3 {
+  color: #1e3a8a;
+  margin-bottom: 4px;
+}
+
+.workspace-flow-heading p {
+  margin-bottom: 14px;
+}
+
+.workspace-flow-steps {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.workspace-flow-step {
+  background: #ffffff;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  color: #1e3a8a;
+  min-height: 164px;
+  padding: 14px;
+  position: relative;
+  text-decoration: none;
+}
+
+.workspace-flow-step:hover {
+  border-color: #2563eb;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.14);
+}
+
+.workspace-flow-step span {
+  align-items: center;
+  background: #2563eb;
+  border-radius: 999px;
+  color: #ffffff;
+  display: flex;
+  font-weight: 700;
+  height: 28px;
+  justify-content: center;
+  margin-bottom: 10px;
+  width: 28px;
+}
+
+.workspace-flow-step strong,
+.workspace-flow-step small {
+  display: block;
+}
+
+.workspace-flow-step strong {
+  margin-bottom: 6px;
+}
+
+.workspace-flow-step small {
+  color: #475569;
+  line-height: 1.4;
+}
+
+@media (min-width: 701px) {
+  .workspace-flow-step:not(:last-child)::after {
+    color: #2563eb;
+    content: '→';
+    font-size: 1.5rem;
+    position: absolute;
+    right: -17px;
+    top: calc(50% - 12px);
+    z-index: 1;
+  }
+}
+
 .progress-tools {
   background: #f0fdf4;
   border: 1px solid #86efac;
@@ -2376,6 +2452,10 @@ input[type="file"] {
   }
 
   .review-desk-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-flow-steps {
     grid-template-columns: 1fr;
   }
 }
