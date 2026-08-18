@@ -132,9 +132,10 @@ function updateGedcomUploadLimit() {
 
 function updateSelectedPlanGuidance() {
   const planName = SUBSCRIPTION_TIERS[currentTier]?.name || 'selected';
-  const hasSelectedPlan = Boolean(localStorage.getItem(PLAN_SELECTION_STORAGE_KEY));
-  const hasPaidPlan = ['personal', 'pro', 'business'].includes(currentTier)
-    && hasSelectedPlan;
+  const hasPaidPlan = ['personal', 'pro', 'business'].includes(currentTier);
+  // An active paid tier is itself the source of truth, including for customers
+  // who selected their plan before the separate marker was introduced.
+  const hasSelectedPlan = hasPaidPlan || Boolean(localStorage.getItem(PLAN_SELECTION_STORAGE_KEY));
   const guidance = currentTier === 'free'
     ? 'Wonderful - your free review is ready. You are about to bring your family story into clearer focus.'
     : `Wonderful choice - your ${planName} plan is ready. You are about to bring your family story into clearer focus.`;
