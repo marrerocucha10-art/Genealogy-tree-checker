@@ -1622,12 +1622,12 @@ function renderWorkflowOverview() {
 
   return `
     <section class="workflow-overview">
-      <h3>Choose your next step</h3>
-      <p>Your parsed GED is saved in this browser. Continue with one focused workspace at a time.</p>
+      <h3>Step 2: Review your family tree</h3>
+      <p>Your parsed GED is saved in this browser. Review the direct line shown, then continue to the Error Workspace to work through possible duplicates and other record details one clear step at a time.</p>
       <div class="workflow-actions">
-        <a class="btn-add" href="errors.html">Fix errors${issueCount ? ` (${issueCount})` : ''}</a>
-        <a class="btn-secondary" href="manual.html">Work on the tree manually</a>
-        <a class="btn-secondary" href="ancestor.html">Open Ancestor Discovery</a>
+        <a class="btn-add" href="errors.html">Next: Review errors${issueCount ? ` (${issueCount})` : ''}</a>
+        <a class="btn-secondary" href="manual.html">Edit your tree manually</a>
+        <a class="btn-secondary" href="ancestor.html">Explore ancestor research</a>
       </div>
     </section>
   `;
