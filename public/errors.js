@@ -8,6 +8,7 @@ const BASIC_ERROR_REVIEW_LIMIT = 5;
 const FREE_DUPLICATE_FIX_LIMIT = 5;
 const ERROR_REVIEW_ORDER_VERSION = 3;
 const workspace = document.getElementById('errorWorkspace');
+const returnToTreeLink = document.getElementById('returnToTree');
 let loadedTreeData = null;
 let inMemoryDuplicateMergeUndo = null;
 let pendingDuplicateMerge = null;
@@ -87,6 +88,7 @@ function getProgress() {
     batchMode: 'people',
     reviewOrderVersion: Number(savedProgress.reviewOrderVersion) || 0,
     duplicateReviewMode: ['single', 'batch'].includes(savedProgress.duplicateReviewMode) ? savedProgress.duplicateReviewMode : '',
+    lastReviewedSubject: typeof savedProgress.lastReviewedSubject === 'string' ? savedProgress.lastReviewedSubject : '',
   };
 }
 
@@ -99,6 +101,22 @@ function saveProgress(progress) {
     treeData.errorProgress = progress;
     saveTreeData(treeData);
   }
+}
+
+function updateReturnToTreeLink(progress = getProgress()) {
+  if (!returnToTreeLink) return;
+  returnToTreeLink.href = progress.lastReviewedSubject
+    ? `tree.html?focus=${encodeURIComponent(progress.lastReviewedSubject)}`
+    : 'tree.html';
+}
+
+function rememberLastReviewedSubject(subject) {
+  if (!subject) return;
+  const progress = getProgress();
+  if (progress.lastReviewedSubject === subject) return;
+  progress.lastReviewedSubject = subject;
+  saveProgress(progress);
+  updateReturnToTreeLink(progress);
 }
 
 function getResolvedIssueIds(progress) {
@@ -644,6 +662,7 @@ function renderWorkspace() {
   const duplicateIssues = allErrors.filter(isDuplicateIssue);
   const isBasicPlan = getCurrentTier() === 'free';
   const progress = getProgress();
+  updateReturnToTreeLink(progress);
   const errors = isBasicPlan && duplicateIssues.length
     ? duplicateIssues.slice(0, FREE_DUPLICATE_FIX_LIMIT)
     : isBasicPlan
@@ -769,7 +788,7 @@ function renderWorkspace() {
                     <p class="manual-review-note" hidden>Review the source record and suggestion above, then mark this item solved or move it to Fix Later (Pending) without blocking your progress.</p>
                   `;
                   return `
-                    <li>
+                    <li data-tree-subject="${encodeURIComponent(issue.subject || '')}">
                       <strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(issue.message)}
                       ${issue.suggestion ? `<p class="fix-suggestion">${escapeHtml(issue.suggestion)}</p>` : ''}
                       ${issueActions}
@@ -786,6 +805,11 @@ function renderWorkspace() {
 }
 
 workspace.addEventListener('click', (event) => {
+  const reviewedIssue = event.target.closest('[data-tree-subject]');
+  if (reviewedIssue) {
+    rememberLastReviewedSubject(decodeURIComponent(reviewedIssue.dataset.treeSubject));
+  }
+
   const duplicateReviewModeButton = event.target.closest('[data-duplicate-review-mode]');
   if (duplicateReviewModeButton) {
     const progress = getProgress();

@@ -4,6 +4,7 @@ const GENERATIONS_PER_PAGE = 5;
 let visibleGenerationCount = GENERATIONS_PER_PAGE;
 let loadedTreeData = null;
 let matchingPrimaryPersonIds = [];
+const requestedFocusPersonId = new URLSearchParams(window.location.search).get('focus') || '';
 
 function getTreeData() {
   try {
@@ -56,7 +57,10 @@ function getMatchingPeople(query = '') {
 }
 
 function getPrimaryPerson(treeData) {
-  return treeData.people.find((person) => person.id === treeData.primaryPersonId) || treeData.people[0] || null;
+  return treeData.people.find((person) => person.id === requestedFocusPersonId)
+    || treeData.people.find((person) => person.id === treeData.primaryPersonId)
+    || treeData.people[0]
+    || null;
 }
 
 function restoreDefaultStartingPerson(treeData) {
