@@ -1,12 +1,12 @@
-const SUBSCRIPTION_STORAGE_KEY = 'familyTreeSubscriptionTier';
+const isAdministrationReview = new URLSearchParams(window.location.search).get('admin_review') === 'true';
+const SUBSCRIPTION_STORAGE_KEY = isAdministrationReview ? 'familyTreeAdministrationReviewTier' : 'familyTreeSubscriptionTier';
 const BILLING_INTERVAL_STORAGE_KEY = 'familyTreeBillingInterval';
 const STRIPE_CUSTOMER_STORAGE_KEY = 'familyTreeStripeCustomerId';
-const PLAN_SELECTION_STORAGE_KEY = 'familyTreePlanSelected';
+const PLAN_SELECTION_STORAGE_KEY = isAdministrationReview ? 'familyTreeAdministrationReviewPlanSelected' : 'familyTreePlanSelected';
 const subscriptionPlans = document.getElementById('subscriptionPlans');
 const subscriptionStatus = document.getElementById('subscriptionStatus');
 const manageBillingButton = document.getElementById('manageBilling');
 const billingButtons = document.querySelectorAll('[data-billing-interval]');
-const isAdministrationReview = new URLSearchParams(window.location.search).get('admin_review') === 'true';
 
 const tiers = {
   free: {
@@ -118,7 +118,7 @@ subscriptionPlans.addEventListener('click', async (event) => {
     currentTier = testButton.dataset.testTier;
     localStorage.setItem(SUBSCRIPTION_STORAGE_KEY, currentTier);
     localStorage.setItem(PLAN_SELECTION_STORAGE_KEY, 'true');
-    window.location.href = 'index.html?start=upload&test_plan=true';
+    window.location.href = 'index.html?start=upload&test_plan=true&admin_review=true';
     return;
   }
 

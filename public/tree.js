@@ -1,15 +1,26 @@
 const WORKSPACE_PREVIEW_MODE = new URLSearchParams(window.location.search).get('demo') === 'workspace';
+const IS_ADMINISTRATION_REVIEW = new URLSearchParams(window.location.search).get('admin_review') === 'true';
 const STORAGE_KEY = WORKSPACE_PREVIEW_MODE
   ? 'familyTreeWorkspacePreviewData'
-  : window.familyTreeClientStorage?.getActiveTreeKey() || 'familyTreeData';
+  : IS_ADMINISTRATION_REVIEW
+    ? 'familyTreeAdministrationReviewData'
+    : window.familyTreeClientStorage?.getActiveTreeKey() || 'familyTreeData';
 const review = document.getElementById('treeReview');
 const GENERATIONS_PER_PAGE = 5;
 let visibleGenerationCount = GENERATIONS_PER_PAGE;
 let loadedTreeData = null;
 let matchingPrimaryPersonIds = [];
 const requestedFocusPersonId = new URLSearchParams(window.location.search).get('focus') || '';
-const errorWorkspaceUrl = WORKSPACE_PREVIEW_MODE ? 'errors.html?demo=workspace' : 'errors.html';
-const workspaceProgressUrl = WORKSPACE_PREVIEW_MODE ? 'errors.html?demo=workspace&view=progress#progressReports' : 'errors.html?view=progress#progressReports';
+const errorWorkspaceUrl = WORKSPACE_PREVIEW_MODE
+  ? 'errors.html?demo=workspace'
+  : IS_ADMINISTRATION_REVIEW
+    ? 'errors.html?admin_review=true'
+    : 'errors.html';
+const workspaceProgressUrl = WORKSPACE_PREVIEW_MODE
+  ? 'errors.html?demo=workspace&view=progress#progressReports'
+  : IS_ADMINISTRATION_REVIEW
+    ? 'errors.html?admin_review=true&view=progress#progressReports'
+    : 'errors.html?view=progress#progressReports';
 const ERROR_REVIEW_HANDOFF_KEY = `${STORAGE_KEY}:errorReviewHandoff`;
 
 function getTreeData() {

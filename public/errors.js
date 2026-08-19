@@ -1,13 +1,16 @@
 const WORKSPACE_PREVIEW_MODE = new URLSearchParams(window.location.search).get('demo') === 'workspace';
+const IS_ADMINISTRATION_REVIEW = new URLSearchParams(window.location.search).get('admin_review') === 'true';
 const SHOW_WORKSPACE_PROGRESS = new URLSearchParams(window.location.search).get('view') === 'progress';
 const STORAGE_KEY = WORKSPACE_PREVIEW_MODE
   ? 'familyTreeWorkspacePreviewData'
-  : window.familyTreeClientStorage?.getActiveTreeKey() || 'familyTreeData';
+  : IS_ADMINISTRATION_REVIEW
+    ? 'familyTreeAdministrationReviewData'
+    : window.familyTreeClientStorage?.getActiveTreeKey() || 'familyTreeData';
 const ERROR_REVIEW_HANDOFF_KEY = `${STORAGE_KEY}:errorReviewHandoff`;
 const ERROR_PROGRESS_STORAGE_KEY = `${STORAGE_KEY}:errorProgress`;
 const DUPLICATE_MERGE_UNDO_STORAGE_KEY = `${STORAGE_KEY}:duplicateMergeUndo`;
-const SUBSCRIPTION_STORAGE_KEY = 'familyTreeSubscriptionTier';
-const PLAN_SELECTION_STORAGE_KEY = 'familyTreePlanSelected';
+const SUBSCRIPTION_STORAGE_KEY = IS_ADMINISTRATION_REVIEW ? 'familyTreeAdministrationReviewTier' : 'familyTreeSubscriptionTier';
+const PLAN_SELECTION_STORAGE_KEY = IS_ADMINISTRATION_REVIEW ? 'familyTreeAdministrationReviewPlanSelected' : 'familyTreePlanSelected';
 const ERROR_BATCH_SIZE = 10;
 const BASIC_ERROR_REVIEW_LIMIT = 5;
 const FREE_DUPLICATE_FIX_LIMIT = 5;
@@ -210,6 +213,7 @@ function updateReturnToTreeLink(progress = getProgress()) {
   if (!returnToTreeLink) return;
   const parameters = new URLSearchParams();
   if (WORKSPACE_PREVIEW_MODE) parameters.set('demo', 'workspace');
+  if (IS_ADMINISTRATION_REVIEW) parameters.set('admin_review', 'true');
   if (progress.lastReviewedSubject) parameters.set('focus', progress.lastReviewedSubject);
   returnToTreeLink.href = parameters.size ? `tree.html?${parameters}` : 'tree.html';
 }
@@ -217,6 +221,7 @@ function updateReturnToTreeLink(progress = getProgress()) {
 function updateWorkspaceTreeLinks(progress = getProgress()) {
   const parameters = new URLSearchParams();
   if (WORKSPACE_PREVIEW_MODE) parameters.set('demo', 'workspace');
+  if (IS_ADMINISTRATION_REVIEW) parameters.set('admin_review', 'true');
   const treeUrl = parameters.size ? `tree.html?${parameters}` : 'tree.html';
   document.querySelectorAll('[data-workspace-tree-preview]').forEach((link) => {
     link.href = treeUrl;
@@ -824,6 +829,7 @@ function renderFamilyLocationPreview(person, peopleById, locationIndex, directOr
       : 'Related family branch · outside the selected direct line';
   const treeParameters = new URLSearchParams();
   if (WORKSPACE_PREVIEW_MODE) treeParameters.set('demo', 'workspace');
+  if (IS_ADMINISTRATION_REVIEW) treeParameters.set('admin_review', 'true');
   treeParameters.set('focus', person.id);
 
   return `
