@@ -67,12 +67,6 @@ function renderPlans() {
       <aside class="pro-package-highlight">
         <strong>Genealogy Pro Package included</strong>
         <p>Digital products, print products, research services, and research journals are included with this plan.</p>
-        <div class="plan-package-actions">
-          <button type="button" data-open-collection="digitalProducts">Included Digital Perks</button>
-          <button type="button" data-open-collection="printProducts">Print Products</button>
-          <button type="button" data-open-collection="researchServices">Research Services</button>
-          <button type="button" data-open-collection="researchJournals">Research Journals</button>
-        </div>
       </aside>` : '';
     return `
       <article class="subscription-card ${isCurrent ? 'current' : ''}">
@@ -118,16 +112,6 @@ async function applyCheckoutReturn() {
 }
 
 subscriptionPlans.addEventListener('click', async (event) => {
-  const collectionButton = event.target.closest('[data-open-collection]');
-  if (collectionButton) {
-    const collection = document.getElementById(collectionButton.dataset.openCollection);
-    if (collection) {
-      collection.open = true;
-      collection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-    return;
-  }
-
   const testButton = event.target.closest('[data-test-tier]');
   if (testButton) {
     currentTier = testButton.dataset.testTier;
