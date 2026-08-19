@@ -3,7 +3,7 @@ const STORAGE_KEY = WORKSPACE_PREVIEW_MODE
   ? 'familyTreeWorkspacePreviewData'
   : window.familyTreeClientStorage?.getActiveTreeKey() || 'familyTreeData';
 const review = document.getElementById('treeReview');
-const GENERATIONS_PER_PAGE = 2;
+const GENERATIONS_PER_PAGE = 5;
 let visibleGenerationCount = GENERATIONS_PER_PAGE;
 let loadedTreeData = null;
 let matchingPrimaryPersonIds = [];
@@ -215,7 +215,7 @@ function renderGenerations(treeData, peopleById, families) {
         <button class="btn-add" type="button" data-confirm-primary-person>Use This Person as the Starting Point</button>
       </div>
       <p>Showing ${displayedThrough} of ${maximumGeneration} ancestry generations around ${escapeHtml(primaryPerson?.name || 'the main person')}, so you can stay focused on the records you are correcting.</p>
-      <p class="muted">This quick preview starts with two generations. Add more only when you need them, or choose a different direct line.</p>
+      <p class="muted">This working view starts with five generations. Add more only when you need them, or choose a different direct line.</p>
       <div class="tree-next-step">
         ${loadMore}
       </div>
