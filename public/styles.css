@@ -781,6 +781,10 @@ select:focus {
   text-align: center;
 }
 
+.tree-next-step .btn-add {
+  width: auto;
+}
+
 @media (max-width: 600px) {
   .tree-summary-actions,
   .tree-review-actions {

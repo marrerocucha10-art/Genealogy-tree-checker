@@ -9,6 +9,7 @@ let loadedTreeData = null;
 let matchingPrimaryPersonIds = [];
 const requestedFocusPersonId = new URLSearchParams(window.location.search).get('focus') || '';
 const errorWorkspaceUrl = WORKSPACE_PREVIEW_MODE ? 'errors.html?demo=workspace' : 'errors.html';
+const workspaceProgressUrl = WORKSPACE_PREVIEW_MODE ? 'errors.html?demo=workspace#progressReports' : 'errors.html#progressReports';
 
 function getTreeData() {
   try {
@@ -219,6 +220,7 @@ function renderGenerations(treeData, peopleById, families) {
       <div class="tree-next-step">
         ${loadMore}
         <a class="btn-add" href="${errorWorkspaceUrl}">Continue to Fix Errors</a>
+        <a class="btn-secondary" href="${workspaceProgressUrl}">Review Work Space Progress</a>
       </div>
       <div class="ancestry-tree" aria-label="Family ancestry tree">
         ${sections.join('')}
