@@ -1668,9 +1668,9 @@ function renderWorkflowOverview() {
   return `
     <section class="workflow-overview">
       <h3>Step 2: Review your family tree</h3>
-      <p>Your parsed GED is saved in this browser. Review the direct line shown, then continue to the Error Workspace to work through possible duplicates and other record details one clear step at a time.</p>
+      <p>Your family tree is ready. Open the five-generation Working Tree Preview, choose the direct line you want to work on, then continue to its organized Error Workspace.</p>
       <div class="workflow-actions">
-        <a class="btn-add" href="${ERROR_REVIEW_URL}">Next: Review errors${issueCount ? ` (${issueCount})` : ''}</a>
+        <a class="btn-add" href="${TREE_REVIEW_URL}">Review Your Five-Generation Working Tree${issueCount ? ` (${issueCount} errors)` : ''}</a>
         <a class="btn-secondary" href="manual.html">Edit your tree manually</a>
         <a class="btn-secondary" href="ancestor.html">Explore ancestor research</a>
       </div>
