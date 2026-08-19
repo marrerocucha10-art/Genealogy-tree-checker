@@ -148,6 +148,27 @@ function updateLayoutButtons() {
   });
 }
 
+function getFixErrorsModal() {
+  return familyTreeDiv.querySelector('[data-fix-errors-modal]');
+}
+
+function openFixErrorsModal() {
+  const modal = getFixErrorsModal();
+  if (!modal) {
+    setStatus('No current errors to review.', 'info');
+    return;
+  }
+
+  modal.hidden = false;
+  const dialog = modal.querySelector('.fix-errors-modal');
+  dialog?.focus();
+}
+
+function closeFixErrorsModal() {
+  const modal = getFixErrorsModal();
+  if (modal) modal.hidden = true;
+}
+
 familyTreeDiv.addEventListener('click', (event) => {
   const removeButton = event.target.closest('[data-remove-person-id]');
   const autoFixButton = event.target.closest('[data-apply-auto-fixes]');
@@ -168,8 +189,33 @@ familyTreeDiv.addEventListener('click', (event) => {
     return;
   }
 
+  if (event.target.closest('[data-open-error-modal]')) {
+    openFixErrorsModal();
+    return;
+  }
+
+  if (event.target.closest('[data-close-error-modal]')) {
+    closeFixErrorsModal();
+    return;
+  }
+
+  if (event.target.matches('[data-fix-errors-modal]')) {
+    closeFixErrorsModal();
+    return;
+  }
+
+  if (event.target.closest('[data-modal-apply-auto-fixes]')) {
+    applyAutomaticFixes();
+    return;
+  }
+
   if (event.target.closest('[data-open-error-workspace]')) {
     window.open('errors.html', '_blank', 'noopener');
+    return;
+  }
+
+  if (event.target.closest('[data-modal-open-error-workspace]')) {
+    window.location.href = 'errors.html';
     return;
   }
 
@@ -227,6 +273,13 @@ familyTreeDiv.addEventListener('click', (event) => {
   if (event.target.closest('[data-download-poster-artwork]')) {
     downloadPosterArtwork();
   }
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.key !== 'Escape') return;
+  const modal = getFixErrorsModal();
+  if (!modal || modal.hidden) return;
+  closeFixErrorsModal();
 });
 
 familyTreeDiv.addEventListener('change', (event) => {
@@ -1534,11 +1587,52 @@ function renderWorkflowOverview() {
       <h3>Choose your next step</h3>
       <p>Your parsed GED is saved in this browser. Continue with one focused workspace at a time.</p>
       <div class="workflow-actions">
-        <a class="btn-add" href="errors.html">Fix errors${issueCount ? ` (${issueCount})` : ''}</a>
+        ${issueCount
+    ? `<button type="button" class="btn-add" data-open-error-modal>Fix errors (${issueCount})</button>`
+    : '<button type="button" class="btn-secondary" disabled>No current errors</button>'}
         <a class="btn-secondary" href="manual.html">Work on the tree manually</a>
         <a class="btn-secondary" href="ancestor.html">Open Ancestor Discovery</a>
       </div>
+      ${renderFixErrorsModal(report)}
     </section>
+  `;
+}
+
+function getErrorWorkspaceIssues(report = treeData.validationReport || createEmptyValidationReport()) {
+  return [
+    ...(report.errors || []),
+    ...(report.warnings || []).filter((issue) => issue.autoFix?.type === 'mergeDuplicatePeople'),
+  ];
+}
+
+function renderFixErrorsModal(report) {
+  const workspaceIssues = getErrorWorkspaceIssues(report);
+  if (!workspaceIssues.length) return '';
+
+  const previewIssues = workspaceIssues.slice(0, 5);
+  const hasAutomaticFixes = workspaceIssues.some((issue) => issue.autoFix);
+
+  return `
+    <div class="fix-errors-modal-overlay" data-fix-errors-modal hidden>
+      <section class="fix-errors-modal" role="dialog" aria-modal="true" aria-labelledby="fixErrorsModalTitle" tabindex="-1">
+        <h4 id="fixErrorsModalTitle">First batch to review</h4>
+        <p class="muted">Start with the most important records below, then choose how you want to continue.</p>
+        <ol class="fix-errors-modal-list">
+          ${previewIssues.map((issue) => `
+            <li>
+              <strong>${escapeHtml(issue.category || 'Issue')}</strong>
+              <p>${escapeHtml(issue.message || 'Review this record for details.')}</p>
+            </li>
+          `).join('')}
+        </ol>
+        <p class="fix-errors-modal-total">${workspaceIssues.length} total error${workspaceIssues.length === 1 ? '' : 's'} to resolve.</p>
+        <div class="fix-errors-modal-actions">
+          ${hasAutomaticFixes ? '<button type="button" class="btn-secondary" data-modal-apply-auto-fixes>Apply Safe Automatic Fixes</button>' : ''}
+          <button type="button" class="btn-add" data-modal-open-error-workspace>Open Error Workspace</button>
+          <button type="button" class="btn-secondary" data-close-error-modal>Close</button>
+        </div>
+      </section>
+    </div>
   `;
 }
 
