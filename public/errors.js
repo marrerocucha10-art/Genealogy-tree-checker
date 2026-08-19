@@ -10,7 +10,8 @@ const PLAN_SELECTION_STORAGE_KEY = 'familyTreePlanSelected';
 const ERROR_BATCH_SIZE = 10;
 const BASIC_ERROR_REVIEW_LIMIT = 5;
 const FREE_DUPLICATE_FIX_LIMIT = 5;
-const ERROR_REVIEW_ORDER_VERSION = 5;
+const ERROR_REVIEW_ORDER_VERSION = 6;
+const VISIBLE_REVIEW_GENERATION_COUNT = 5;
 const workspace = document.getElementById('errorWorkspace');
 const workspaceWelcome = document.getElementById('workspaceWelcome');
 const returnToTreeLink = document.getElementById('returnToTree');
@@ -779,6 +780,14 @@ function getGroupGeneration(group, directLineOrder) {
   return directLineOrder.get(group.issues[0]?.subject);
 }
 
+function getVisibleGenerationErrors(treeData, errors) {
+  const directLineOrder = getDirectLineReviewOrder(treeData);
+  return errors.filter((issue) => {
+    const generation = directLineOrder.get(issue.subject);
+    return generation !== undefined && generation < VISIBLE_REVIEW_GENERATION_COUNT;
+  });
+}
+
 function buildFamilyLocationIndex(treeData, peopleById) {
   const index = new Map();
   const getLocation = (personId) => {
@@ -984,7 +993,8 @@ function renderWorkspace() {
     ...(treeData?.validationReport?.errors || []),
     ...(treeData?.validationReport?.warnings || []).filter((issue) => issue.autoFix?.type === 'mergeDuplicatePeople'),
   ];
-  const duplicateIssues = allErrors.filter(isDuplicateIssue);
+  const visibleGenerationErrors = getVisibleGenerationErrors(treeData, allErrors);
+  const duplicateIssues = visibleGenerationErrors.filter(isDuplicateIssue);
   const isBasicPlan = getCurrentTier() === 'free';
   const progress = getProgress();
   updateReturnToTreeLink(progress);
@@ -992,8 +1002,8 @@ function renderWorkspace() {
   const errors = isBasicPlan && duplicateIssues.length
     ? duplicateIssues.slice(0, FREE_DUPLICATE_FIX_LIMIT)
     : isBasicPlan
-      ? allErrors.slice(0, BASIC_ERROR_REVIEW_LIMIT)
-      : allErrors;
+      ? visibleGenerationErrors.slice(0, BASIC_ERROR_REVIEW_LIMIT)
+      : visibleGenerationErrors;
   if (isBasicPlan && duplicateIssues.length && progress.duplicateReviewMode !== 'batch') {
     progress.duplicateReviewMode = 'batch';
     progress.activeGroupIds = [];
@@ -1005,10 +1015,10 @@ function renderWorkspace() {
     ? '<button id="undoDuplicateMerge" type="button" class="btn-secondary">Return to Previous Tree</button>'
     : '';
   const duplicateMergeReview = renderDuplicateMergeReview();
-  const assistanceOptions = renderBasicPlanOptions(allErrors, progress);
+  const assistanceOptions = renderBasicPlanOptions(visibleGenerationErrors, progress);
   const encouragement = renderProgressEncouragement(errors, progress);
-  const pendingResearch = renderPendingResearch(allErrors, progress);
-  const workspaceDesk = SHOW_WORKSPACE_PROGRESS ? renderWorkspaceDesk(allErrors, progress) : '';
+  const pendingResearch = renderPendingResearch(visibleGenerationErrors, progress);
+  const workspaceDesk = SHOW_WORKSPACE_PROGRESS ? renderWorkspaceDesk(visibleGenerationErrors, progress) : '';
 
   if (!treeData?.people?.length) {
     workspace.innerHTML = `
@@ -1046,7 +1056,7 @@ function renderWorkspace() {
   }
 
   if (!errors.length) {
-    workspace.innerHTML = `${workspaceDesk}${duplicateMergeReview}${encouragement}${pendingResearch}<p id="activeReview" class="empty-message">No validation errors are currently available. Return to the family tree to review warnings and notes.</p>${renderUpdatedTreeOffer()}${undoButton}${assistanceOptions}`;
+    workspace.innerHTML = `${workspaceDesk}${duplicateMergeReview}${encouragement}${pendingResearch}<p id="activeReview" class="empty-message">There are no open errors in the five generations currently shown in your working tree. Return to the tree to choose another direct line or add more generations when you are ready.</p>${renderUpdatedTreeOffer()}${undoButton}${assistanceOptions}`;
     return;
   }
 
