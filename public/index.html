@@ -10,7 +10,7 @@
   <div class="container">
     <header>
       <h1>Genealogy Tree Checker</h1>
-      <p>Upload a GEDCOM file and build a family tree</p>
+      <p>Explore, clean, and understand your family history</p>
     </header>
 
     <main>
@@ -143,7 +143,14 @@
 
       <section id="treeOverviewSection" class="tree-section" hidden>
         <div class="section-header">
-          <h2>GEDCOM Overview</h2>
+          <div>
+            <h2>Your Parsed Family Tree</h2>
+            <p class="section-subtitle">Review your family lineage with birth/death dates and places</p>
+          </div>
+          <div class="layout-controls">
+            <button type="button" class="btn-secondary active" data-layout="vertical">⬇️ Vertical View</button>
+            <button type="button" class="btn-secondary" data-layout="horizontal">➡️ Horizontal View</button>
+          </div>
         </div>
         <div id="familyTree" class="family-tree">
           <p class="empty-message">Your family-tree overview will appear here after you upload a family file or create a new tree.</p>
