@@ -133,7 +133,7 @@ subscriptionPlans.addEventListener('click', async (event) => {
     currentTier = testButton.dataset.testTier;
     localStorage.setItem(SUBSCRIPTION_STORAGE_KEY, currentTier);
     localStorage.setItem(PLAN_SELECTION_STORAGE_KEY, 'true');
-    window.location.href = '/?start=upload&test_plan=true';
+    window.location.href = 'index.html?start=upload&test_plan=true';
     return;
   }
 
