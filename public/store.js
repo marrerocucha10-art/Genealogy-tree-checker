@@ -52,6 +52,7 @@ function updateBillingButtons() {
 
 function renderPlans() {
   const current = tiers[currentTier] || tiers.free;
+  manageBillingButton.hidden = !stripeCustomerId;
   subscriptionStatus.textContent = currentTier === 'free'
     ? 'Current access: Free tree review'
     : `Current plan: ${current.name} · ${billingInterval === 'annual' ? 'Annual billing' : 'Monthly billing'}`;
