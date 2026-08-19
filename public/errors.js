@@ -1032,7 +1032,7 @@ function renderWorkspace() {
     return;
   }
 
-  if (!WORKSPACE_PREVIEW_MODE && !localStorage.getItem(PLAN_SELECTION_STORAGE_KEY)) {
+  if (!WORKSPACE_PREVIEW_MODE && !IS_ADMINISTRATION_REVIEW && !localStorage.getItem(PLAN_SELECTION_STORAGE_KEY)) {
     workspace.innerHTML = `
       ${workspaceDesk}
       <section id="activeReview" class="batch-complete">
