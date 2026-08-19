@@ -309,7 +309,7 @@ function setPrimaryPerson(personId) {
   renderTreeReview();
 }
 
-review.addEventListener('click', (event) => {
+review.addEventListener('click', async (event) => {
   const continueToErrors = event.target.closest('[data-continue-to-errors]');
   if (continueToErrors && loadedTreeData) {
     event.preventDefault();
@@ -322,11 +322,18 @@ review.addEventListener('click', (event) => {
       // The persistent save below remains the source of truth for large trees.
     }
 
+    let databaseSave;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(loadedTreeData));
     } catch (error) {
-      void window.familyTreeClientStorage?.saveTreeInDatabase?.(STORAGE_KEY, loadedTreeData)
-        ?.catch(() => console.error('Could not save the reviewed tree to browser storage.'));
+      databaseSave = window.familyTreeClientStorage?.saveTreeInDatabase?.(STORAGE_KEY, loadedTreeData);
+    }
+
+    if (databaseSave) {
+      await Promise.race([
+        databaseSave.catch(() => console.error('Could not save the reviewed tree to browser storage.')),
+        new Promise((resolve) => window.setTimeout(resolve, 1500)),
+      ]);
     }
 
     window.location.assign(continueToErrors.href);

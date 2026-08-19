@@ -1426,12 +1426,22 @@ if (storedTreeData?.people?.length) {
   renderWorkspace();
 } else if (window.familyTreeClientStorage?.loadTreeFromDatabase) {
   workspace.innerHTML = '<p class="empty-message">Opening your saved error review...</p>';
+  let loadedFromDatabase = false;
+  const loadingFallback = window.setTimeout(() => {
+    if (!loadedFromDatabase) renderWorkspace();
+  }, 1500);
   window.familyTreeClientStorage.loadTreeFromDatabase(STORAGE_KEY)
     .then((treeData) => {
+      loadedFromDatabase = true;
+      window.clearTimeout(loadingFallback);
       loadedTreeData = treeData;
       renderWorkspace();
     })
-    .catch(() => renderWorkspace());
+    .catch(() => {
+      loadedFromDatabase = true;
+      window.clearTimeout(loadingFallback);
+      renderWorkspace();
+    });
 } else {
   renderWorkspace();
 }
