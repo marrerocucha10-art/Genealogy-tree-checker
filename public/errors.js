@@ -88,14 +88,41 @@ function createWorkspacePreviewTree() {
     suggestion: 'Compare the family record with the source GEDCOM, then confirm or correct the parent connection.',
     subject: '@I3@',
   };
+  const people = [
+    { id: '@I1@', name: 'Elena Rivera' },
+    { id: '@I2@', name: 'Mateo Rivera' },
+    { id: '@I3@', name: 'Sofia Rivera' },
+  ];
+  const families = [{ id: '@F1@', husbandId: '@I2@', wifeId: '@I1@', childrenIds: ['@I3@'] }];
+  let ancestorGeneration = ['@I2@', '@I1@'];
+  let nextPersonNumber = 4;
+
+  for (let generation = 3; generation <= 5; generation += 1) {
+    const nextGeneration = [];
+    for (const childId of ancestorGeneration) {
+      const firstParentId = `@I${nextPersonNumber}@`;
+      const secondParentId = `@I${nextPersonNumber + 1}@`;
+      const ancestorNumber = nextPersonNumber - 3;
+      people.push(
+        { id: firstParentId, name: `Rivera ancestor ${generation}-${ancestorNumber}` },
+        { id: secondParentId, name: `Rivera ancestor ${generation}-${ancestorNumber + 1}` },
+      );
+      families.push({
+        id: `@F${families.length + 1}@`,
+        husbandId: firstParentId,
+        wifeId: secondParentId,
+        childrenIds: [childId],
+      });
+      nextGeneration.push(firstParentId, secondParentId);
+      nextPersonNumber += 2;
+    }
+    ancestorGeneration = nextGeneration;
+  }
+
   return {
-    people: [
-      { id: '@I1@', name: 'Elena Rivera' },
-      { id: '@I2@', name: 'Mateo Rivera' },
-      { id: '@I3@', name: 'Sofia Rivera' },
-    ],
+    people,
     primaryPersonId: '@I3@',
-    families: [{ id: '@F1@', husbandId: '@I2@', wifeId: '@I1@', childrenIds: ['@I3@'] }],
+    families,
     relationships: [],
     validationReport: { errors: [resolvedIssue, pendingIssue, activeIssue], warnings: [], info: [] },
     errorProgress: {
@@ -116,6 +143,22 @@ function createWorkspacePreviewTree() {
       duplicateReviewMode: '',
       lastReviewedSubject: activeIssue.subject,
     },
+  };
+}
+
+function addWorkspacePreviewGenerations(treeData) {
+  const previewTree = createWorkspacePreviewTree();
+  const existingPersonIds = new Set((treeData.people || []).map((person) => person.id));
+  const existingFamilyIds = new Set((treeData.families || []).map((family) => family.id));
+  const people = previewTree.people.filter((person) => !existingPersonIds.has(person.id));
+  const families = previewTree.families.filter((family) => !existingFamilyIds.has(family.id));
+
+  if (!people.length && !families.length) return treeData;
+
+  return {
+    ...treeData,
+    people: [...(treeData.people || []), ...people],
+    families: [...(treeData.families || []), ...families],
   };
 }
 
@@ -1326,6 +1369,13 @@ workspace.addEventListener('click', (event) => {
 if (WORKSPACE_PREVIEW_MODE && !getTreeData()?.people?.length) {
   loadedTreeData = createWorkspacePreviewTree();
   saveTreeData(loadedTreeData);
+} else if (WORKSPACE_PREVIEW_MODE) {
+  const treeData = getTreeData();
+  const upgradedTreeData = addWorkspacePreviewGenerations(treeData);
+  if (upgradedTreeData !== treeData) {
+    loadedTreeData = upgradedTreeData;
+    saveTreeData(loadedTreeData);
+  }
 }
 const storedTreeData = getTreeData();
 if (storedTreeData?.people?.length) {
