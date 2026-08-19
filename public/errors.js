@@ -3,6 +3,7 @@ const SHOW_WORKSPACE_PROGRESS = new URLSearchParams(window.location.search).get(
 const STORAGE_KEY = WORKSPACE_PREVIEW_MODE
   ? 'familyTreeWorkspacePreviewData'
   : window.familyTreeClientStorage?.getActiveTreeKey() || 'familyTreeData';
+const ERROR_REVIEW_HANDOFF_KEY = `${STORAGE_KEY}:errorReviewHandoff`;
 const ERROR_PROGRESS_STORAGE_KEY = `${STORAGE_KEY}:errorProgress`;
 const DUPLICATE_MERGE_UNDO_STORAGE_KEY = `${STORAGE_KEY}:duplicateMergeUndo`;
 const SUBSCRIPTION_STORAGE_KEY = 'familyTreeSubscriptionTier';
@@ -23,6 +24,8 @@ let pendingDuplicateMerge = null;
 function getTreeData() {
   if (loadedTreeData) return loadedTreeData;
   try {
+    const handoffTreeData = JSON.parse(sessionStorage.getItem(ERROR_REVIEW_HANDOFF_KEY) || 'null');
+    if (handoffTreeData?.people?.length) return handoffTreeData;
     return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
   } catch (error) {
     return null;

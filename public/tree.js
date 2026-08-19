@@ -10,6 +10,7 @@ let matchingPrimaryPersonIds = [];
 const requestedFocusPersonId = new URLSearchParams(window.location.search).get('focus') || '';
 const errorWorkspaceUrl = WORKSPACE_PREVIEW_MODE ? 'errors.html?demo=workspace' : 'errors.html';
 const workspaceProgressUrl = WORKSPACE_PREVIEW_MODE ? 'errors.html?demo=workspace&view=progress#progressReports' : 'errors.html?view=progress#progressReports';
+const ERROR_REVIEW_HANDOFF_KEY = `${STORAGE_KEY}:errorReviewHandoff`;
 
 function getTreeData() {
   try {
@@ -303,6 +304,12 @@ review.addEventListener('click', async (event) => {
     event.preventDefault();
     continueToErrors.textContent = 'Opening Your Fixes...';
     continueToErrors.setAttribute('aria-disabled', 'true');
+
+    try {
+      sessionStorage.setItem(ERROR_REVIEW_HANDOFF_KEY, JSON.stringify(loadedTreeData));
+    } catch (error) {
+      // The persistent save below remains the source of truth for large trees.
+    }
 
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(loadedTreeData));
