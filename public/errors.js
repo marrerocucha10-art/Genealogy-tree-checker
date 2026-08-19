@@ -393,18 +393,9 @@ function renderUpdatedTreeOffer() {
   return `
     <section class="updated-tree-offer">
       <h2>Your updated tree is ready to celebrate</h2>
-      <p>Personalize a fresh family-tree edition, print it, or explore posters and keepsakes made from the progress you just completed.</p>
-      <div class="family-documentary-offer">
-        <strong>Your family story deserves a standing ovation!</strong>
-        <p>Coming soon: celebrate your family achievements and memories with a short documentary video. Select treasured photographs and turn them into a living tribute to the ancestors whose lives and contributions shaped your family.</p>
-        <video class="family-documentary-video" autoplay loop muted playsinline controls aria-label="Family members revisiting treasured photographs">
-          <source src="family-memory-documentary-preview.mp4#t=0,15" type="video/mp4">
-          Your browser does not support the video tag.
-        </video>
-        <small>Preview video by cottonbro studio on Pexels.</small>
-        <a class="btn-secondary" href="photo-to-life.html">Bring a Family Photo to Life</a>
-      </div>
+      <p>Your completed work is ready for a fresh family-tree edition, a printed copy, or a personalized keepsake.</p>
       <a class="btn-add" href="index.html#treePresentation">Personalize and print your updated tree</a>
+      <a class="btn-secondary" href="store.html#customKeepsakes">Explore Personalized Tree Keepsakes</a>
     </section>
   `;
 }

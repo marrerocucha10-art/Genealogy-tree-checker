@@ -143,12 +143,6 @@ document.querySelector('[data-toggle-coming-soon]')?.addEventListener('click', (
     : 'Coming Soon: Explore Personalized Keepsakes';
 });
 
-document.querySelector('[data-open-additional-digital]')?.addEventListener('click', () => {
-  const products = document.getElementById('additionalDigitalProducts');
-  products.open = true;
-  products.scrollIntoView({ behavior: 'smooth', block: 'start' });
-});
-
 billingButtons.forEach((button) => button.addEventListener('click', () => {
   billingInterval = button.dataset.billingInterval;
   localStorage.setItem(BILLING_INTERVAL_STORAGE_KEY, billingInterval);
