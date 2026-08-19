@@ -118,7 +118,7 @@ subscriptionPlans.addEventListener('click', async (event) => {
     currentTier = testButton.dataset.testTier;
     localStorage.setItem(SUBSCRIPTION_STORAGE_KEY, currentTier);
     localStorage.setItem(PLAN_SELECTION_STORAGE_KEY, 'true');
-    window.location.href = 'index.html?start=upload&test_plan=true&admin_review=true';
+    window.location.href = `index.html?start=upload&test_plan=true&admin_review=true&review_tier=${encodeURIComponent(currentTier)}`;
     return;
   }
 

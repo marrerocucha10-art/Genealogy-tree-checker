@@ -1,9 +1,14 @@
-const STORAGE_KEY = window.familyTreeClientStorage?.getActiveTreeKey() || 'familyTreeData';
+const IS_ADMINISTRATION_REVIEW = new URLSearchParams(window.location.search).get('admin_review') === 'true';
+const STORAGE_KEY = IS_ADMINISTRATION_REVIEW
+  ? 'familyTreeAdministrationReviewData'
+  : window.familyTreeClientStorage?.getActiveTreeKey() || 'familyTreeData';
 const LAYOUT_STORAGE_KEY = 'familyTreeLayout';
-const SUBSCRIPTION_STORAGE_KEY = 'familyTreeSubscriptionTier';
+const SUBSCRIPTION_STORAGE_KEY = IS_ADMINISTRATION_REVIEW ? 'familyTreeAdministrationReviewTier' : 'familyTreeSubscriptionTier';
 const BILLING_INTERVAL_STORAGE_KEY = 'familyTreeBillingInterval';
 const STRIPE_CUSTOMER_STORAGE_KEY = 'familyTreeStripeCustomerId';
-const PLAN_SELECTION_STORAGE_KEY = 'familyTreePlanSelected';
+const PLAN_SELECTION_STORAGE_KEY = IS_ADMINISTRATION_REVIEW ? 'familyTreeAdministrationReviewPlanSelected' : 'familyTreePlanSelected';
+const TREE_REVIEW_URL = IS_ADMINISTRATION_REVIEW ? 'tree.html?admin_review=true' : 'tree.html';
+const ERROR_REVIEW_URL = IS_ADMINISTRATION_REVIEW ? 'errors.html?admin_review=true' : 'errors.html';
 const ERROR_PROGRESS_STORAGE_KEY = `${STORAGE_KEY}:errorProgress`;
 const TREE_THEME_STORAGE_KEY = 'familyTreePresentationTheme';
 const POSTER_LAYOUT_STORAGE_KEY = 'familyTreePosterLayout';
@@ -236,7 +241,7 @@ familyTreeDiv.addEventListener('click', (event) => {
   }
 
   if (event.target.closest('[data-open-error-workspace]')) {
-    window.open('errors.html', '_blank', 'noopener');
+    window.open(ERROR_REVIEW_URL, '_blank', 'noopener');
     return;
   }
 
@@ -378,7 +383,7 @@ gedcomFileInput.addEventListener('change', () => {
 });
 
 continueToTreeReviewButton?.addEventListener('click', () => {
-  window.location.href = 'tree.html';
+  window.location.href = TREE_REVIEW_URL;
 });
 
 function parseGedcomText(gedcom) {
@@ -1665,7 +1670,7 @@ function renderWorkflowOverview() {
       <h3>Step 2: Review your family tree</h3>
       <p>Your parsed GED is saved in this browser. Review the direct line shown, then continue to the Error Workspace to work through possible duplicates and other record details one clear step at a time.</p>
       <div class="workflow-actions">
-        <a class="btn-add" href="errors.html">Next: Review errors${issueCount ? ` (${issueCount})` : ''}</a>
+        <a class="btn-add" href="${ERROR_REVIEW_URL}">Next: Review errors${issueCount ? ` (${issueCount})` : ''}</a>
         <a class="btn-secondary" href="manual.html">Edit your tree manually</a>
         <a class="btn-secondary" href="ancestor.html">Explore ancestor research</a>
       </div>
@@ -2532,6 +2537,12 @@ function escapeHtml(value = '') {
 
 document.addEventListener('DOMContentLoaded', () => {
   const startupParams = new URLSearchParams(window.location.search);
+  const administrationReviewTier = startupParams.get('review_tier');
+  if (IS_ADMINISTRATION_REVIEW && SUBSCRIPTION_TIERS[administrationReviewTier]) {
+    currentTier = administrationReviewTier;
+    localStorage.setItem(SUBSCRIPTION_STORAGE_KEY, currentTier);
+    localStorage.setItem(PLAN_SELECTION_STORAGE_KEY, 'true');
+  }
   if (startupParams.get('free_review') === 'true') {
     currentTier = 'free';
     localStorage.setItem(SUBSCRIPTION_STORAGE_KEY, currentTier);
