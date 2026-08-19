@@ -219,7 +219,7 @@ function renderGenerations(treeData, peopleById, families) {
       <p class="muted">This working view starts with five generations. Add more only when you need them, or choose a different direct line.</p>
       <div class="tree-next-step">
         ${loadMore}
-        <a class="btn-add" href="${errorWorkspaceUrl}">Continue to Fix Errors</a>
+        <a class="btn-add" href="${errorWorkspaceUrl}" data-continue-to-errors>Continue to Fix Errors</a>
         <a class="btn-secondary" href="${workspaceProgressUrl}">Review Work Space Progress</a>
       </div>
       <div class="ancestry-tree" aria-label="Family ancestry tree">
@@ -297,7 +297,30 @@ function setPrimaryPerson(personId) {
   renderTreeReview();
 }
 
-review.addEventListener('click', (event) => {
+review.addEventListener('click', async (event) => {
+  const continueToErrors = event.target.closest('[data-continue-to-errors]');
+  if (continueToErrors && loadedTreeData) {
+    event.preventDefault();
+    continueToErrors.textContent = 'Opening Your Fixes...';
+    continueToErrors.setAttribute('aria-disabled', 'true');
+
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(loadedTreeData));
+    } catch (error) {
+      try {
+        await window.familyTreeClientStorage?.saveTreeInDatabase?.(STORAGE_KEY, loadedTreeData);
+      } catch (storageError) {
+        continueToErrors.textContent = 'Continue to Fix Errors';
+        continueToErrors.removeAttribute('aria-disabled');
+        alert('Your reviewed tree could not be saved. Please try again before continuing to fixes.');
+        return;
+      }
+    }
+
+    window.location.href = continueToErrors.href;
+    return;
+  }
+
   if (event.target.closest('[data-load-more-generations]')) {
     visibleGenerationCount += GENERATIONS_PER_PAGE;
     renderTreeReview();

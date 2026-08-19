@@ -1415,7 +1415,7 @@ const storedTreeData = getTreeData();
 if (storedTreeData?.people?.length) {
   renderWorkspace();
 } else if (window.familyTreeClientStorage?.loadTreeFromDatabase) {
-  workspace.innerHTML = '<p class="empty-message">Opening your family tree...</p>';
+  workspace.innerHTML = '<p class="empty-message">Opening your saved error review...</p>';
   window.familyTreeClientStorage.loadTreeFromDatabase(STORAGE_KEY)
     .then((treeData) => {
       loadedTreeData = treeData;
