@@ -6,6 +6,7 @@ const subscriptionPlans = document.getElementById('subscriptionPlans');
 const subscriptionStatus = document.getElementById('subscriptionStatus');
 const manageBillingButton = document.getElementById('manageBilling');
 const billingButtons = document.querySelectorAll('[data-billing-interval]');
+const isAdministrationReview = new URLSearchParams(window.location.search).get('admin_review') === 'true';
 
 const tiers = {
   free: {
@@ -59,8 +60,8 @@ function renderPlans() {
     const checkoutReady = stripeConfig?.configured && stripeConfig.tiers?.[id]?.[billingInterval]?.configured;
     const price = tier.prices[billingInterval];
     const priceLabel = `$${price.toFixed(2)} / month${billingInterval === 'annual' ? ' billed annually' : ''}`;
-    const testButton = stripeConfig?.testSubscriptionsEnabled
-      ? `<button class="btn-secondary" type="button" data-test-tier="${id}">Test ${escapeHtml(tier.name)} flow</button>`
+    const testButton = stripeConfig?.testSubscriptionsEnabled || isAdministrationReview
+      ? `<button class="btn-secondary" type="button" data-test-tier="${id}">${isAdministrationReview ? `Review ${escapeHtml(tier.name)} at No Charge` : `Test ${escapeHtml(tier.name)} flow`}</button>`
       : '';
     const proPackage = id === 'pro' ? `
       <aside class="pro-package-highlight">
