@@ -2538,6 +2538,11 @@ function escapeHtml(value = '') {
 document.addEventListener('DOMContentLoaded', () => {
   const startupParams = new URLSearchParams(window.location.search);
   const administrationReviewTier = startupParams.get('review_tier');
+  if (IS_ADMINISTRATION_REVIEW) {
+    document.querySelectorAll('a[href="store.html#subscriptions"]').forEach((link) => {
+      link.href = 'store.html?admin_review=true#subscriptions';
+    });
+  }
   if (IS_ADMINISTRATION_REVIEW && SUBSCRIPTION_TIERS[administrationReviewTier]) {
     currentTier = administrationReviewTier;
     localStorage.setItem(SUBSCRIPTION_STORAGE_KEY, currentTier);
