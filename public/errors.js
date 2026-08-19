@@ -1024,9 +1024,9 @@ function renderWorkspace() {
     workspace.innerHTML = `
       ${workspaceDesk}
       <section id="activeReview" class="batch-complete">
-        <h2>Start your saved review desk</h2>
-        <p>Upload a GEDCOM file first. We will create your family tree, identify items to review, and keep your progress here whenever you return.</p>
-        <a class="btn-add" href="/?start=upload">Step 1: Upload Your GEDCOM</a>
+        <h2>Your five-generation working tree is not available yet</h2>
+        <p>Return to your Working Tree Preview to continue with the five generations you selected. This review does not reopen or require the original GEDCOM.</p>
+        <a class="btn-add" href="${escapeHtml(returnToTreeLink.href)}">Return to Your Five-Generation Working Tree</a>
       </section>
     `;
     return;
