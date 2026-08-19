@@ -218,6 +218,7 @@ function renderGenerations(treeData, peopleById, families) {
       <p class="muted">This working view starts with five generations. Add more only when you need them, or choose a different direct line.</p>
       <div class="tree-next-step">
         ${loadMore}
+        <a class="btn-add" href="${errorWorkspaceUrl}">Continue to Fix Errors</a>
       </div>
       <div class="ancestry-tree" aria-label="Family ancestry tree">
         ${sections.join('')}
