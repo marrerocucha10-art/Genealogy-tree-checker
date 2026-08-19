@@ -309,7 +309,7 @@ function setPrimaryPerson(personId) {
   renderTreeReview();
 }
 
-review.addEventListener('click', async (event) => {
+review.addEventListener('click', (event) => {
   const continueToErrors = event.target.closest('[data-continue-to-errors]');
   if (continueToErrors && loadedTreeData) {
     event.preventDefault();
@@ -325,17 +325,11 @@ review.addEventListener('click', async (event) => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(loadedTreeData));
     } catch (error) {
-      try {
-        await window.familyTreeClientStorage?.saveTreeInDatabase?.(STORAGE_KEY, loadedTreeData);
-      } catch (storageError) {
-        continueToErrors.textContent = 'Continue to Fix Errors';
-        continueToErrors.removeAttribute('aria-disabled');
-        alert('Your reviewed tree could not be saved. Please try again before continuing to fixes.');
-        return;
-      }
+      void window.familyTreeClientStorage?.saveTreeInDatabase?.(STORAGE_KEY, loadedTreeData)
+        ?.catch(() => console.error('Could not save the reviewed tree to browser storage.'));
     }
 
-    window.location.href = continueToErrors.href;
+    window.location.assign(continueToErrors.href);
     return;
   }
 
