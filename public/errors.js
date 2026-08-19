@@ -12,6 +12,7 @@ const ERROR_PROGRESS_STORAGE_KEY = `${STORAGE_KEY}:errorProgress`;
 const DUPLICATE_MERGE_UNDO_STORAGE_KEY = `${STORAGE_KEY}:duplicateMergeUndo`;
 const SUBSCRIPTION_STORAGE_KEY = IS_ADMINISTRATION_REVIEW ? 'familyTreeAdministrationReviewTier' : 'familyTreeSubscriptionTier';
 const PLAN_SELECTION_STORAGE_KEY = IS_ADMINISTRATION_REVIEW ? 'familyTreeAdministrationReviewPlanSelected' : 'familyTreePlanSelected';
+const SUBSCRIPTION_STORE_URL = IS_ADMINISTRATION_REVIEW ? 'store.html?admin_review=true#subscriptions' : 'store.html#subscriptions';
 const ERROR_BATCH_SIZE = 10;
 const BASIC_ERROR_REVIEW_LIMIT = 5;
 const FREE_DUPLICATE_FIX_LIMIT = 5;
@@ -342,7 +343,7 @@ function renderBasicPlanOptions(errors, progress) {
         <p>Your free preview includes up to ${FREE_DUPLICATE_FIX_LIMIT} reviewed duplicate corrections. ${duplicateProgressMessage}</p>
         <p>Family Builder lets you continue reviewing and correcting possible duplicates, so every person has a clearer place in your family story.</p>
         <p>Your resolved work stays in this browser workspace when you upgrade, so you can continue from the same place.</p>
-        <a class="btn-secondary assistance-upgrade-link" href="store.html#subscriptions">Upgrade for more duplicate corrections</a>
+        <a class="btn-secondary assistance-upgrade-link" href="${SUBSCRIPTION_STORE_URL}">Upgrade for more duplicate corrections</a>
       </section>
     `;
   }
@@ -360,7 +361,7 @@ function renderBasicPlanOptions(errors, progress) {
       <p>${freeReviewMessage} An accurate tree is a wonderful way to share your family's story with relatives and friends, while honoring your ancestors and their contributions to society.</p>
       <p>${remainingErrors ? `Upgrade to Family Builder to fix the remaining ${remainingErrors} error${remainingErrors === 1 ? '' : 's'}, and choose Pro / Researcher when you want safe automatic fixes.` : 'Upgrade to Family Builder whenever you are ready to continue fixing errors and preserving your family history.'}</p>
       <p>Your resolved work stays in this browser workspace when you upgrade, so you can continue from the same place.</p>
-      <a class="btn-secondary assistance-upgrade-link" href="store.html#subscriptions">Choose a plan to fix the rest</a>
+      <a class="btn-secondary assistance-upgrade-link" href="${SUBSCRIPTION_STORE_URL}">Choose a plan to fix the rest</a>
     </section>
   `;
 }
