@@ -21,7 +21,8 @@ const workspaceProgressUrl = WORKSPACE_PREVIEW_MODE
   : IS_ADMINISTRATION_REVIEW
     ? 'errors.html?admin_review=true&view=progress#progressReports'
     : 'errors.html?view=progress#progressReports';
-const ERROR_REVIEW_HANDOFF_KEY = `${STORAGE_KEY}:errorReviewHandoff`;
+const FIVE_GENERATION_REVIEW_STORAGE_KEY = `${STORAGE_KEY}:fiveGenerationReview`;
+const ERROR_REVIEW_HANDOFF_KEY = `${FIVE_GENERATION_REVIEW_STORAGE_KEY}:errorReviewHandoff`;
 
 function getTreeData() {
   try {
@@ -127,6 +128,39 @@ function buildGenerationData(treeData, peopleById, primaryPerson) {
   }
 
   return generationByPerson;
+}
+
+function createFiveGenerationReviewTree(treeData) {
+  const primaryPerson = getPrimaryPerson(treeData);
+  const peopleById = new Map((treeData.people || []).map((person) => [person.id, person]));
+  const generationByPerson = buildGenerationData(treeData, peopleById, primaryPerson);
+  const includedPersonIds = new Set(
+    [...generationByPerson.entries()]
+      .filter(([, generation]) => generation <= GENERATIONS_PER_PAGE)
+      .map(([personId]) => personId),
+  );
+  const includesPerson = (personId) => personId && includedPersonIds.has(personId);
+  const reviewIssues = (issues = []) => issues.filter((issue) => includesPerson(issue.subject));
+
+  return {
+    people: (treeData.people || []).filter((person) => includedPersonIds.has(person.id)),
+    families: (treeData.families || [])
+      .filter((family) => [family.husbandId, family.wifeId, ...(family.childrenIds || [])].some(includesPerson))
+      .map((family) => ({
+        ...family,
+        husbandId: includesPerson(family.husbandId) ? family.husbandId : null,
+        wifeId: includesPerson(family.wifeId) ? family.wifeId : null,
+        childrenIds: (family.childrenIds || []).filter(includesPerson),
+      })),
+    relationships: [],
+    primaryPersonId: primaryPerson?.id || '',
+    primaryPersonSelectionMode: 'manual',
+    validationReport: {
+      errors: reviewIssues(treeData.validationReport?.errors),
+      warnings: reviewIssues(treeData.validationReport?.warnings),
+      info: [],
+    },
+  };
 }
 
 function getPeopleNames(ids, peopleById) {
@@ -316,17 +350,19 @@ review.addEventListener('click', async (event) => {
     continueToErrors.textContent = 'Opening Your Fixes...';
     continueToErrors.setAttribute('aria-disabled', 'true');
 
+    const reviewTreeData = createFiveGenerationReviewTree(loadedTreeData);
+
     try {
-      sessionStorage.setItem(ERROR_REVIEW_HANDOFF_KEY, JSON.stringify(loadedTreeData));
+      sessionStorage.setItem(ERROR_REVIEW_HANDOFF_KEY, JSON.stringify(reviewTreeData));
     } catch (error) {
       // The persistent save below remains the source of truth for large trees.
     }
 
     let databaseSave;
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(loadedTreeData));
+      localStorage.setItem(FIVE_GENERATION_REVIEW_STORAGE_KEY, JSON.stringify(reviewTreeData));
     } catch (error) {
-      databaseSave = window.familyTreeClientStorage?.saveTreeInDatabase?.(STORAGE_KEY, loadedTreeData);
+      databaseSave = window.familyTreeClientStorage?.saveTreeInDatabase?.(FIVE_GENERATION_REVIEW_STORAGE_KEY, reviewTreeData);
     }
 
     if (databaseSave) {

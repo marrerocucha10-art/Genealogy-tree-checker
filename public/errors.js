@@ -1,11 +1,12 @@
 const WORKSPACE_PREVIEW_MODE = new URLSearchParams(window.location.search).get('demo') === 'workspace';
 const IS_ADMINISTRATION_REVIEW = new URLSearchParams(window.location.search).get('admin_review') === 'true';
 const SHOW_WORKSPACE_PROGRESS = new URLSearchParams(window.location.search).get('view') === 'progress';
-const STORAGE_KEY = WORKSPACE_PREVIEW_MODE
+const TREE_STORAGE_KEY = WORKSPACE_PREVIEW_MODE
   ? 'familyTreeWorkspacePreviewData'
   : IS_ADMINISTRATION_REVIEW
     ? 'familyTreeAdministrationReviewData'
     : window.familyTreeClientStorage?.getActiveTreeKey() || 'familyTreeData';
+const STORAGE_KEY = `${TREE_STORAGE_KEY}:fiveGenerationReview`;
 const ERROR_REVIEW_HANDOFF_KEY = `${STORAGE_KEY}:errorReviewHandoff`;
 const ERROR_PROGRESS_STORAGE_KEY = `${STORAGE_KEY}:errorProgress`;
 const DUPLICATE_MERGE_UNDO_STORAGE_KEY = `${STORAGE_KEY}:duplicateMergeUndo`;
