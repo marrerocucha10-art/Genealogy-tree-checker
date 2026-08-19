@@ -9,7 +9,7 @@ const PLAN_SELECTION_STORAGE_KEY = 'familyTreePlanSelected';
 const ERROR_BATCH_SIZE = 10;
 const BASIC_ERROR_REVIEW_LIMIT = 5;
 const FREE_DUPLICATE_FIX_LIMIT = 5;
-const ERROR_REVIEW_ORDER_VERSION = 4;
+const ERROR_REVIEW_ORDER_VERSION = 5;
 const workspace = document.getElementById('errorWorkspace');
 const returnToTreeLink = document.getElementById('returnToTree');
 const planErrorWorkspaceMessage = document.getElementById('planErrorWorkspaceMessage');
@@ -753,16 +753,28 @@ function getDirectLineReviewOrder(treeData) {
     ? treeData.primaryPersonId
     : treeData?.people?.[0]?.id;
   const directOrder = new Map();
-  const queue = primaryPersonId ? [primaryPersonId] : [];
+  const queue = primaryPersonId ? [{ id: primaryPersonId, generation: 0 }] : [];
 
   for (let queueIndex = 0; queueIndex < queue.length; queueIndex += 1) {
-    const personId = queue[queueIndex];
+    const { id: personId, generation } = queue[queueIndex];
     if (directOrder.has(personId)) continue;
-    directOrder.set(personId, directOrder.size);
-    queue.push(...(parentsByChildId.get(personId) || []));
+    directOrder.set(personId, generation);
+    for (const parentId of parentsByChildId.get(personId) || []) {
+      queue.push({ id: parentId, generation: generation + 1 });
+    }
   }
 
   return directOrder;
+}
+
+function getGenerationReviewLabel(generation) {
+  if (generation === 0) return 'Starting person';
+  if (generation === 1) return 'Parent generation';
+  return `Ancestor generation ${generation}`;
+}
+
+function getGroupGeneration(group, directLineOrder) {
+  return directLineOrder.get(group.issues[0]?.subject);
 }
 
 function buildFamilyLocationIndex(treeData, peopleById) {
@@ -798,12 +810,12 @@ function renderFamilyLocationPreview(person, peopleById, locationIndex, directOr
     .filter(Boolean)
     .map((relative) => escapeHtml(relative.name || relative.id));
   const location = locationIndex.get(person.id) || { parents: new Set(), spouses: new Set(), children: new Set() };
-  const directPosition = directOrder.get(person.id);
+  const directGeneration = directOrder.get(person.id);
   const primaryPerson = peopleById.get(primaryPersonId);
-  const lineDescription = directPosition === 0
+  const lineDescription = directGeneration === 0
     ? 'Selected starting person'
-    : directPosition !== undefined
-      ? `Direct ancestor · ${directPosition} generation${directPosition === 1 ? '' : 's'} from ${escapeHtml(primaryPerson?.name || 'your selected person')}`
+    : directGeneration !== undefined
+      ? `Direct ancestor · ${getGenerationReviewLabel(directGeneration)} from ${escapeHtml(primaryPerson?.name || 'your selected person')}`
       : 'Related family branch · outside the selected direct line';
   const treeParameters = new URLSearchParams();
   if (WORKSPACE_PREVIEW_MODE) treeParameters.set('demo', 'workspace');
@@ -853,9 +865,21 @@ function getActiveIssueGroups(treeData, errors, progress) {
 
   const availableGroups = getOrderedIssueGroups(treeData, errors)
     .filter((group) => group.issues.some((issue) => !resolved.has(getIssueId(issue))));
+  const directLineOrder = getDirectLineReviewOrder(treeData);
+  const firstDirectGroup = availableGroups.find((group) => (
+    getGroupGeneration(group, directLineOrder) !== undefined
+  ));
+  const currentGeneration = firstDirectGroup
+    ? getGroupGeneration(firstDirectGroup, directLineOrder)
+    : undefined;
+  const generationGroups = currentGeneration === undefined
+    ? availableGroups
+    : availableGroups.filter((group) => (
+      getGroupGeneration(group, directLineOrder) === currentGeneration
+    ));
   const reviewingDuplicatesOneByOne = progress.duplicateReviewMode === 'single'
     && isDuplicateIssue(availableGroups[0]?.issues[0]);
-  const nextGroups = availableGroups.slice(0, reviewingDuplicatesOneByOne ? 1 : ERROR_BATCH_SIZE);
+  const nextGroups = generationGroups.slice(0, reviewingDuplicatesOneByOne ? 1 : ERROR_BATCH_SIZE);
   progress.activeGroupIds = nextGroups.map((group) => group.id);
   saveProgress(progress);
   return nextGroups;
@@ -1026,6 +1050,13 @@ function renderWorkspace() {
   const activeGroups = getActiveIssueGroups(treeData, errors, progress);
   const peopleById = new Map(treeData.people.map((person) => [person.id, person]));
   const directLineOrder = getDirectLineReviewOrder(treeData);
+  const activeGeneration = getGroupGeneration(activeGroups[0] || { issues: [] }, directLineOrder);
+  const activeReviewTitle = activeGeneration === undefined
+    ? 'Related family branch review'
+    : `${getGenerationReviewLabel(activeGeneration)} review`;
+  const activeReviewDescription = activeGeneration === undefined
+    ? 'These records are outside the selected direct line. They are shown after the selected person and each ancestor generation are complete.'
+    : `Review the errors for the ${getGenerationReviewLabel(activeGeneration).toLowerCase()} before moving outward through the family tree.`;
   const familyLocationIndex = buildFamilyLocationIndex(treeData, peopleById);
   const selectedPrimaryPersonId = peopleById.has(treeData.primaryPersonId)
     ? treeData.primaryPersonId
@@ -1044,9 +1075,9 @@ function renderWorkspace() {
       ${workspaceDesk}
       ${duplicateMergeReview}
       <section id="activeReview" class="batch-complete">
-        <h2>Batch complete</h2>
-        <p>Great job - you completed this group. ${remainingGroups} person${remainingGroups === 1 ? '' : 's'} or record${remainingGroups === 1 ? '' : 's'} remain.</p>
-        <button id="loadNextBatch" type="button" class="btn-add">Load next ${Math.min(ERROR_BATCH_SIZE, remainingGroups)} people</button>
+        <h2>Generation review complete</h2>
+        <p>Great job - you completed this generation. ${remainingGroups} person${remainingGroups === 1 ? '' : 's'} or record${remainingGroups === 1 ? '' : 's'} remain.</p>
+        <button id="loadNextBatch" type="button" class="btn-add">Continue to the next generation</button>
         ${undoButton}
         ${encouragement}
         ${pendingResearch}
@@ -1068,10 +1099,10 @@ function renderWorkspace() {
     ${workspaceDesk}
     <section id="activeReview" class="error-batch">
       <div class="report-heading">
-        <h2>Current people batch</h2>
-        <span>${activeGroups.length} of ${ERROR_BATCH_SIZE} selected</span>
+        <h2>${activeReviewTitle}</h2>
+        <span>${activeGroups.length} person${activeGroups.length === 1 ? '' : 's'} in this review</span>
       </div>
-      <p class="batch-help">${isBasicPlan && duplicateIssues.length ? `Your free preview shows up to ${FREE_DUPLICATE_FIX_LIMIT} possible duplicate corrections together. Open any record below to review it carefully before confirming its merge. Upgrade to Family Builder when you are ready to correct more duplicates.` : isBasicPlan ? `Your first ${BASIC_ERROR_REVIEW_LIMIT} manual fixes are included at no charge. Use the review guidance below, then mark each corrected record solved. Upgrade to Family Builder to fix the rest, or choose Pro / Researcher for safe automatic fixes.` : 'Each person includes all of their unresolved errors. Mark an error solved only after correcting it in the source GEDCOM or completing its recommended fix. The next batch stays locked until this batch is complete.'}</p>
+      <p class="batch-help">${activeReviewDescription} ${isBasicPlan && duplicateIssues.length ? `Your free preview shows up to ${FREE_DUPLICATE_FIX_LIMIT} possible duplicate corrections together. Open any record below to review it carefully before confirming its merge. Upgrade to Family Builder when you are ready to correct more duplicates.` : isBasicPlan ? `Your first ${BASIC_ERROR_REVIEW_LIMIT} manual fixes are included at no charge. Use the review guidance below, then mark each corrected record solved. Upgrade to Family Builder to fix the rest, or choose Pro / Researcher for safe automatic fixes.` : 'Each person includes all of their unresolved errors. Mark an error solved only after correcting it in the source GEDCOM or completing its recommended fix. The next generation stays locked until this review is complete.'}</p>
       ${duplicateMergeReview}
       ${encouragement}
       ${pendingResearch}
