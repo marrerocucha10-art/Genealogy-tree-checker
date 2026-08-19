@@ -1,4 +1,5 @@
 const WORKSPACE_PREVIEW_MODE = new URLSearchParams(window.location.search).get('demo') === 'workspace';
+const SHOW_WORKSPACE_PROGRESS = new URLSearchParams(window.location.search).get('view') === 'progress';
 const STORAGE_KEY = WORKSPACE_PREVIEW_MODE
   ? 'familyTreeWorkspacePreviewData'
   : window.familyTreeClientStorage?.getActiveTreeKey() || 'familyTreeData';
@@ -11,6 +12,7 @@ const BASIC_ERROR_REVIEW_LIMIT = 5;
 const FREE_DUPLICATE_FIX_LIMIT = 5;
 const ERROR_REVIEW_ORDER_VERSION = 5;
 const workspace = document.getElementById('errorWorkspace');
+const workspaceWelcome = document.getElementById('workspaceWelcome');
 const returnToTreeLink = document.getElementById('returnToTree');
 const planErrorWorkspaceMessage = document.getElementById('planErrorWorkspaceMessage');
 let loadedTreeData = null;
@@ -975,6 +977,7 @@ function completeDuplicateMerge(treeData, fix) {
 }
 
 function renderWorkspace() {
+  workspaceWelcome.hidden = !SHOW_WORKSPACE_PROGRESS;
   updatePlanErrorWorkspaceMessage();
   const treeData = getTreeData();
   const allErrors = [
@@ -1005,7 +1008,7 @@ function renderWorkspace() {
   const assistanceOptions = renderBasicPlanOptions(allErrors, progress);
   const encouragement = renderProgressEncouragement(errors, progress);
   const pendingResearch = renderPendingResearch(allErrors, progress);
-  const workspaceDesk = renderWorkspaceDesk(allErrors, progress);
+  const workspaceDesk = SHOW_WORKSPACE_PROGRESS ? renderWorkspaceDesk(allErrors, progress) : '';
 
   if (!treeData?.people?.length) {
     workspace.innerHTML = `

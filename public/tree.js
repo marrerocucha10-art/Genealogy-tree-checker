@@ -9,7 +9,7 @@ let loadedTreeData = null;
 let matchingPrimaryPersonIds = [];
 const requestedFocusPersonId = new URLSearchParams(window.location.search).get('focus') || '';
 const errorWorkspaceUrl = WORKSPACE_PREVIEW_MODE ? 'errors.html?demo=workspace' : 'errors.html';
-const workspaceProgressUrl = WORKSPACE_PREVIEW_MODE ? 'errors.html?demo=workspace#progressReports' : 'errors.html#progressReports';
+const workspaceProgressUrl = WORKSPACE_PREVIEW_MODE ? 'errors.html?demo=workspace&view=progress#progressReports' : 'errors.html?view=progress#progressReports';
 
 function getTreeData() {
   try {
