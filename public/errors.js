@@ -95,7 +95,7 @@ function createWorkspacePreviewTree() {
   const activeIssue = {
     category: 'Relationship detail',
     message: 'Sofia Rivera has a parent connection that needs review.',
-    suggestion: 'Compare the family record with the source GEDCOM, then confirm or correct the parent connection.',
+    suggestion: 'Compare the family record in your working tree, then confirm or correct the parent connection.',
     subject: '@I3@',
   };
   const people = [
@@ -1116,7 +1116,7 @@ function renderWorkspace() {
         <h2>${activeReviewTitle}</h2>
         <span>${activeGroups.length} person${activeGroups.length === 1 ? '' : 's'} in this review</span>
       </div>
-      <p class="batch-help">${activeReviewDescription} ${isBasicPlan && duplicateIssues.length ? `Your free preview shows up to ${FREE_DUPLICATE_FIX_LIMIT} possible duplicate corrections together. Open any record below to review it carefully before confirming its merge. Upgrade to Family Builder when you are ready to correct more duplicates.` : isBasicPlan ? `Your first ${BASIC_ERROR_REVIEW_LIMIT} manual fixes are included at no charge. Use the review guidance below, then mark each corrected record solved. Upgrade to Family Builder to fix the rest, or choose Pro / Researcher for safe automatic fixes.` : 'Each person includes all of their unresolved errors. Mark an error solved only after correcting it in the source GEDCOM or completing its recommended fix. The next generation stays locked until this review is complete.'}</p>
+      <p class="batch-help">${activeReviewDescription} ${isBasicPlan && duplicateIssues.length ? `Your free preview shows up to ${FREE_DUPLICATE_FIX_LIMIT} possible duplicate corrections together. Open any record below to review it carefully before confirming its merge. Upgrade to Family Builder when you are ready to correct more duplicates.` : isBasicPlan ? `Your first ${BASIC_ERROR_REVIEW_LIMIT} manual fixes are included at no charge. Use the review guidance below, then mark each corrected record solved. Upgrade to Family Builder to fix the rest, or choose Pro / Researcher for safe automatic fixes.` : 'Each person includes all of their unresolved errors. Mark an error solved after correcting it in this working tree or completing its recommended fix. The next selected generation opens when this generation is complete.'}</p>
       ${duplicateMergeReview}
       ${encouragement}
       ${pendingResearch}
@@ -1242,6 +1242,8 @@ workspace.addEventListener('click', (event) => {
       ...(treeData?.validationReport?.warnings || []).filter(isDuplicateIssue),
     ];
     const appliedCount = applySafeBatchFixes(treeData, getActiveIssueGroups(treeData, errors, progress), progress);
+    progress.activeGroupIds = [];
+    saveProgress(progress);
     alert(appliedCount ? `${appliedCount} safe automatic fix${appliedCount === 1 ? '' : 'es'} applied.` : 'No safe automatic fixes are available in this batch. Review the suggested fixes manually.');
     renderWorkspace();
     return;
@@ -1335,6 +1337,7 @@ workspace.addEventListener('click', (event) => {
         progress.completedNonDuplicateIssueIds.push(issueId);
       }
       if (issue) recordResolvedItem(progress, issue, 'Manual review');
+      progress.activeGroupIds = [];
       saveProgress(progress);
     }
     renderWorkspace();
@@ -1347,6 +1350,7 @@ workspace.addEventListener('click', (event) => {
     const progress = getProgress();
     if (!progress.pendingIssueIds.includes(issueId)) {
       progress.pendingIssueIds.push(issueId);
+      progress.activeGroupIds = [];
       saveProgress(progress);
     }
     renderWorkspace();
