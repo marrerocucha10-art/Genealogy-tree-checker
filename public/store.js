@@ -1,8 +1,8 @@
-const isAdministrationReview = new URLSearchParams(window.location.search).get('admin_review') === 'true';
-const SUBSCRIPTION_STORAGE_KEY = isAdministrationReview ? 'familyTreeAdministrationReviewTier' : 'familyTreeSubscriptionTier';
+const administrationReview = isAdministrationReview();
+const SUBSCRIPTION_STORAGE_KEY = administrationReview ? 'familyTreeAdministrationReviewTier' : 'familyTreeSubscriptionTier';
 const BILLING_INTERVAL_STORAGE_KEY = 'familyTreeBillingInterval';
 const STRIPE_CUSTOMER_STORAGE_KEY = 'familyTreeStripeCustomerId';
-const PLAN_SELECTION_STORAGE_KEY = isAdministrationReview ? 'familyTreeAdministrationReviewPlanSelected' : 'familyTreePlanSelected';
+const PLAN_SELECTION_STORAGE_KEY = administrationReview ? 'familyTreeAdministrationReviewPlanSelected' : 'familyTreePlanSelected';
 const subscriptionPlans = document.getElementById('subscriptionPlans');
 const subscriptionStatus = document.getElementById('subscriptionStatus');
 const manageBillingButton = document.getElementById('manageBilling');
@@ -61,8 +61,8 @@ function renderPlans() {
     const checkoutReady = stripeConfig?.configured && stripeConfig.tiers?.[id]?.[billingInterval]?.configured;
     const price = tier.prices[billingInterval];
     const priceLabel = `$${price.toFixed(2)} / month${billingInterval === 'annual' ? ' billed annually' : ''}`;
-    const testButton = stripeConfig?.testSubscriptionsEnabled || isAdministrationReview
-      ? `<button class="btn-secondary" type="button" data-test-tier="${id}">${isAdministrationReview ? `Review ${escapeHtml(tier.name)} at No Charge` : `Test ${escapeHtml(tier.name)} flow`}</button>`
+    const testButton = stripeConfig?.testSubscriptionsEnabled || administrationReview
+      ? `<button class="btn-secondary" type="button" data-test-tier="${id}">${administrationReview ? `Review ${escapeHtml(tier.name)} at No Charge` : `Test ${escapeHtml(tier.name)} flow`}</button>`
       : '';
     const proPackage = id === 'pro' ? `
       <aside class="pro-package-highlight">
@@ -77,7 +77,7 @@ function renderPlans() {
         <ul>${tier.features.map((feature) => `<li>${escapeHtml(feature)}</li>`).join('')}</ul>
         ${proPackage}
         ${isCurrent ? '<span class="plan-badge">Current</span>' : ''}
-        ${!isAdministrationReview && !isCurrent ? `<button class="btn-add" type="button" data-upgrade-tier="${id}" ${checkoutReady ? '' : 'disabled'}>${checkoutReady ? `Choose ${escapeHtml(tier.name)}` : 'Checkout unavailable'}</button>` : ''}
+        ${!administrationReview && !isCurrent ? `<button class="btn-add" type="button" data-upgrade-tier="${id}" ${checkoutReady ? '' : 'disabled'}>${checkoutReady ? `Choose ${escapeHtml(tier.name)}` : 'Checkout unavailable'}</button>` : ''}
         ${testButton}
       </article>
     `;

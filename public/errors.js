@@ -1,5 +1,5 @@
 const WORKSPACE_PREVIEW_MODE = new URLSearchParams(window.location.search).get('demo') === 'workspace';
-const IS_ADMINISTRATION_REVIEW = new URLSearchParams(window.location.search).get('admin_review') === 'true';
+const IS_ADMINISTRATION_REVIEW = isAdministrationReview();
 const SHOW_WORKSPACE_PROGRESS = new URLSearchParams(window.location.search).get('view') === 'progress';
 const TREE_STORAGE_KEY = WORKSPACE_PREVIEW_MODE
   ? 'familyTreeWorkspacePreviewData'

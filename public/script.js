@@ -1,4 +1,4 @@
-const IS_ADMINISTRATION_REVIEW = new URLSearchParams(window.location.search).get('admin_review') === 'true';
+const IS_ADMINISTRATION_REVIEW = isAdministrationReview();
 const STORAGE_KEY = IS_ADMINISTRATION_REVIEW
   ? 'familyTreeAdministrationReviewData'
   : window.familyTreeClientStorage?.getActiveTreeKey() || 'familyTreeData';

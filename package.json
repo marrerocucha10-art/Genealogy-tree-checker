@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "test": "node --check server.js && node --check gedcomParser.js && node --check public/script.js && node --check public/errors.js && node --check public/store.js && node --check public/supabase-auth.js && node --check public/manual.js && node --check public/ancestor.js && node --check public/tree.js && node --check public/client-storage.js && node --check public/clients.js"
+    "test": "node --check server.js && node --check gedcomParser.js && node --check public/script.js && node --check public/errors.js && node --check public/store.js && node --check public/supabase-auth.js && node --check public/manual.js && node --check public/ancestor.js && node --check public/tree.js && node --check public/client-storage.js && node --check public/clients.js && node --check public/admin-review-gate.js && node --check public/admin.js"
   },
   "author": "",
   "license": "ISC",
