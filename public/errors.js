@@ -478,8 +478,16 @@ function renderPendingDuplicateMergeReview(treeData) {
   const survivor = treeData?.people?.find((person) => person.id === pendingDuplicateMerge.survivorId);
   const duplicates = treeData?.people?.filter((person) => pendingDuplicateMerge.duplicateIds.includes(person.id)) || [];
   if (!survivor || !duplicates.length) {
+    // Silently returning nothing here made the merge button look dead. Say what
+    // happened instead, and offer the one action that repairs it.
     pendingDuplicateMerge = null;
-    return '';
+    return `
+      <section class="duplicate-merge-review">
+        <h2>These duplicate records are not in your working tree</h2>
+        <p>The matching records sit outside the five generations you are reviewing, so they cannot be compared here yet. Open your Working Tree Preview again to rebuild the review with every record this duplicate refers to, then return and combine them.</p>
+        <a class="btn-add" href="${escapeHtml(returnToTreeLink?.href || 'tree.html')}">Rebuild Your Five-Generation Working Tree</a>
+      </section>
+    `;
   }
 
   const personDetails = (person) => [

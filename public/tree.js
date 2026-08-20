@@ -165,6 +165,20 @@ function createFiveGenerationReviewTree(treeData) {
 
   const includesPerson = (personId) => personId && includedPersonIds.has(personId);
 
+  // A duplicate names two or three records at once. If any of them fell outside
+  // these five generations the merge had nothing to compare and its button did
+  // nothing at all, so every record a retained duplicate refers to is kept.
+  const duplicateIssues = [
+    ...(treeData.validationReport?.errors || []),
+    ...(treeData.validationReport?.warnings || []),
+  ].filter((issue) => issue.autoFix?.type === 'mergeDuplicatePeople');
+  for (const issue of duplicateIssues) {
+    const memberIds = [issue.subject, issue.autoFix.survivorId, ...(issue.autoFix.duplicateIds || [])]
+      .filter((id) => id && peopleById.has(id));
+    if (!memberIds.some((id) => includedPersonIds.has(id))) continue;
+    memberIds.forEach((id) => includedPersonIds.add(id));
+  }
+
   const families = (treeData.families || [])
     .filter((family) => [family.husbandId, family.wifeId, ...(family.childrenIds || [])].some(includesPerson))
     .map((family) => ({
