@@ -19,7 +19,7 @@ const SUBSCRIPTION_STORE_URL = IS_ADMINISTRATION_REVIEW ? 'store.html?admin_revi
 const ERROR_BATCH_SIZE = 10;
 const BASIC_ERROR_REVIEW_LIMIT = 5;
 const FREE_DUPLICATE_FIX_LIMIT = 5;
-const ERROR_REVIEW_ORDER_VERSION = 7;
+const ERROR_REVIEW_ORDER_VERSION = 8;
 const VISIBLE_REVIEW_GENERATION_COUNT = 5;
 const workspace = document.getElementById('errorWorkspace');
 const workspaceWelcome = document.getElementById('workspaceWelcome');
@@ -969,29 +969,36 @@ function getActiveIssueGroups(treeData, errors, progress) {
     progress.activeGroupIds = [];
     progress.reviewOrderVersion = ERROR_REVIEW_ORDER_VERSION;
   }
-  const groupsById = new Map(getOrderedIssueGroups(treeData, errors).map((group) => [group.id, group]));
+  const orderedGroups = getOrderedIssueGroups(treeData, errors);
+  const groupsById = new Map(orderedGroups.map((group) => [group.id, group]));
   const resolved = getResolvedIssueIds(progress);
-  const activeIds = progress.activeGroupIds.filter((id) => groupsById.has(id));
 
-  if (activeIds.length) {
-    return activeIds.map((id) => groupsById.get(id));
-  }
-
-  const availableGroups = getOrderedIssueGroups(treeData, errors)
+  const availableGroups = orderedGroups
     .filter((group) => group.issues.some((issue) => !resolved.has(getIssueId(issue))));
 
   // Duplicates come first, whatever generation they sit in. A duplicate splits
   // one person's life across two records, so fixing dates or relationships
-  // before combining them means correcting the same facts twice.
-  const duplicateGroups = availableGroups.filter((group) => isDuplicateIssue(group.issues[0]));
+  // before combining them means correcting the same facts twice. While
+  // duplicates are open the client sees only the duplicate names — every other
+  // error on those same people waits until the records are settled.
+  const duplicateGroups = availableGroups
+    .map((group) => ({ ...group, issues: group.issues.filter(isDuplicateIssue) }))
+    .filter((group) => group.issues.some((issue) => !resolved.has(getIssueId(issue))));
+
   if (duplicateGroups.length) {
-    const duplicateBatch = duplicateGroups.slice(
-      0,
-      progress.duplicateReviewMode === 'single' ? 1 : ERROR_BATCH_SIZE,
-    );
+    const duplicatesById = new Map(duplicateGroups.map((group) => [group.id, group]));
+    const keptIds = progress.activeGroupIds.filter((id) => duplicatesById.has(id));
+    const duplicateBatch = keptIds.length
+      ? keptIds.map((id) => duplicatesById.get(id))
+      : duplicateGroups.slice(0, progress.duplicateReviewMode === 'single' ? 1 : ERROR_BATCH_SIZE);
     progress.activeGroupIds = duplicateBatch.map((group) => group.id);
     saveProgress(progress);
     return duplicateBatch;
+  }
+
+  const activeIds = progress.activeGroupIds.filter((id) => groupsById.has(id));
+  if (activeIds.length) {
+    return activeIds.map((id) => groupsById.get(id));
   }
 
   const directLineOrder = getReviewGenerationOrder(treeData);
@@ -1247,9 +1254,11 @@ function renderWorkspaceContent() {
       ${workspaceDesk}
       ${duplicateMergeReview}
       <section id="activeReview" class="batch-complete">
-        <h2>Generation review complete</h2>
-        <p>Great job - you completed this generation. ${remainingGroups} person${remainingGroups === 1 ? '' : 's'} or record${remainingGroups === 1 ? '' : 's'} remain.</p>
-        <button id="loadNextBatch" type="button" class="btn-add">Continue to the next generation</button>
+        <h2>${reviewingDuplicates ? 'Duplicate settled' : 'Generation review complete'}</h2>
+        <p>${reviewingDuplicates
+          ? `Thank you - that record is settled. ${remainingGroups} person${remainingGroups === 1 ? '' : 's'} or record${remainingGroups === 1 ? '' : 's'} remain, and any further duplicates come next.`
+          : `Great job - you completed this generation. ${remainingGroups} person${remainingGroups === 1 ? '' : 's'} or record${remainingGroups === 1 ? '' : 's'} remain.`}</p>
+        <button id="loadNextBatch" type="button" class="btn-add">${reviewingDuplicates ? 'Continue' : 'Continue to the next generation'}</button>
         ${undoButton}
         ${encouragement}
         ${pendingResearch}
