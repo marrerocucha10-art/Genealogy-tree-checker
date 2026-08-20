@@ -19,7 +19,7 @@ const SUBSCRIPTION_STORE_URL = IS_ADMINISTRATION_REVIEW ? 'store.html?admin_revi
 const ERROR_BATCH_SIZE = 10;
 const BASIC_ERROR_REVIEW_LIMIT = 5;
 const FREE_DUPLICATE_FIX_LIMIT = 5;
-const ERROR_REVIEW_ORDER_VERSION = 6;
+const ERROR_REVIEW_ORDER_VERSION = 7;
 const VISIBLE_REVIEW_GENERATION_COUNT = 5;
 const workspace = document.getElementById('errorWorkspace');
 const workspaceWelcome = document.getElementById('workspaceWelcome');
@@ -956,8 +956,8 @@ function getOrderedIssueGroups(treeData, errors) {
       const rightDuplicateRank = isDuplicateIssue(right.group.issues[0]) ? 0 : 1;
       const leftOrder = descendantOrder.get(left.group.issues[0]?.subject) ?? Number.MAX_SAFE_INTEGER;
       const rightOrder = descendantOrder.get(right.group.issues[0]?.subject) ?? Number.MAX_SAFE_INTEGER;
-      return leftDirectOrder - rightDirectOrder
-        || leftDuplicateRank - rightDuplicateRank
+      return leftDuplicateRank - rightDuplicateRank
+        || leftDirectOrder - rightDirectOrder
         || leftOrder - rightOrder
         || left.index - right.index;
     })
@@ -979,6 +979,21 @@ function getActiveIssueGroups(treeData, errors, progress) {
 
   const availableGroups = getOrderedIssueGroups(treeData, errors)
     .filter((group) => group.issues.some((issue) => !resolved.has(getIssueId(issue))));
+
+  // Duplicates come first, whatever generation they sit in. A duplicate splits
+  // one person's life across two records, so fixing dates or relationships
+  // before combining them means correcting the same facts twice.
+  const duplicateGroups = availableGroups.filter((group) => isDuplicateIssue(group.issues[0]));
+  if (duplicateGroups.length) {
+    const duplicateBatch = duplicateGroups.slice(
+      0,
+      progress.duplicateReviewMode === 'single' ? 1 : ERROR_BATCH_SIZE,
+    );
+    progress.activeGroupIds = duplicateBatch.map((group) => group.id);
+    saveProgress(progress);
+    return duplicateBatch;
+  }
+
   const directLineOrder = getReviewGenerationOrder(treeData);
   const firstDirectGroup = availableGroups.find((group) => (
     getGroupGeneration(group, directLineOrder) !== undefined
@@ -991,9 +1006,7 @@ function getActiveIssueGroups(treeData, errors, progress) {
     : availableGroups.filter((group) => (
       getGroupGeneration(group, directLineOrder) === currentGeneration
     ));
-  const reviewingDuplicatesOneByOne = progress.duplicateReviewMode === 'single'
-    && isDuplicateIssue(availableGroups[0]?.issues[0]);
-  const nextGroups = generationGroups.slice(0, reviewingDuplicatesOneByOne ? 1 : ERROR_BATCH_SIZE);
+  const nextGroups = generationGroups.slice(0, ERROR_BATCH_SIZE);
   progress.activeGroupIds = nextGroups.map((group) => group.id);
   saveProgress(progress);
   return nextGroups;
@@ -1200,16 +1213,22 @@ function renderWorkspaceContent() {
   }
 
   const activeGroups = getActiveIssueGroups(treeData, errors, progress);
+  const reviewingDuplicates = activeGroups.length > 0
+    && activeGroups.every((group) => isDuplicateIssue(group.issues[0]));
   const peopleById = new Map(treeData.people.map((person) => [person.id, person]));
   const familiesById = new Map((treeData.families || []).map((family) => [family.id, family]));
   const directLineOrder = getReviewGenerationOrder(treeData);
   const activeGeneration = getGroupGeneration(activeGroups[0] || { issues: [] }, directLineOrder);
-  const activeReviewTitle = activeGeneration === undefined
-    ? 'Related family branch review'
-    : `${getGenerationReviewLabel(activeGeneration)} review`;
-  const activeReviewDescription = activeGeneration === undefined
-    ? 'These records are outside the selected direct line. They are shown after the selected person and each ancestor generation are complete.'
-    : `Review the errors for the ${getGenerationReviewLabel(activeGeneration).toLowerCase()} before moving outward through the family tree.`;
+  const activeReviewTitle = reviewingDuplicates
+    ? 'Possible duplicate records'
+    : activeGeneration === undefined
+      ? 'Related family branch review'
+      : `${getGenerationReviewLabel(activeGeneration)} review`;
+  const activeReviewDescription = reviewingDuplicates
+    ? 'Combine these first. A duplicate splits one person\u2019s life across two records, so settling them now keeps you from correcting the same dates and relationships twice. The rest of your errors open once the duplicates are handled.'
+    : activeGeneration === undefined
+      ? 'These records are outside the selected direct line. They are shown after the selected person and each ancestor generation are complete.'
+      : `Review the errors for the ${getGenerationReviewLabel(activeGeneration).toLowerCase()} before moving outward through the family tree.`;
   const familyLocationIndex = buildFamilyLocationIndex(treeData, peopleById);
   const selectedPrimaryPersonId = peopleById.has(treeData.primaryPersonId)
     ? treeData.primaryPersonId
