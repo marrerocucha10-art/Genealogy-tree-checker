@@ -83,3 +83,15 @@ async function lockAdministrationReview() {
   const destination = window.location.pathname + window.location.search + window.location.hash;
   window.location.replace(`${ADMIN_REVIEW_UNLOCK_PAGE}?return=${encodeURIComponent(destination)}`);
 }());
+
+// A page restored from the back/forward cache keeps the markup it was rendered
+// with and never re-runs the guard above, so a locked or expired session could
+// still be looking at unlocked content. Re-check on restore and reload.
+window.addEventListener('pageshow', (event) => {
+  if (!event.persisted || !administrationReviewRequested()) return;
+  requestAdministrationReviewState()
+    .then((state) => {
+      if (state.active !== ADMINISTRATION_REVIEW_STATE.active) window.location.reload();
+    })
+    .catch(() => window.location.reload());
+});

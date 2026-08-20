@@ -49,11 +49,22 @@ const ADMIN_REVIEW_SESSION_SECRET = process.env.ADMIN_REVIEW_SESSION_SECRET
 
 const adminReviewAttempts = new Map();
 
+// Passphrases get copied out of chat windows and retyped by hand, so compare a
+// normalized form: drop invisible characters, separators and case. The remaining
+// 20 alphanumerics still carry far more entropy than this gate needs, and it
+// removes the "looks identical but fails" class of support problem.
+function normalizeAdminReviewPassphrase(value) {
+  return String(value || '')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
 function getAdminReviewPassphraseHash() {
   const configuredHash = String(process.env.ADMIN_REVIEW_PASSPHRASE_HASH || '').trim().toLowerCase();
   if (/^[0-9a-f]{64}$/.test(configuredHash)) return configuredHash;
 
-  const passphrase = process.env.ADMIN_REVIEW_PASSPHRASE;
+  const passphrase = normalizeAdminReviewPassphrase(process.env.ADMIN_REVIEW_PASSPHRASE);
   if (passphrase) return crypto.createHash('sha256').update(passphrase, 'utf8').digest('hex');
 
   return '';
@@ -719,12 +730,12 @@ app.post('/api/admin-review/session', (req, res) => {
     });
   }
 
-  const passphrase = req.body?.passphrase;
-  if (typeof passphrase !== 'string' || !passphrase) {
+  const rawPassphrase = req.body?.passphrase;
+  const passphrase = normalizeAdminReviewPassphrase(rawPassphrase);
+  if (typeof rawPassphrase !== 'string' || !passphrase) {
     recordAdminReviewFailure(clientKey);
     return res.status(400).json({ success: false, error: 'A passphrase is required.' });
   }
-
   const submitted = crypto.createHash('sha256').update(passphrase, 'utf8').digest('hex');
   if (!timingSafeStringEqual(submitted, getAdminReviewPassphraseHash())) {
     recordAdminReviewFailure(clientKey);
