@@ -564,28 +564,59 @@ function toReaderFriendlyText(text, peopleById = readerLookupPeople, familiesByI
     .trim();
 }
 
-// A duplicate group is easier to judge by dates and places than by a stored sentence
-// that only repeats the same name, so the records are described from the tree itself.
-function describeDuplicatePeople(issue, peopleById = readerLookupPeople) {
+// A duplicate is judged by looking at the records next to each other, so the card
+// shows the comparison itself instead of a sentence describing it.
+function renderDuplicateComparison(issue, peopleById, familiesById) {
   const fix = issue?.autoFix;
-  if (!fix || fix.type !== 'mergeDuplicatePeople') return null;
+  if (!fix || fix.type !== 'mergeDuplicatePeople') return '';
 
-  const people = [fix.survivorId, ...(fix.duplicateIds || [])]
-    .map((id) => peopleById?.get(id))
-    .filter(Boolean);
-  if (people.length < 2) return null;
+  const ids = [fix.survivorId, ...(fix.duplicateIds || [])];
+  const records = ids.map((id) => ({ id, person: peopleById?.get(id) }));
+  const present = records.filter((record) => record.person);
+  if (!present.length) return '';
 
-  const described = people.map((person) => {
-    const name = (person.name || '').trim() || 'Unnamed record';
-    const details = [];
-    if (person.birthDate && person.birthPlace) details.push(`born ${person.birthDate} in ${person.birthPlace}`);
-    else if (person.birthDate) details.push(`born ${person.birthDate}`);
-    else if (person.birthPlace) details.push(`born in ${person.birthPlace}`);
-    if (person.deathDate) details.push(`died ${person.deathDate}`);
-    return `${name} (${details.length ? details.join(', ') : 'no dates recorded'})`;
-  });
+  const parentsOf = (person) => {
+    const names = (person.familyAsChild || [])
+      .map((familyId) => familiesById?.get(familyId))
+      .filter(Boolean)
+      .flatMap((family) => [family.husbandId, family.wifeId])
+      .map((parentId) => peopleById?.get(parentId)?.name?.trim())
+      .filter(Boolean);
+    return names.join(' and ');
+  };
 
-  return `${people.length} records look like the same person: ${described.join('; ')}.`;
+  const rows = [
+    ['Name', (person) => person.name],
+    ['Born', (person) => person.birthDate],
+    ['Birthplace', (person) => person.birthPlace],
+    ['Died', (person) => person.deathDate],
+    ['Death place', (person) => person.deathPlace],
+    ['Parents', parentsOf],
+  ];
+
+  const missing = records.length - present.length;
+
+  return `
+    <div class="duplicate-comparison">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Record</th>
+            ${present.map((record, index) => `<th scope="col">${index === 0 ? 'Record to keep' : `Record ${index + 1}`}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(([label, read]) => `
+            <tr>
+              <th scope="row">${escapeHtml(label)}</th>
+              ${present.map(({ person }) => `<td>${escapeHtml((read(person) || '').toString().trim() || 'Not recorded')}</td>`).join('')}
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+      ${missing ? `<p class="fix-suggestion">${missing} matching record${missing === 1 ? ' is' : 's are'} not in your working tree yet. Rebuild your five-generation working tree to compare ${missing === 1 ? 'it' : 'them'} here.</p>` : ''}
+    </div>
+  `;
 }
 
 function renderPendingResearch(errors, progress) {  const pendingIssues = errors.filter((issue) => progress.pendingIssueIds.includes(getIssueId(issue)));
@@ -1402,9 +1433,16 @@ function renderWorkspaceContent() {
                   `;
                   return `
                     <li data-tree-subject="${encodeURIComponent(issue.subject || '')}">
-                      <strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(describeDuplicatePeople(issue, peopleById) || toReaderFriendlyText(issue.message))}
-                      ${issue.suggestion ? `<p class="fix-suggestion">${escapeHtml(issue.suggestion)}</p>` : ''}
-                      ${issueActions}
+                      ${isDuplicateIssue(issue) ? `
+                        ${renderDuplicateComparison(issue, peopleById, familiesById)}
+                        <div class="issue-fix-actions">
+                          <button type="button" class="btn-add" data-merge-duplicates="${encodeURIComponent(JSON.stringify(issue.autoFix))}" ${freeDuplicateLimitReached ? 'disabled' : ''}>${freeDuplicateLimitReached ? 'Upgrade for more duplicate corrections' : 'Review and merge these records'}</button>
+                        </div>
+                      ` : `
+                        <strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(toReaderFriendlyText(issue.message))}
+                        ${issue.suggestion ? `<p class="fix-suggestion">${escapeHtml(issue.suggestion)}</p>` : ''}
+                        ${issueActions}
+                      `}
                     </li>
                   `;
                 }).join('')}

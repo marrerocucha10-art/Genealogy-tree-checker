@@ -3414,3 +3414,32 @@ input[type="file"] {
     page-break-after: avoid;
   }
 }
+
+.duplicate-comparison {
+  overflow-x: auto;
+  margin: 0.75rem 0 1rem;
+}
+
+.duplicate-comparison table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.duplicate-comparison th,
+.duplicate-comparison td {
+  border: 1px solid #d8dee6;
+  padding: 0.5rem 0.7rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.duplicate-comparison thead th {
+  background: #f2f5f9;
+}
+
+.duplicate-comparison tbody th {
+  background: #fafbfd;
+  white-space: nowrap;
+  width: 9rem;
+}
