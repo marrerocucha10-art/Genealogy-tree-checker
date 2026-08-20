@@ -35,14 +35,12 @@
   </div>
 
   <!--
-    To rotate the passphrase, run this in a browser console and replace
-    ADMIN_REVIEW_TOKEN in admin-review-gate.js with the printed digest:
-
-      crypto.subtle.digest('SHA-256', new TextEncoder().encode('new passphrase'))
-        .then((d) => console.log([...new Uint8Array(d)]
-          .map((b) => b.toString(16).padStart(2, '0')).join('')));
+    The passphrase is verified on the server. Set ADMIN_REVIEW_PASSPHRASE_HASH
+    (SHA-256 hex of the passphrase) in the deployment environment, and set
+    ADMIN_REVIEW_SESSION_SECRET so sessions survive a restart. Administration
+    review stays locked wherever those are unset.
   -->
-  <script src="admin-review-gate.js?v=administration-passphrase-1"></script>
-  <script src="admin.js?v=administration-passphrase-1"></script>
+  <script src="admin-review-gate.js?v=administration-server-session-1"></script>
+  <script src="admin.js?v=administration-server-session-1"></script>
 </body>
 </html>

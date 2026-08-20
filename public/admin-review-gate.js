@@ -1,56 +1,84 @@
 // Administration review gate.
 //
-// The review workspace runs entirely in the browser, so this gate is a
-// deterrent, not a security boundary: it stops casual discovery of
-// `?admin_review=true`, but anyone willing to open developer tools can set the
-// session key by hand. Enforce entitlements on the server before treating
-// administration review as protected.
-//
-// Only the SHA-256 of the passphrase is stored here, so the passphrase itself
-// never lands in the repository. To rotate it, run the snippet in
-// `admin.html`'s comment and replace the digest below.
-const ADMIN_REVIEW_TOKEN = '7537771013c4925bd4a2411616cce0ac01f21fbf18c551fb37018ecfee82b22d';
-const ADMIN_REVIEW_SESSION_KEY = 'familyTreeAdministrationReviewUnlocked';
+// The server owns this decision. It hands out an HttpOnly, HMAC-signed session
+// cookie that page scripts cannot read or forge, and this module simply asks
+// the server whether the current request may run administration review.
+// Anything other than an explicit "yes" leaves the review locked, so a static
+// deploy with no API, or an unreachable server, fails closed.
+const ADMIN_REVIEW_SESSION_ENDPOINT = '/api/admin-review/session';
 const ADMIN_REVIEW_UNLOCK_PAGE = 'admin.html';
-
-async function hashAdministrationReviewPassphrase(passphrase) {
-  const bytes = new TextEncoder().encode(passphrase);
-  const digest = await crypto.subtle.digest('SHA-256', bytes);
-  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
-}
 
 function administrationReviewRequested() {
   return new URLSearchParams(window.location.search).get('admin_review') === 'true';
 }
 
-function administrationReviewUnlocked() {
+// Page scripts read the administration flag while parsing, so the answer has to
+// be available synchronously. This request only runs on the administration
+// path, never for ordinary visitors, so it cannot slow down the normal flow.
+function fetchAdministrationReviewState() {
   try {
-    return sessionStorage.getItem(ADMIN_REVIEW_SESSION_KEY) === ADMIN_REVIEW_TOKEN;
+    const request = new XMLHttpRequest();
+    request.open('GET', ADMIN_REVIEW_SESSION_ENDPOINT, false);
+    request.send(null);
+    if (request.status !== 200) return { configured: false, active: false };
+    const result = JSON.parse(request.responseText);
+    return { configured: result.configured === true, active: result.active === true };
   } catch (error) {
-    return false;
+    return { configured: false, active: false };
   }
 }
+
+const ADMINISTRATION_REVIEW_STATE = administrationReviewRequested()
+  ? fetchAdministrationReviewState()
+  : { configured: false, active: false };
 
 function isAdministrationReview() {
-  return administrationReviewRequested() && administrationReviewUnlocked();
+  return administrationReviewRequested() && ADMINISTRATION_REVIEW_STATE.active;
 }
 
-function unlockAdministrationReview(token) {
-  sessionStorage.setItem(ADMIN_REVIEW_SESSION_KEY, token);
+async function requestAdministrationReviewState() {
+  const response = await fetch(ADMIN_REVIEW_SESSION_ENDPOINT, {
+    credentials: 'same-origin',
+    headers: { Accept: 'application/json' },
+  });
+  if (!response.ok) throw new Error('Administration review is unavailable on this deployment.');
+  return response.json();
 }
 
-function lockAdministrationReview() {
+async function unlockAdministrationReview(passphrase) {
+  let response;
   try {
-    sessionStorage.removeItem(ADMIN_REVIEW_SESSION_KEY);
+    response = await fetch(ADMIN_REVIEW_SESSION_ENDPOINT, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ passphrase }),
+    });
   } catch (error) {
-    // Ignore storage failures; the review simply stays locked.
+    throw new Error('Could not reach the server. Administration review needs the Node server running.');
   }
+
+  let result = {};
+  try {
+    result = await response.json();
+  } catch (error) {
+    throw new Error('Administration review is unavailable on this deployment.');
+  }
+
+  if (!response.ok || !result.success) {
+    throw new Error(result.error || 'That passphrase was not recognized.');
+  }
+  return result;
 }
 
-// Send anyone asking for administration review to the unlock page first. This
-// runs before the page scripts so the workspace never renders unlocked content.
+async function lockAdministrationReview() {
+  await fetch(ADMIN_REVIEW_SESSION_ENDPOINT, { method: 'DELETE', credentials: 'same-origin' });
+}
+
+// Send anyone asking for administration review to the unlock page first, so the
+// workspace never renders unlocked content without a verified session.
 (function guardAdministrationReview() {
-  if (!administrationReviewRequested() || administrationReviewUnlocked()) return;
+  if (!administrationReviewRequested() || ADMINISTRATION_REVIEW_STATE.active) return;
   if (window.location.pathname.endsWith(`/${ADMIN_REVIEW_UNLOCK_PAGE}`)) return;
   const destination = window.location.pathname + window.location.search + window.location.hash;
   window.location.replace(`${ADMIN_REVIEW_UNLOCK_PAGE}?return=${encodeURIComponent(destination)}`);

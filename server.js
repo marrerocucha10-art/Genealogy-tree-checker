@@ -21,7 +21,7 @@ app.use(express.text({ type: ['text/*', 'application/x-gedcom', 'application/oct
 
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, x-vercel-protection-bypass');
 
   if (req.method === 'OPTIONS') {
@@ -32,6 +32,137 @@ app.use((req, res, next) => {
 });
 
 const MAX_GEDCOM_BYTES = 150 * 1024 * 1024;
+
+// --- Administration review sessions -----------------------------------------
+// Administration review unlocks every paid tier at no charge, so the server
+// owns the decision. The browser only ever receives an HttpOnly cookie holding
+// an HMAC-signed, expiring token, which page scripts cannot read or forge.
+const ADMIN_REVIEW_COOKIE = 'admin_review_session';
+const ADMIN_REVIEW_SESSION_TTL_MS = 2 * 60 * 60 * 1000;
+const ADMIN_REVIEW_MAX_ATTEMPTS = 10;
+const ADMIN_REVIEW_LOCKOUT_MS = 15 * 60 * 1000;
+
+// When no signing key is configured, generate one per boot. Sessions then end
+// on restart instead of falling back to a predictable, guessable key.
+const ADMIN_REVIEW_SESSION_SECRET = process.env.ADMIN_REVIEW_SESSION_SECRET
+  || crypto.randomBytes(32).toString('hex');
+
+const adminReviewAttempts = new Map();
+
+function getAdminReviewPassphraseHash() {
+  const configuredHash = String(process.env.ADMIN_REVIEW_PASSPHRASE_HASH || '').trim().toLowerCase();
+  if (/^[0-9a-f]{64}$/.test(configuredHash)) return configuredHash;
+
+  const passphrase = process.env.ADMIN_REVIEW_PASSPHRASE;
+  if (passphrase) return crypto.createHash('sha256').update(passphrase, 'utf8').digest('hex');
+
+  return '';
+}
+
+function isAdminReviewConfigured() {
+  return Boolean(getAdminReviewPassphraseHash());
+}
+
+function timingSafeStringEqual(left, right) {
+  const leftBuffer = Buffer.from(String(left), 'utf8');
+  const rightBuffer = Buffer.from(String(right), 'utf8');
+  if (leftBuffer.length !== rightBuffer.length) return false;
+  return crypto.timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function signAdminReviewPayload(payload) {
+  return crypto.createHmac('sha256', ADMIN_REVIEW_SESSION_SECRET).update(payload).digest('base64url');
+}
+
+function createAdminReviewToken(expiresAt) {
+  const payload = Buffer.from(JSON.stringify({ exp: expiresAt }), 'utf8').toString('base64url');
+  return `${payload}.${signAdminReviewPayload(payload)}`;
+}
+
+function readAdminReviewToken(token) {
+  if (typeof token !== 'string') return null;
+  const separator = token.indexOf('.');
+  if (separator <= 0) return null;
+
+  const payload = token.slice(0, separator);
+  const signature = token.slice(separator + 1);
+  if (!signature || !timingSafeStringEqual(signature, signAdminReviewPayload(payload))) return null;
+
+  try {
+    const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    if (!Number.isFinite(data.exp) || data.exp <= Date.now()) return null;
+    return data;
+  } catch (error) {
+    return null;
+  }
+}
+
+function parseCookies(req) {
+  const cookies = {};
+  for (const part of String(req.headers.cookie || '').split(';')) {
+    const separator = part.indexOf('=');
+    if (separator < 0) continue;
+    const name = part.slice(0, separator).trim();
+    if (!name) continue;
+    try {
+      cookies[name] = decodeURIComponent(part.slice(separator + 1).trim());
+    } catch (error) {
+      cookies[name] = part.slice(separator + 1).trim();
+    }
+  }
+  return cookies;
+}
+
+function getAdminReviewSession(req) {
+  return readAdminReviewToken(parseCookies(req)[ADMIN_REVIEW_COOKIE]);
+}
+
+function isSecureRequest(req) {
+  if (req.secure) return true;
+  return String(req.get('x-forwarded-proto') || '').split(',')[0].trim() === 'https';
+}
+
+function setAdminReviewCookie(req, res, token, maxAgeSeconds) {
+  const attributes = [
+    `${ADMIN_REVIEW_COOKIE}=${token}`,
+    'Path=/',
+    'HttpOnly',
+    'SameSite=Strict',
+    `Max-Age=${maxAgeSeconds}`,
+  ];
+  if (isSecureRequest(req)) attributes.push('Secure');
+  res.append('Set-Cookie', attributes.join('; '));
+}
+
+function getAdminReviewClientKey(req) {
+  const forwarded = String(req.get('x-forwarded-for') || '').split(',')[0].trim();
+  return forwarded || req.ip || 'unknown';
+}
+
+function pruneAdminReviewAttempts(now) {
+  for (const [key, entry] of adminReviewAttempts) {
+    if (now - entry.updatedAt > ADMIN_REVIEW_LOCKOUT_MS) adminReviewAttempts.delete(key);
+  }
+}
+
+function getAdminReviewLockoutMs(key) {
+  const entry = adminReviewAttempts.get(key);
+  if (!entry || entry.count < ADMIN_REVIEW_MAX_ATTEMPTS) return 0;
+  const remaining = ADMIN_REVIEW_LOCKOUT_MS - (Date.now() - entry.updatedAt);
+  return remaining > 0 ? remaining : 0;
+}
+
+function recordAdminReviewFailure(key) {
+  const now = Date.now();
+  pruneAdminReviewAttempts(now);
+  const entry = adminReviewAttempts.get(key);
+  if (!entry || now - entry.updatedAt > ADMIN_REVIEW_LOCKOUT_MS) {
+    adminReviewAttempts.set(key, { count: 1, updatedAt: now });
+    return;
+  }
+  entry.count += 1;
+  entry.updatedAt = now;
+}
 
 const SUBSCRIPTION_TIERS = {
   personal: {
@@ -557,6 +688,59 @@ app.post(['/api/parse', '/api/parse-gedcom'], (req, res) => {
 
 app.get('/api/subscription/config', (req, res) => {
   res.json({ success: true, stripe: getStripeConfig() });
+});
+
+app.get('/api/admin-review/session', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({
+    success: true,
+    configured: isAdminReviewConfigured(),
+    active: Boolean(getAdminReviewSession(req)),
+  });
+});
+
+app.post('/api/admin-review/session', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+
+  if (!isAdminReviewConfigured()) {
+    return res.status(503).json({
+      success: false,
+      error: 'Administration review is not configured on this server. Set ADMIN_REVIEW_PASSPHRASE_HASH to enable it.',
+    });
+  }
+
+  const clientKey = getAdminReviewClientKey(req);
+  const lockoutMs = getAdminReviewLockoutMs(clientKey);
+  if (lockoutMs) {
+    res.set('Retry-After', String(Math.ceil(lockoutMs / 1000)));
+    return res.status(429).json({
+      success: false,
+      error: `Too many attempts. Try again in ${Math.ceil(lockoutMs / 60000)} minute(s).`,
+    });
+  }
+
+  const passphrase = req.body?.passphrase;
+  if (typeof passphrase !== 'string' || !passphrase) {
+    recordAdminReviewFailure(clientKey);
+    return res.status(400).json({ success: false, error: 'A passphrase is required.' });
+  }
+
+  const submitted = crypto.createHash('sha256').update(passphrase, 'utf8').digest('hex');
+  if (!timingSafeStringEqual(submitted, getAdminReviewPassphraseHash())) {
+    recordAdminReviewFailure(clientKey);
+    return res.status(401).json({ success: false, error: 'That passphrase was not recognized.' });
+  }
+
+  adminReviewAttempts.delete(clientKey);
+  const expiresAt = Date.now() + ADMIN_REVIEW_SESSION_TTL_MS;
+  setAdminReviewCookie(req, res, createAdminReviewToken(expiresAt), Math.floor(ADMIN_REVIEW_SESSION_TTL_MS / 1000));
+  return res.json({ success: true, active: true, expiresAt });
+});
+
+app.delete('/api/admin-review/session', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  setAdminReviewCookie(req, res, '', 0);
+  res.json({ success: true, active: false });
 });
 
 app.get('/api/photo-to-life/config', (req, res) => {

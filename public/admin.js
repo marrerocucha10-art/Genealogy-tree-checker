@@ -33,19 +33,14 @@ unlockForm.addEventListener('submit', async (event) => {
 
   let token;
   try {
-    token = await hashAdministrationReviewPassphrase(passphrase);
+    token = await unlockAdministrationReview(passphrase);
   } catch (error) {
-    setStatus('This browser cannot verify the passphrase. Open the page over HTTPS and try again.', true);
-    return;
-  }
-
-  if (token !== ADMIN_REVIEW_TOKEN) {
     passphraseInput.value = '';
-    setStatus('That passphrase was not recognized.', true);
+    setStatus(error.message, true);
     return;
   }
 
-  unlockAdministrationReview(token);
+  passphraseInput.value = '';
   setStatus('Unlocked. Opening administration review...', false);
   window.location.replace(getSafeReturnUrl());
 });
