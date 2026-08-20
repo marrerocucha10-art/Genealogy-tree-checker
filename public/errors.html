@@ -4,10 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Error Workspace | Genealogy Tree Checker</title>
-  <link rel="stylesheet" href="styles.css?v=duplicate-comparison-1">
+  <link rel="stylesheet" href="styles.css?v=step-nav-1">
 </head>
 <body>
   <div class="container error-workspace">
+    <nav class="step-nav" aria-label="Page navigation">
+      <button type="button" class="step-nav-back" onclick="if (history.length > 1) { history.back(); } else { location.href = 'index.html'; }">← Back</button>
+      <a class="step-nav-link" href="tree.html">Working tree</a>
+      <a class="step-nav-link" href="index.html">Start page</a>
+    </nav>
     <header id="workspaceWelcome" class="workspace-welcome">
       <p class="eyebrow">Your saved review area</p>
       <h1>Welcome to Your Error Workspace</h1>

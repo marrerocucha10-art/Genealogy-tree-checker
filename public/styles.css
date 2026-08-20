@@ -3443,3 +3443,37 @@ input[type="file"] {
   white-space: nowrap;
   width: 9rem;
 }
+
+/* Always reachable way back, so nobody is stranded mid-review. */
+.step-nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.6rem 0.2rem;
+  margin-bottom: 0.8rem;
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.step-nav-back,
+.step-nav-link {
+  display: inline-block;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid #c7d2e0;
+  border-radius: 6px;
+  background: #f7f9fc;
+  color: #1f2d3d;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.step-nav-back:hover,
+.step-nav-link:hover {
+  background: #eef3f9;
+}
