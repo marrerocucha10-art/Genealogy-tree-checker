@@ -386,7 +386,7 @@ gedcomFileInput.addEventListener('change', () => {
 });
 
 continueToTreeReviewButton?.addEventListener('click', () => {
-  window.location.href = ERROR_REVIEW_URL;
+  window.location.href = TREE_REVIEW_URL;
 });
 
 function parseGedcomText(gedcom) {
@@ -1670,11 +1670,10 @@ function renderWorkflowOverview() {
 
   return `
     <section class="workflow-overview">
-      <h3>Step 2: Fix the errors in your family tree</h3>
-      <p>Your family tree is ready. Go straight to the Error Workspace to see every error found in your first five generations, what each one means, and how to correct it.</p>
+      <h3>Step 2: Review your family tree</h3>
+      <p>Your family tree is ready. Open the five-generation Working Tree Preview, choose the direct line you want to work on, then continue to its organized Error Workspace.</p>
       <div class="workflow-actions">
-        <a class="btn-add" href="${ERROR_REVIEW_URL}">Continue to Fix Errors${issueCount ? ` (${issueCount} errors)` : ''}</a>
-        <a class="btn-secondary" href="${TREE_REVIEW_URL}">See your working tree preview</a>
+        <a class="btn-add" href="${TREE_REVIEW_URL}">Review Your Five-Generation Working Tree${issueCount ? ` (${issueCount} errors)` : ''}</a>
         <a class="btn-secondary" href="manual.html">Edit your tree manually</a>
         <a class="btn-secondary" href="ancestor.html">Explore ancestor research</a>
       </div>
