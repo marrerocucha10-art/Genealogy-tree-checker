@@ -125,6 +125,44 @@ REPLICATE_MODEL=kwaivgi/kling-v2.1
 
 Customers must confirm that they have permission to use the photo and acknowledge that the result is AI-generated, not an original historical recording. The app accepts JPG, PNG, and WebP portraits up to 10 MB and requests a five-second, subtle animation.
 
+## 🔐 Administration Review
+
+Administration review lets an administrator walk the full subscription flow without
+being charged. Add `?admin_review=true` to a page — for example
+`/store.html?admin_review=true#subscriptions` — and every plan renders a
+"Review {Plan} at No Charge" button instead of a real checkout button.
+
+Access is decided by the server, not the browser. Requesting administration review
+sends you to `/admin.html` for a passphrase; a correct one sets an HttpOnly,
+HMAC-signed, two-hour cookie that page scripts can neither read nor forge. Failed
+attempts are rate limited, and anything other than an explicit "yes" from the API
+leaves review locked — so a static deploy with no API can never unlock it.
+
+```text
+ADMIN_REVIEW_PASSPHRASE_HASH=sha256_hex_of_the_normalized_passphrase
+ADMIN_REVIEW_SESSION_SECRET=long_random_string
+```
+
+Set `ADMIN_REVIEW_SESSION_SECRET` in any environment that runs more than one
+instance. Sessions are stateless — the cookie carries its own expiry and signature,
+so any instance holding the secret can verify it — but if the secret is left unset
+each process invents a random one at boot and sessions stop working across
+instances. Changing the secret signs everyone out, which is how you revoke access.
+
+Prefer `ADMIN_REVIEW_PASSPHRASE_HASH` so the passphrase itself is never stored.
+Passphrases are compared in a normalized form (lowercased, with every
+non-alphanumeric character removed) so that capitalisation, hyphens, spaces and
+stray invisible characters from a copy-paste don't cause a confusing rejection.
+Generate the hash from that same normalized form:
+
+```bash
+node -e "const c=require('crypto');const n=process.argv[1].toLowerCase().replace(/[^a-z0-9]/g,'');console.log(c.createHash('sha256').update(n).digest('hex'))" 'your passphrase'
+```
+
+`ADMIN_REVIEW_PASSPHRASE` accepts a plaintext passphrase instead, which is
+convenient for local development. Administration review stays locked wherever
+neither variable is set.
+
 ## 🛡️ Security Features
 
 - XSS protection to prevent script injection
