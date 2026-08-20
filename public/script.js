@@ -2,6 +2,9 @@ const IS_ADMINISTRATION_REVIEW = isAdministrationReview();
 const STORAGE_KEY = IS_ADMINISTRATION_REVIEW
   ? 'familyTreeAdministrationReviewData'
   : window.familyTreeClientStorage?.getActiveTreeKey() || 'familyTreeData';
+if (IS_ADMINISTRATION_REVIEW) {
+  window.familyTreeClientStorage?.seedAdministrationReviewTree?.(STORAGE_KEY);
+}
 const LAYOUT_STORAGE_KEY = 'familyTreeLayout';
 const SUBSCRIPTION_STORAGE_KEY = IS_ADMINISTRATION_REVIEW ? 'familyTreeAdministrationReviewTier' : 'familyTreeSubscriptionTier';
 const BILLING_INTERVAL_STORAGE_KEY = 'familyTreeBillingInterval';

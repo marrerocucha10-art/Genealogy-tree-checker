@@ -7,6 +7,9 @@ const TREE_STORAGE_KEY = WORKSPACE_PREVIEW_MODE
     ? 'familyTreeAdministrationReviewData'
     : window.familyTreeClientStorage?.getActiveTreeKey() || 'familyTreeData';
 const STORAGE_KEY = `${TREE_STORAGE_KEY}:fiveGenerationReview`;
+if (IS_ADMINISTRATION_REVIEW) {
+  window.familyTreeClientStorage?.seedAdministrationReviewTree?.(TREE_STORAGE_KEY);
+}
 const ERROR_REVIEW_HANDOFF_KEY = `${STORAGE_KEY}:errorReviewHandoff`;
 const ERROR_PROGRESS_STORAGE_KEY = `${STORAGE_KEY}:errorProgress`;
 const DUPLICATE_MERGE_UNDO_STORAGE_KEY = `${STORAGE_KEY}:duplicateMergeUndo`;
@@ -31,7 +34,16 @@ function getTreeData() {
   try {
     const handoffTreeData = JSON.parse(sessionStorage.getItem(ERROR_REVIEW_HANDOFF_KEY) || 'null');
     if (handoffTreeData?.people?.length) return handoffTreeData;
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+
+    const reviewTreeData = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+    if (reviewTreeData?.people?.length) return reviewTreeData;
+
+    // Only the tree page writes the five-generation subset, so arriving here any
+    // other way — "Continue to fix errors" from the upload page or the workplace,
+    // a bookmark, a reopened tab — used to show an empty workspace. Fall back to
+    // the full tree; the review is limited to the first five generations further
+    // down regardless of which tree it started from.
+    return JSON.parse(localStorage.getItem(TREE_STORAGE_KEY) || 'null');
   } catch (error) {
     return null;
   }
