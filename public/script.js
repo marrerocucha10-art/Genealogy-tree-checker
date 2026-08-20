@@ -1,17 +1,18 @@
 const IS_ADMINISTRATION_REVIEW = isAdministrationReview();
-const STORAGE_KEY = IS_ADMINISTRATION_REVIEW
+const IS_ADMINISTRATION_WORKSPACE = isAdministrationReviewWorkspace();
+const STORAGE_KEY = IS_ADMINISTRATION_WORKSPACE
   ? 'familyTreeAdministrationReviewData'
   : window.familyTreeClientStorage?.getActiveTreeKey() || 'familyTreeData';
-if (IS_ADMINISTRATION_REVIEW) {
+if (IS_ADMINISTRATION_WORKSPACE) {
   window.familyTreeClientStorage?.seedAdministrationReviewTree?.(STORAGE_KEY);
 }
 const LAYOUT_STORAGE_KEY = 'familyTreeLayout';
-const SUBSCRIPTION_STORAGE_KEY = IS_ADMINISTRATION_REVIEW ? 'familyTreeAdministrationReviewTier' : 'familyTreeSubscriptionTier';
+const SUBSCRIPTION_STORAGE_KEY = IS_ADMINISTRATION_WORKSPACE ? 'familyTreeAdministrationReviewTier' : 'familyTreeSubscriptionTier';
 const BILLING_INTERVAL_STORAGE_KEY = 'familyTreeBillingInterval';
 const STRIPE_CUSTOMER_STORAGE_KEY = 'familyTreeStripeCustomerId';
-const PLAN_SELECTION_STORAGE_KEY = IS_ADMINISTRATION_REVIEW ? 'familyTreeAdministrationReviewPlanSelected' : 'familyTreePlanSelected';
-const TREE_REVIEW_URL = IS_ADMINISTRATION_REVIEW ? 'tree.html?admin_review=true' : 'tree.html';
-const ERROR_REVIEW_URL = IS_ADMINISTRATION_REVIEW ? 'errors.html?admin_review=true' : 'errors.html';
+const PLAN_SELECTION_STORAGE_KEY = IS_ADMINISTRATION_WORKSPACE ? 'familyTreeAdministrationReviewPlanSelected' : 'familyTreePlanSelected';
+const TREE_REVIEW_URL = IS_ADMINISTRATION_WORKSPACE ? 'tree.html?admin_review=true' : 'tree.html';
+const ERROR_REVIEW_URL = IS_ADMINISTRATION_WORKSPACE ? 'errors.html?admin_review=true' : 'errors.html';
 const ERROR_PROGRESS_STORAGE_KEY = `${STORAGE_KEY}:errorProgress`;
 const TREE_THEME_STORAGE_KEY = 'familyTreePresentationTheme';
 const POSTER_LAYOUT_STORAGE_KEY = 'familyTreePosterLayout';

@@ -71,6 +71,25 @@ function isAdministrationReview() {
   return administrationReviewRequested() && ADMINISTRATION_REVIEW_STATE.active;
 }
 
+// Keeping the no-charge buttons on everywhere must not move anyone into the
+// separate administration copy of the tree: doing that emptied the workspace and
+// sent people back to the upload page mid-review. The workspace only switches
+// when administration review is asked for deliberately.
+function administrationReviewWorkspaceRequested() {
+  const requested = new URLSearchParams(window.location.search).get('admin_review');
+  try {
+    if (requested === 'true') return true;
+    if (requested === 'false') return false;
+    return localStorage.getItem(ADMIN_REVIEW_STICKY_KEY) === 'true';
+  } catch (error) {
+    return requested === 'true';
+  }
+}
+
+function isAdministrationReviewWorkspace() {
+  return administrationReviewWorkspaceRequested() && ADMINISTRATION_REVIEW_STATE.active;
+}
+
 async function requestAdministrationReviewState() {
   const response = await fetch(ADMIN_REVIEW_SESSION_ENDPOINT, {
     credentials: 'same-origin',
