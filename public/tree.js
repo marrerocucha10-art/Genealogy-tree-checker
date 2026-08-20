@@ -140,18 +140,23 @@ function createFiveGenerationReviewTree(treeData) {
       .map(([personId]) => personId),
   );
   const includesPerson = (personId) => personId && includedPersonIds.has(personId);
-  const reviewIssues = (issues = []) => issues.filter((issue) => includesPerson(issue.subject));
+
+  const families = (treeData.families || [])
+    .filter((family) => [family.husbandId, family.wifeId, ...(family.childrenIds || [])].some(includesPerson))
+    .map((family) => ({
+      ...family,
+      husbandId: includesPerson(family.husbandId) ? family.husbandId : null,
+      wifeId: includesPerson(family.wifeId) ? family.wifeId : null,
+      childrenIds: (family.childrenIds || []).filter(includesPerson),
+    }));
+
+  const includedFamilyIds = new Set(families.map((family) => family.id).filter(Boolean));
+  const includesSubject = (subject) => includesPerson(subject) || Boolean(subject && includedFamilyIds.has(subject));
+  const reviewIssues = (issues = []) => issues.filter((issue) => includesSubject(issue.subject));
 
   return {
     people: (treeData.people || []).filter((person) => includedPersonIds.has(person.id)),
-    families: (treeData.families || [])
-      .filter((family) => [family.husbandId, family.wifeId, ...(family.childrenIds || [])].some(includesPerson))
-      .map((family) => ({
-        ...family,
-        husbandId: includesPerson(family.husbandId) ? family.husbandId : null,
-        wifeId: includesPerson(family.wifeId) ? family.wifeId : null,
-        childrenIds: (family.childrenIds || []).filter(includesPerson),
-      })),
+    families,
     relationships: [],
     primaryPersonId: primaryPerson?.id || '',
     primaryPersonSelectionMode: 'manual',

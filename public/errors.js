@@ -211,12 +211,22 @@ function saveProgress(progress) {
   }
 }
 
+function resolveTreeFocusSubject(subject) {
+  if (!subject) return '';
+  const treeData = getTreeData();
+  if ((treeData?.people || []).some((person) => person.id === subject)) return subject;
+  const family = (treeData?.families || []).find((candidate) => candidate.id === subject);
+  if (!family) return subject;
+  return family.husbandId || family.wifeId || (family.childrenIds || [])[0] || subject;
+}
+
 function updateReturnToTreeLink(progress = getProgress()) {
   if (!returnToTreeLink) return;
   const parameters = new URLSearchParams();
   if (WORKSPACE_PREVIEW_MODE) parameters.set('demo', 'workspace');
   if (IS_ADMINISTRATION_REVIEW) parameters.set('admin_review', 'true');
-  if (progress.lastReviewedSubject) parameters.set('focus', progress.lastReviewedSubject);
+  const focusSubject = resolveTreeFocusSubject(progress.lastReviewedSubject);
+  if (focusSubject) parameters.set('focus', focusSubject);
   returnToTreeLink.href = parameters.size ? `tree.html?${parameters}` : 'tree.html';
 }
 
@@ -267,6 +277,20 @@ function getRecordResearchLinks(issue, person) {
     immigration: 'https://www.archives.gov/research/immigration',
     archive: `https://archive.org/search?query=${encodeURIComponent(searchTerms)}`,
   };
+}
+
+function getResearchSubject(issue, peopleById, familiesById) {
+  const person = peopleById?.get(issue.subject);
+  if (person) return person;
+
+  const family = familiesById?.get(issue.subject);
+  if (!family) return undefined;
+
+  const parentNames = [family.husbandId, family.wifeId]
+    .map((parentId) => peopleById?.get(parentId)?.name?.trim())
+    .filter(Boolean);
+  if (!parentNames.length) return undefined;
+  return { name: parentNames.join(' and ') };
 }
 
 function renderRecordReviewOptions(issue, person) {
@@ -693,7 +717,24 @@ function removeStaleIssuesAfterDuplicateMerge(report, duplicateIds) {
   }
 }
 
-function getIssueGroups(errors) {
+function getIssueGroupLabel(subject, peopleById, familiesById) {
+  if (!subject) return 'General validation';
+  const name = peopleById?.get(subject)?.name?.trim();
+  if (name) return `${name} (${subject})`;
+
+  const family = familiesById?.get(subject);
+  if (family) {
+    const parentNames = [family.husbandId, family.wifeId]
+      .map((parentId) => peopleById?.get(parentId)?.name?.trim())
+      .filter(Boolean);
+    if (parentNames.length) return `Family of ${parentNames.join(' and ')} (${subject})`;
+    return `Family record (${subject})`;
+  }
+
+  return subject;
+}
+
+function getIssueGroups(errors, peopleById, familiesById) {
   const groups = new Map();
 
   for (const issue of errors) {
@@ -701,7 +742,7 @@ function getIssueGroups(errors) {
     if (!groups.has(id)) {
       groups.set(id, {
         id,
-        label: issue.subject || 'General validation',
+        label: getIssueGroupLabel(issue.subject, peopleById, familiesById),
         issues: [],
       });
     }
@@ -766,6 +807,18 @@ function getDirectLineReviewOrder(treeData) {
     for (const parentId of parentsByChildId.get(personId) || []) {
       queue.push({ id: parentId, generation: generation + 1 });
     }
+  }
+
+  // Validation issues can be scoped to a family rather than a person. Give each
+  // family the generation of its closest direct-line member so those issues are
+  // reviewed alongside the relatives they describe instead of being dropped.
+  for (const family of treeData?.families || []) {
+    if (!family?.id || directOrder.has(family.id)) continue;
+    const memberGenerations = [family.husbandId, family.wifeId, ...(family.childrenIds || [])]
+      .map((memberId) => directOrder.get(memberId))
+      .filter((generation) => generation !== undefined);
+    if (!memberGenerations.length) continue;
+    directOrder.set(family.id, Math.min(...memberGenerations));
   }
 
   return directOrder;
@@ -846,7 +899,9 @@ function renderFamilyLocationPreview(person, peopleById, locationIndex, directOr
 function getOrderedIssueGroups(treeData, errors) {
   const directOrder = getDirectLineReviewOrder(treeData);
   const descendantOrder = getDescendantReviewOrder(treeData);
-  return getIssueGroups(errors)
+  const peopleById = new Map((treeData?.people || []).map((person) => [person.id, person]));
+  const familiesById = new Map((treeData?.families || []).map((family) => [family.id, family]));
+  return getIssueGroups(errors, peopleById, familiesById)
     .map((group, index) => ({ group, index }))
     .sort((left, right) => {
       const leftDirectOrder = directOrder.get(left.group.issues[0]?.subject) ?? Number.MAX_SAFE_INTEGER;
@@ -1064,6 +1119,7 @@ function renderWorkspace() {
 
   const activeGroups = getActiveIssueGroups(treeData, errors, progress);
   const peopleById = new Map(treeData.people.map((person) => [person.id, person]));
+  const familiesById = new Map((treeData.families || []).map((family) => [family.id, family]));
   const directLineOrder = getDirectLineReviewOrder(treeData);
   const activeGeneration = getGroupGeneration(activeGroups[0] || { issues: [] }, directLineOrder);
   const activeReviewTitle = activeGeneration === undefined
@@ -1115,7 +1171,7 @@ function renderWorkspace() {
     <section id="activeReview" class="error-batch">
       <div class="report-heading">
         <h2>${activeReviewTitle}</h2>
-        <span>${activeGroups.length} person${activeGroups.length === 1 ? '' : 's'} in this review</span>
+        <span>${activeGroups.length} record${activeGroups.length === 1 ? '' : 's'} in this review</span>
       </div>
       <p class="batch-help">${activeReviewDescription} ${isBasicPlan && duplicateIssues.length ? `Your free preview shows up to ${FREE_DUPLICATE_FIX_LIMIT} possible duplicate corrections together. Open any record below to review it carefully before confirming its merge. Upgrade to Family Builder when you are ready to correct more duplicates.` : isBasicPlan ? `Your first ${BASIC_ERROR_REVIEW_LIMIT} manual fixes are included at no charge. Use the review guidance below, then mark each corrected record solved. Upgrade to Family Builder to fix the rest, or choose Pro / Researcher for safe automatic fixes.` : 'Each person includes all of their unresolved errors. Mark an error solved after correcting it in this working tree or completing its recommended fix. The next selected generation opens when this generation is complete.'}</p>
       ${duplicateMergeReview}
@@ -1158,7 +1214,7 @@ function renderWorkspace() {
                     <button type="button" class="btn-secondary" data-resolve-issue="${encodeURIComponent(issueId)}" data-duplicate-issue="${isDuplicateIssue(issue)}" ${isResolved ? 'disabled' : ''}>${isCompleted ? 'Solved' : isPending ? 'Pending review' : 'Mark solved'}</button>
                     ${isResolved ? '' : `<button type="button" class="btn-secondary" data-pending-issue="${encodeURIComponent(issueId)}">Save for Later and Continue</button>`}
                     </div>
-                    ${renderRecordReviewOptions(issue, peopleById.get(issue.subject))}
+                    ${renderRecordReviewOptions(issue, getResearchSubject(issue, peopleById, familiesById))}
                     <p class="manual-review-note" hidden>Review the source record and suggestion above, then mark this item solved or move it to Fix Later (Pending) without blocking your progress.</p>
                   `;
                   return `
