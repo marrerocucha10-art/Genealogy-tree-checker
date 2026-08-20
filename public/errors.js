@@ -461,6 +461,17 @@ function renderDuplicateMergeReview() {
   `;
 }
 
+function renderDuplicateReviewChoice(duplicateIssues) {
+  return `
+    <section class="duplicate-merge-review">
+      <h2>How would you like to review possible duplicates?</h2>
+      <p>We found ${duplicateIssues.length} possible duplicate record${duplicateIssues.length === 1 ? '' : 's'} in this review. You will always confirm each merge separately before anything changes.</p>
+      <button type="button" class="btn-add" data-duplicate-review-mode="single">Review One Duplicate Group at a Time</button>
+      <button type="button" class="btn-secondary" data-duplicate-review-mode="batch">Review All Duplicate Groups in This Batch</button>
+    </section>
+  `;
+}
+
 function renderPendingDuplicateMergeReview(treeData) {
   if (!pendingDuplicateMerge) return '';
 
@@ -469,17 +480,6 @@ function renderPendingDuplicateMergeReview(treeData) {
   if (!survivor || !duplicates.length) {
     pendingDuplicateMerge = null;
     return '';
-  }
-
-  function renderDuplicateReviewChoice(duplicateIssues) {
-    return `
-      <section class="duplicate-merge-review">
-        <h2>How would you like to review possible duplicates?</h2>
-        <p>We found ${duplicateIssues.length} possible duplicate record${duplicateIssues.length === 1 ? '' : 's'} in this review. You will always confirm each merge separately before anything changes.</p>
-        <button type="button" class="btn-add" data-duplicate-review-mode="single">Review One Duplicate Group at a Time</button>
-        <button type="button" class="btn-secondary" data-duplicate-review-mode="batch">Review All Duplicate Groups in This Batch</button>
-      </section>
-    `;
   }
 
   const personDetails = (person) => [
@@ -846,10 +846,44 @@ function getGroupGeneration(group, directLineOrder) {
   return directLineOrder.get(group.issues[0]?.subject);
 }
 
+// The direct line only walks parents, so spouses, children and unconnected
+// records were dropped from the review even when their errors sit inside the
+// first five generations. Place every person in the tree so no error is hidden.
+function getReviewGenerationOrder(treeData) {
+  const order = new Map(getDirectLineReviewOrder(treeData));
+  const peopleById = new Map((treeData?.people || []).map((person) => [person.id, person]));
+
+  // Relatives share the generation of the closest placed member of their family.
+  let placedAnother = true;
+  while (placedAnother) {
+    placedAnother = false;
+    for (const family of treeData?.families || []) {
+      const memberIds = [family.husbandId, family.wifeId, ...(family.childrenIds || [])]
+        .filter((id) => peopleById.has(id));
+      const placed = memberIds.map((id) => order.get(id)).filter((generation) => generation !== undefined);
+      if (!placed.length) continue;
+      const generation = Math.min(...placed);
+      for (const id of memberIds) {
+        if (order.has(id)) continue;
+        order.set(id, generation);
+        placedAnother = true;
+      }
+      if (family?.id && !order.has(family.id)) order.set(family.id, generation);
+    }
+  }
+
+  // Records with no family links still carry errors worth correcting.
+  for (const person of treeData?.people || []) {
+    if (!order.has(person.id)) order.set(person.id, 0);
+  }
+
+  return order;
+}
+
 function getVisibleGenerationErrors(treeData, errors) {
-  const directLineOrder = getDirectLineReviewOrder(treeData);
+  const reviewOrder = getReviewGenerationOrder(treeData);
   return errors.filter((issue) => {
-    const generation = directLineOrder.get(issue.subject);
+    const generation = reviewOrder.get(issue.subject);
     return generation !== undefined && generation < VISIBLE_REVIEW_GENERATION_COUNT;
   });
 }
@@ -945,7 +979,7 @@ function getActiveIssueGroups(treeData, errors, progress) {
 
   const availableGroups = getOrderedIssueGroups(treeData, errors)
     .filter((group) => group.issues.some((issue) => !resolved.has(getIssueId(issue))));
-  const directLineOrder = getDirectLineReviewOrder(treeData);
+  const directLineOrder = getReviewGenerationOrder(treeData);
   const firstDirectGroup = availableGroups.find((group) => (
     getGroupGeneration(group, directLineOrder) !== undefined
   ));
@@ -1168,7 +1202,7 @@ function renderWorkspaceContent() {
   const activeGroups = getActiveIssueGroups(treeData, errors, progress);
   const peopleById = new Map(treeData.people.map((person) => [person.id, person]));
   const familiesById = new Map((treeData.families || []).map((family) => [family.id, family]));
-  const directLineOrder = getDirectLineReviewOrder(treeData);
+  const directLineOrder = getReviewGenerationOrder(treeData);
   const activeGeneration = getGroupGeneration(activeGroups[0] || { issues: [] }, directLineOrder);
   const activeReviewTitle = activeGeneration === undefined
     ? 'Related family branch review'

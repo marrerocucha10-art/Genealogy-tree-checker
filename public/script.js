@@ -1664,14 +1664,21 @@ function renderSummary(generationData = null) {
 
 function renderWorkflowOverview() {
   const report = treeData.validationReport || createEmptyValidationReport();
-  const issueCount = report.errors.length + report.warnings.filter((issue) => (
+  const duplicateIssues = report.warnings.filter((issue) => (
     issue.autoFix?.type === 'mergeDuplicatePeople'
-  )).length;
+  ));
+  const issueCount = report.errors.length + duplicateIssues.length;
+  const duplicateNotice = duplicateIssues.length ? `
+      <aside class="pro-package-highlight">
+        <strong>${duplicateIssues.length} possible duplicate record${duplicateIssues.length === 1 ? '' : 's'} found while reading your file</strong>
+        <p>Combine these first. Duplicates split one person's life across two records, so correcting them before anything else keeps the rest of your dates and relationships from being fixed twice.</p>
+      </aside>` : '';
 
   return `
     <section class="workflow-overview">
       <h3>Step 2: Review your family tree</h3>
       <p>Your family tree is ready. Open the five-generation Working Tree Preview, choose the direct line you want to work on, then continue to its organized Error Workspace.</p>
+      ${duplicateNotice}
       <div class="workflow-actions">
         <a class="btn-add" href="${TREE_REVIEW_URL}">Review Your Five-Generation Working Tree${issueCount ? ` (${issueCount} errors)` : ''}</a>
         <a class="btn-secondary" href="manual.html">Edit your tree manually</a>
