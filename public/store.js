@@ -1,6 +1,8 @@
-const SUBSCRIPTION_STORAGE_KEY = 'familyTreeSubscriptionTier';
+const administrationReview = isAdministrationReview();
+const SUBSCRIPTION_STORAGE_KEY = administrationReview ? 'familyTreeAdministrationReviewTier' : 'familyTreeSubscriptionTier';
 const BILLING_INTERVAL_STORAGE_KEY = 'familyTreeBillingInterval';
 const STRIPE_CUSTOMER_STORAGE_KEY = 'familyTreeStripeCustomerId';
+const PLAN_SELECTION_STORAGE_KEY = administrationReview ? 'familyTreeAdministrationReviewPlanSelected' : 'familyTreePlanSelected';
 const subscriptionPlans = document.getElementById('subscriptionPlans');
 const subscriptionStatus = document.getElementById('subscriptionStatus');
 const manageBillingButton = document.getElementById('manageBilling');
@@ -9,27 +11,27 @@ const billingButtons = document.querySelectorAll('[data-billing-interval]');
 const tiers = {
   free: {
     name: 'Basic',
-    description: 'Review your tree, start a family tree manually, and fix up to 20 validation errors for free.',
+    description: 'Upload a GEDCOM file and manually fix the first five validation errors at no charge.',
     prices: { monthly: 0, annual: 0 },
-    features: ['Parse a small GEDCOM', 'Start a family tree manually', '20 non-duplicate error fixes', 'Free duplicate merges'],
+    features: ['GEDCOM uploads up to 150 MB', 'Manually fix the first 5 validation errors', 'Upgrade to fix the remaining errors'],
   },
   personal: {
     name: 'Family Builder',
     description: 'Organize one family tree with unlimited error review, charts, and research worksheets.',
     prices: { monthly: 19.99, annual: 19.99 },
-    features: ['Unlimited manual error fixes', 'Family-tree organization', 'Printable tree and exports', 'Research worksheets'],
+    features: ['GEDCOM uploads up to 500 MB', 'Unlimited manual error fixes', 'Family-tree organization', 'Printable tree and exports', 'Research worksheets'],
   },
   pro: {
     name: 'Pro / Researcher',
-    description: 'Unlock advanced cleanup, reporting, and the Genealogy Pro Package.',
+    description: 'Unlock advanced cleanup, reporting, the Genealogy Pro Package, and up to 10 separately organized family trees.',
     prices: { monthly: 29.99, annual: 29.99 },
-    features: ['Safe automatic fixes', 'Full correction report', 'Advanced validation workflow', 'Genealogy Pro Package'],
+    features: ['Up to 10 separate family-tree workspaces', 'Surname and generation labels for each workspace', 'GEDCOM uploads up to 500 MB', 'Safe automatic fixes', 'Full correction report', 'Advanced validation workflow', 'Genealogy Pro Package'],
   },
   business: {
     name: 'Business / Genealogist',
     description: 'Support client-facing genealogy workflows.',
     prices: { monthly: 39.99, annual: 39.99 },
-    features: ['Client tree workflow', 'Branded reports roadmap', 'Higher limits roadmap'],
+    features: ['Unlimited separate client workspaces', 'Surname and generation labels for each workspace', 'GEDCOM uploads up to 2 GB', 'Client tree workflow', 'Branded reports roadmap'],
   },
 };
 
@@ -50,21 +52,33 @@ function updateBillingButtons() {
 
 function renderPlans() {
   const current = tiers[currentTier] || tiers.free;
-  subscriptionStatus.textContent = `Current plan: ${current.name} · ${billingInterval === 'annual' ? 'Annual billing' : 'Monthly billing'}`;
-  subscriptionPlans.innerHTML = Object.entries(tiers).map(([id, tier]) => {
-    const isFree = id === 'free';
+  manageBillingButton.hidden = !stripeCustomerId;
+  subscriptionStatus.textContent = currentTier === 'free'
+    ? 'Current access: Free tree review'
+    : `Current plan: ${current.name} · ${billingInterval === 'annual' ? 'Annual billing' : 'Monthly billing'}`;
+  subscriptionPlans.innerHTML = Object.entries(tiers).filter(([id]) => id !== 'free').map(([id, tier]) => {
     const isCurrent = id === currentTier;
-    const checkoutReady = isFree || stripeConfig?.configured && stripeConfig.tiers?.[id]?.[billingInterval]?.configured;
+    const checkoutReady = stripeConfig?.configured && stripeConfig.tiers?.[id]?.[billingInterval]?.configured;
     const price = tier.prices[billingInterval];
-    const priceLabel = isFree ? 'Free' : `$${price.toFixed(2)} / month${billingInterval === 'annual' ? ' billed annually' : ''}`;
+    const priceLabel = `$${price.toFixed(2)} / month${billingInterval === 'annual' ? ' billed annually' : ''}`;
+    const testButton = stripeConfig?.testSubscriptionsEnabled || administrationReview
+      ? `<button class="btn-secondary" type="button" data-test-tier="${id}">${administrationReview ? `Review ${escapeHtml(tier.name)} at No Charge` : `Test ${escapeHtml(tier.name)} flow`}</button>`
+      : '';
+    const proPackage = id === 'pro' ? `
+      <aside class="pro-package-highlight">
+        <strong>Genealogy Pro Package included</strong>
+        <p>Digital products, print products, research services, and research journals are included with this plan.</p>
+      </aside>` : '';
     return `
       <article class="subscription-card ${isCurrent ? 'current' : ''}">
         <h3>${escapeHtml(tier.name)}</h3>
         <p class="plan-price">${escapeHtml(priceLabel)}</p>
         <p>${escapeHtml(tier.description)}</p>
         <ul>${tier.features.map((feature) => `<li>${escapeHtml(feature)}</li>`).join('')}</ul>
+        ${proPackage}
         ${isCurrent ? '<span class="plan-badge">Current</span>' : ''}
-        ${!isFree && !isCurrent ? `<button class="btn-add" type="button" data-upgrade-tier="${id}" ${checkoutReady ? '' : 'disabled'}>${checkoutReady ? `Choose ${escapeHtml(tier.name)}` : 'Checkout unavailable'}</button>` : ''}
+        ${!administrationReview && !isCurrent ? `<button class="btn-add" type="button" data-upgrade-tier="${id}" ${checkoutReady ? '' : 'disabled'}>${checkoutReady ? `Choose ${escapeHtml(tier.name)}` : 'Checkout unavailable'}</button>` : ''}
+        ${testButton}
       </article>
     `;
   }).join('');
@@ -93,11 +107,21 @@ async function applyCheckoutReturn() {
   stripeCustomerId = subscription.customerId || '';
   localStorage.setItem(SUBSCRIPTION_STORAGE_KEY, currentTier);
   localStorage.setItem(BILLING_INTERVAL_STORAGE_KEY, billingInterval);
+  localStorage.setItem(PLAN_SELECTION_STORAGE_KEY, 'true');
   if (stripeCustomerId) localStorage.setItem(STRIPE_CUSTOMER_STORAGE_KEY, stripeCustomerId);
-  window.history.replaceState({}, document.title, window.location.pathname);
+  window.location.href = '/?start=upload';
 }
 
 subscriptionPlans.addEventListener('click', async (event) => {
+  const testButton = event.target.closest('[data-test-tier]');
+  if (testButton) {
+    currentTier = testButton.dataset.testTier;
+    localStorage.setItem(SUBSCRIPTION_STORAGE_KEY, currentTier);
+    localStorage.setItem(PLAN_SELECTION_STORAGE_KEY, 'true');
+    window.location.href = `index.html?start=upload&test_plan=true&admin_review=true&review_tier=${encodeURIComponent(currentTier)}`;
+    return;
+  }
+
   const button = event.target.closest('[data-upgrade-tier]');
   if (!button) return;
   button.disabled = true;
@@ -107,6 +131,16 @@ subscriptionPlans.addEventListener('click', async (event) => {
     button.disabled = false;
     alert(error.message);
   }
+});
+
+document.querySelector('[data-toggle-coming-soon]')?.addEventListener('click', (event) => {
+  const content = document.getElementById('comingSoonKeepsakes');
+  const isOpen = content.hidden;
+  content.hidden = !isOpen;
+  event.currentTarget.setAttribute('aria-expanded', String(isOpen));
+  event.currentTarget.textContent = isOpen
+    ? 'Hide Personalized Keepsakes'
+    : 'Coming Soon: Explore Personalized Keepsakes';
 });
 
 billingButtons.forEach((button) => button.addEventListener('click', () => {

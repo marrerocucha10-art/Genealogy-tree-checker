@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Genealogy Tree Checker</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=permanent-preview-access-1">
 </head>
 <body>
   <div class="container">
@@ -14,44 +14,134 @@
     </header>
 
     <main>
-      <section class="hero-section">
-        <div class="hero-content">
-          <h2 class="hero-headline">Every family has a story worth telling.</h2>
-          <p class="hero-subtext">
-            Genealogy Tree Checker helps you explore, clean, and understand your family history — 
-            turning raw genealogy data into meaningful connections across generations.
-          </p>
-          <p class="hero-subtext">
-            Whether you're just starting out or diving deep into decades of research, 
-            you're in the right place. Upload your GEDCOM file below and let's discover your roots together.
-          </p>
-          <a href="#gedcomForm" class="btn-hero-cta">Start with your GEDCOM ↓</a>
+      <section class="welcome-panel">
+        <div>
+          <p class="eyebrow">Welcome to your family history workspace</p>
+          <h2>Your family story is waiting to be rediscovered.</h2>
+          <p>Bring together the names, memories, and connections that make your family unique. Whether you upload a GEDCOM file or begin a new tree, we will be beside you as each branch comes into focus.</p>
         </div>
-        <nav class="explore-links" aria-label="Explore features">
-          <a href="manual.html" class="explore-link">✏️ Build a Family Tree</a>
-          <a href="ancestor.html" class="explore-link">🔍 Ancestor Discovery</a>
-          <a href="/store" class="explore-link explore-link--store" target="_blank" rel="noopener">🛒 Store & Plans</a>
-        </nav>
+        <aside class="welcome-preview" aria-label="What the app includes">
+          <h3>Your family story starts here</h3>
+          <ul>
+            <li><strong>Bring your family file to life</strong><span>Upload your GEDCOM and begin exploring the people and connections within it.</span></li>
+            <li><strong>Follow the branches that connect you</strong><span>Start with a person and discover the generations that came before.</span></li>
+            <li><strong>Care for every important detail</strong><span>Find clear guidance to help your family story feel complete and ready to share.</span></li>
+          </ul>
+        </aside>
       </section>
 
-      <section class="form-section">
-        <h2>Upload your GEDCOM file</h2>
+      <section class="research-video-preview" aria-labelledby="researchVideoTitle">
+        <div class="research-video-copy">
+          <p class="eyebrow">A story to share</p>
+          <h2 id="researchVideoTitle">From family records to a keepsake you can treasure.</h2>
+          <p>As you work through each branch, your discoveries can become a living family story to revisit, share, and preserve.</p>
+        </div>
+        <video class="research-video" autoplay loop muted playsinline controls aria-label="Family members revisiting treasured photographs">
+          <source src="family-memory-documentary-preview.mp4#t=0,15" type="video/mp4">
+          Your browser does not support the video tag.
+        </video>
+        <p class="video-credit">Preview video by cottonbro studio on Pexels.</p>
+      </section>
+
+      <section class="workflow-preview" aria-label="Animated preview of the genealogy workflow">
+        <div class="workflow-preview-heading">
+          <p class="eyebrow">A gentle guide</p>
+          <h2>See your story take shape</h2>
+          <p>A welcoming look at the journey from a family file to a clearer, shareable tree.</p>
+        </div>
+        <div class="workflow-animation" aria-hidden="true">
+          <article class="workflow-animation-step upload-preview">
+            <span>1</span>
+            <strong>Upload</strong>
+            <small>Read your GEDCOM</small>
+          </article>
+          <i></i>
+          <article class="workflow-animation-step tree-preview">
+            <span>2</span>
+            <strong>Family Tree</strong>
+            <small>Review ancestry</small>
+          </article>
+          <i></i>
+          <article class="workflow-animation-step fix-preview">
+            <span>3</span>
+            <strong>Fix Errors</strong>
+            <small>Follow each suggestion, correct the record, then mark it solved or save it for later research.</small>
+          </article>
+        </div>
+      </section>
+
+      <section id="freeReviewInvitation" class="welcome-continue">
+        <p class="eyebrow">Your next family discovery begins here</p>
+        <h2>Great news - your first five family-tree fixes are our gift to you!</h2>
+        <p>Take your time, upload your GEDCOM file, and begin bringing your first five details into clearer focus at no charge. When you are ready for more help, you can choose the support that feels right for your family’s journey.</p>
+        <p class="experience-promise">You are creating something meaningful: a family story that can be understood, treasured, and shared for generations to come.</p>
+        <div class="welcome-actions">
+          <a id="welcomeStartAction" href="index.html?start=upload&free_review=true" class="btn-add welcome-action">Begin Your Family Tree Review</a>
+          <a id="exploreWaysAction" href="store.html#subscriptions" class="btn-secondary welcome-action">Explore Your Family Tree Options with a Subscription</a>
+        </div>
+      </section>
+
+      <section id="selectedPlanSteps" class="guided-upload selected-plan-steps" hidden>
+        <h2 id="selectedPlanTitle">Welcome to your family-story journey!</h2>
+        <p id="selectedPlanWelcome" class="guided-celebration">Wonderful choice - your plan is ready, and your family-story journey can begin.</p>
+        <p>Your plan includes:</p>
+        <ul id="selectedPlanFeatures" class="guided-steps"></ul>
+        <ol class="guided-steps">
+          <li><strong>Upload your GEDCOM file.</strong> Choose your family file and we will read it automatically.</li>
+          <li><strong>Review your direct family line.</strong> Check the people and connections shown in your tree.</li>
+          <li><strong>Follow the guided error review.</strong> Resolve, defer, or print progress as you build a clearer family story.</li>
+        </ol>
+        <a id="continuePlanFlowAction" href="workplace.html" class="btn-add">Open Your Work Place</a>
+      </section>
+
+      <aside class="privacy-assurance" aria-label="Privacy assurance">
+        <div class="privacy-icon" aria-hidden="true"></div>
+        <div>
+          <strong>Your family tree stays yours.</strong>
+          <p>Your research is stored in your browser. It will not be copied, sold, or shared with anyone, and you keep full control of your family history.</p>
+        </div>
+      </aside>
+
+      <section class="options-section">
+        <h2>Where would you like your story to lead next?</h2>
+        <p class="section-intro">Start with a family file, build a tree by hand, explore ancestors, or discover thoughtful ways to preserve what you find.</p>
+        <div class="option-grid">
+          <a href="store.html#subscriptions" class="option-button"><strong>Explore your options</strong><span>Find the support that fits your family history project.</span></a>
+          <a href="manual.html" class="option-button"><strong>Start a new family tree</strong><span>Add your relatives one person at a time.</span></a>
+          <a href="ancestor.html" class="option-button"><strong>Discover ancestors</strong><span>Explore research ideas for the people in your tree.</span></a>
+          <a href="clients.html" class="option-button"><strong>Client workspaces</strong><span>Keep each client tree organized separately.</span></a>
+          <a href="/store" class="option-button featured-option" target="_blank" rel="noopener"><strong>Visit the Store</strong><span>Explore plans, products, and keepsakes.</span></a>
+        </div>
+      </section>
+
+      <section id="uploadSection" class="form-section" hidden>
+        <h2>Step 1: Upload Your Family File</h2>
+        <div class="guided-upload">
+          <p id="selectedPlanGuidance" class="guided-celebration">Wonderful - your plan is ready, and your family-story journey can begin.</p>
+          <ol class="guided-steps">
+            <li><strong>Upload your GEDCOM file.</strong> Choose your family file below and we will read it automatically.</li>
+            <li><strong>Review your direct family line.</strong> Check the people and connections shown in your tree.</li>
+            <li><strong>Work through clear next steps.</strong> Review possible duplicates and other details, then resolve, defer, or print your progress.</li>
+          </ol>
+        </div>
         <form id="gedcomForm">
           <div class="form-group">
-            <label for="gedcomFile">GEDCOM file:</label>
+            <label for="gedcomFile">Choose your GEDCOM file</label>
             <input type="file" id="gedcomFile" accept=".ged,.gedcom,.ged.txt,.txt,.zip,.gedzip,application/x-gedcom,application/zip,text/plain,application/octet-stream" required>
           </div>
-          <button type="submit" class="btn-add">Explore your family story</button>
         </form>
-        <p class="help-text">Supports .ged, .gedcom, text GEDCOM downloads, and .zip files containing a GEDCOM file.</p>
+        <p id="gedcomUploadLimit" class="help-text">Supports .ged, .gedcom, text GEDCOM downloads, and .zip files containing a GEDCOM file.</p>
         <p id="uploadStatus" class="status-message" aria-live="polite"></p>
+        <div id="uploadCompleteActions" class="upload-complete-actions" hidden>
+          <button id="continueToTreeReview" type="button" class="btn-add">Continue to Family Tree</button>
+        </div>
         <div class="gedcom-backup-actions">
           <button id="downloadGedcomBackup" type="button" class="btn-secondary">Download Saved GEDCOM Backup</button>
           <button id="restoreGedcomBackup" type="button" class="btn-secondary">Restore Saved GEDCOM Backup</button>
         </div>
       </section>
 
-      <section class="tree-section">
+      <section id="treeOverviewSection" class="tree-section" hidden>
         <div class="section-header">
           <div>
             <h2>Your Parsed Family Tree</h2>
@@ -63,7 +153,7 @@
           </div>
         </div>
         <div id="familyTree" class="family-tree">
-          <p class="empty-message">Parse a GEDCOM file or start a family tree manually.</p>
+          <p class="empty-message">Your family-tree overview will appear here after you upload a family file or create a new tree.</p>
         </div>
       </section>
     </main>
@@ -73,6 +163,8 @@
     </footer>
   </div>
 
-  <script src="script.js?v=simplified-genealogy-tree"></script>
+  <script src="admin-review-gate.js?v=administration-server-session-2"></script>
+  <script src="client-storage.js"></script>
+  <script src="script.js?v=administration-passphrase-1"></script>
 </body>
 </html>

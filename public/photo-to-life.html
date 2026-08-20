@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Photo to Life | Genealogy Tree Checker</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container photo-to-life-page">
+    <header>
+      <h1>Bring a Family Photo to Life</h1>
+      <p>Create a gentle, AI-generated motion keepsake from a treasured family portrait.</p>
+    </header>
+    <main>
+      <section class="photo-to-life-intro">
+        <p class="eyebrow">A new way to remember</p>
+        <h2>Let a treasured portrait move again.</h2>
+        <p>Choose a photo you are authorized to use. We will create a short, subtle animation that can become part of your family's living story.</p>
+      </section>
+
+      <section class="photo-to-life-form-section">
+        <form id="photoToLifeForm">
+          <div class="form-group">
+            <label for="memoryPhoto">Choose a family photo</label>
+            <input id="memoryPhoto" type="file" accept="image/jpeg,image/png,image/webp" required>
+            <p class="help-text">Use a clear portrait in JPG, PNG, or WebP format, up to 10 MB.</p>
+          </div>
+          <fieldset class="motion-options">
+            <legend>Choose a gentle motion</legend>
+            <label><input type="radio" name="motion" value="A subtle smile, natural blinking, and a gentle camera push-in." checked> A warm smile and gentle movement</label>
+            <label><input type="radio" name="motion" value="A quiet, natural gaze with subtle blinking and a soft camera movement."> A quiet, reflective moment</label>
+          </fieldset>
+          <label class="consent-check"><input id="photoPermission" type="checkbox" required> I have permission to use this photo and to create an AI-generated animation of the person shown.</label>
+          <label class="consent-check"><input id="aiDisclosure" type="checkbox" required> I understand this is an AI-generated keepsake, not an original historical recording.</label>
+          <button id="createMemoryVideo" class="btn-add" type="submit">Create My Memory Video</button>
+        </form>
+        <p id="photoToLifeStatus" class="status-message" aria-live="polite"></p>
+      </section>
+
+      <section id="photoToLifeResult" class="photo-to-life-result" hidden>
+        <h2>Your memory video is ready</h2>
+        <video id="memoryVideo" controls playsinline></video>
+        <a id="downloadMemoryVideo" class="btn-secondary" download>Download your memory video</a>
+        <p class="ai-label">AI-generated animation created from your authorized photo.</p>
+      </section>
+    </main>
+    <footer><a href="errors.html">Return to fixing family errors</a></footer>
+  </div>
+  <script src="photo-to-life.js"></script>
+</body>
+</html>

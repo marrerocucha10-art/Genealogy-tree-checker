@@ -1,9 +1,15 @@
-const STORAGE_KEY = 'familyTreeData';
+const IS_ADMINISTRATION_REVIEW = isAdministrationReview();
+const STORAGE_KEY = IS_ADMINISTRATION_REVIEW
+  ? 'familyTreeAdministrationReviewData'
+  : window.familyTreeClientStorage?.getActiveTreeKey() || 'familyTreeData';
 const LAYOUT_STORAGE_KEY = 'familyTreeLayout';
-const SUBSCRIPTION_STORAGE_KEY = 'familyTreeSubscriptionTier';
+const SUBSCRIPTION_STORAGE_KEY = IS_ADMINISTRATION_REVIEW ? 'familyTreeAdministrationReviewTier' : 'familyTreeSubscriptionTier';
 const BILLING_INTERVAL_STORAGE_KEY = 'familyTreeBillingInterval';
 const STRIPE_CUSTOMER_STORAGE_KEY = 'familyTreeStripeCustomerId';
-const ERROR_PROGRESS_STORAGE_KEY = 'familyTreeErrorProgress';
+const PLAN_SELECTION_STORAGE_KEY = IS_ADMINISTRATION_REVIEW ? 'familyTreeAdministrationReviewPlanSelected' : 'familyTreePlanSelected';
+const TREE_REVIEW_URL = IS_ADMINISTRATION_REVIEW ? 'tree.html?admin_review=true' : 'tree.html';
+const ERROR_REVIEW_URL = IS_ADMINISTRATION_REVIEW ? 'errors.html?admin_review=true' : 'errors.html';
+const ERROR_PROGRESS_STORAGE_KEY = `${STORAGE_KEY}:errorProgress`;
 const TREE_THEME_STORAGE_KEY = 'familyTreePresentationTheme';
 const POSTER_LAYOUT_STORAGE_KEY = 'familyTreePosterLayout';
 const POSTER_BACKGROUND_STORAGE_KEY = 'familyTreePosterBackground';
@@ -12,7 +18,13 @@ const POSTER_FAMILY_STORAGE_KEY = 'familyTreePosterFamily';
 const GEDCOM_BACKUP_DATABASE = 'genealogyTreeCheckerBackups';
 const GEDCOM_BACKUP_STORE = 'gedcomFiles';
 const GEDCOM_BACKUP_ID = 'latest';
-const MAX_GEDCOM_FILE_BYTES = 150 * 1024 * 1024;
+const GEDCOM_UPLOAD_LIMITS = {
+  free: 150 * 1024 * 1024,
+  personal: 500 * 1024 * 1024,
+  pro: 500 * 1024 * 1024,
+  business: 2 * 1024 * 1024 * 1024,
+};
+const treeOverviewSection = document.getElementById('treeOverviewSection');
 
 let treeData = loadTreeData();
 let treeLayout = localStorage.getItem(LAYOUT_STORAGE_KEY) || 'vertical';
@@ -26,15 +38,17 @@ let billingInterval = localStorage.getItem(BILLING_INTERVAL_STORAGE_KEY) || 'mon
 let stripeConfig = null;
 let storeUrl = '/store';
 let stripeCustomerId = localStorage.getItem(STRIPE_CUSTOMER_STORAGE_KEY) || '';
+let isImportingGedcom = false;
+let pendingTreeDatabaseSave = Promise.resolve(true);
 
 const SUBSCRIPTION_TIERS = {
   free: {
     name: 'Basic',
     rank: 0,
-    description: 'Review your tree, fix up to 20 validation errors, and merge duplicate people for free.',
+    description: 'Upload a GEDCOM file and manually fix the first five validation errors at no charge.',
     monthlyPrice: 0,
     annualPrice: 0,
-    features: ['Small GEDCOM upload', 'Start a family tree manually', '20 non-duplicate error fixes', 'Free duplicate person merges', 'Printable progress chart', 'Ancestor Discovery research prompts'],
+    features: ['GEDCOM uploads up to 150 MB', 'Manually fix the first 5 validation errors', 'Upgrade to fix the remaining errors'],
   },
   personal: {
     name: 'Family Builder',
@@ -42,15 +56,15 @@ const SUBSCRIPTION_TIERS = {
     description: 'For organizing one family tree with unlimited error review, charts, and research worksheets.',
     monthlyPrice: 19.99,
     annualPrice: 19.99,
-    features: ['Unlimited manual error fixes', 'Generation and family organizer', 'Progress messages and charts', 'Downloadable research worksheets', 'Ancestor Discovery research prompts', 'ZIP uploads', 'Print tree', 'Export JSON/CSV', 'Local fix records'],
+    features: ['GEDCOM uploads up to 500 MB', 'Unlimited manual error fixes', 'Generation and family organizer', 'Progress messages and charts', 'Downloadable research worksheets', 'Ancestor Discovery research prompts', 'ZIP uploads', 'Print tree', 'Export JSON/CSV', 'Local fix records'],
   },
   pro: {
     name: 'Pro / Researcher',
     rank: 2,
-    description: 'For deeper genealogy cleanup, reporting, and the Genealogy Pro Package included free with subscription.',
+    description: 'For deeper genealogy cleanup, reporting, and up to 10 separately organized family trees.',
     monthlyPrice: 29.99,
     annualPrice: 29.99,
-    features: ['Safe automatic fixes', 'Full correction report', 'Advanced validation workflow', 'Ancestor Discovery research prompts', 'Free Genealogy Pro Package included', 'Digital report package', 'Printed tree and chart package', 'Researcher review service package', 'Memory keepsake package', 'Research journals and worksheets'],
+    features: ['Up to 10 separate family-tree workspaces', 'Surname and generation labels for each workspace', 'GEDCOM uploads up to 500 MB', 'Safe automatic fixes', 'Full correction report', 'Advanced validation workflow', 'Ancestor Discovery research prompts', 'Free Genealogy Pro Package included', 'Digital report package', 'Printed tree and chart package', 'Researcher review service package', 'Memory keepsake package', 'Research journals and worksheets'],
   },
   business: {
     name: 'Business / Genealogist',
@@ -58,7 +72,7 @@ const SUBSCRIPTION_TIERS = {
     description: 'For client-facing genealogy workflows.',
     monthlyPrice: 39.99,
     annualPrice: 39.99,
-    features: ['Client tree workflow', 'Ancestor Discovery research prompts', 'Branded reports roadmap', 'Higher limits roadmap'],
+    features: ['Unlimited separate client workspaces', 'Surname and generation labels for each workspace', 'GEDCOM uploads up to 2 GB', 'Client tree workflow', 'Ancestor Discovery research prompts', 'Branded reports roadmap'],
   },
 };
 
@@ -73,7 +87,11 @@ const ACTION_REQUIREMENTS = {
 
 const gedcomForm = document.getElementById('gedcomForm');
 const gedcomFileInput = document.getElementById('gedcomFile');
+const uploadSection = document.getElementById('uploadSection');
 const uploadStatus = document.getElementById('uploadStatus');
+const welcomeStartAction = document.getElementById('welcomeStartAction');
+const uploadCompleteActions = document.getElementById('uploadCompleteActions');
+const continueToTreeReviewButton = document.getElementById('continueToTreeReview');
 const reviewInitialTreeButton = document.getElementById('reviewInitialTree');
 const familyForm = document.getElementById('familyForm');
 const nameInput = document.getElementById('name');
@@ -93,6 +111,60 @@ const subscriptionPlansDiv = document.getElementById('subscriptionPlans');
 const subscriptionStatusDiv = document.getElementById('subscriptionStatus');
 const manageBillingButton = document.getElementById('manageBilling');
 const goToStoreButton = document.getElementById('goToStore');
+const gedcomUploadLimit = document.getElementById('gedcomUploadLimit');
+const selectedPlanGuidance = document.getElementById('selectedPlanGuidance');
+const selectedPlanWelcome = document.getElementById('selectedPlanWelcome');
+const selectedPlanSteps = document.getElementById('selectedPlanSteps');
+const selectedPlanTitle = document.getElementById('selectedPlanTitle');
+const continuePlanFlowAction = document.getElementById('continuePlanFlowAction');
+const selectedPlanFeatures = document.getElementById('selectedPlanFeatures');
+const freeReviewInvitation = document.getElementById('freeReviewInvitation');
+const exploreWaysAction = document.getElementById('exploreWaysAction');
+
+function getGedcomUploadLimitBytes(tier = currentTier) {
+  return GEDCOM_UPLOAD_LIMITS[tier] || GEDCOM_UPLOAD_LIMITS.free;
+}
+
+function formatGedcomUploadLimit(tier = currentTier) {
+  const megabytes = getGedcomUploadLimitBytes(tier) / (1024 * 1024);
+  return megabytes >= 1024 ? `${megabytes / 1024} GB` : `${Math.round(megabytes)} MB`;
+}
+
+function updateGedcomUploadLimit() {
+  if (!gedcomUploadLimit) return;
+  gedcomUploadLimit.textContent = `Supports .ged, .gedcom, text GEDCOM downloads, and .zip files containing a GEDCOM file up to ${formatGedcomUploadLimit()} on your current plan.`;
+}
+
+function updateSelectedPlanGuidance() {
+  const planName = SUBSCRIPTION_TIERS[currentTier]?.name || 'selected';
+  const hasPaidPlan = ['personal', 'pro', 'business'].includes(currentTier);
+  // An active paid tier is itself the source of truth, including for customers
+  // who selected their plan before the separate marker was introduced.
+  const hasSelectedPlan = hasPaidPlan || Boolean(localStorage.getItem(PLAN_SELECTION_STORAGE_KEY));
+  const guidance = currentTier === 'free'
+    ? 'Wonderful - your free review is ready. You are about to bring your family story into clearer focus.'
+    : `Wonderful choice - your ${planName} plan is ready. You are about to bring your family story into clearer focus.`;
+  if (selectedPlanGuidance) selectedPlanGuidance.textContent = guidance;
+  if (selectedPlanWelcome) selectedPlanWelcome.textContent = guidance;
+  if (selectedPlanTitle) {
+    selectedPlanTitle.textContent = currentTier === 'free'
+      ? 'Welcome to your free family-tree review!'
+      : `Welcome to your ${planName} journey!`;
+  }
+  if (selectedPlanFeatures) {
+    selectedPlanFeatures.innerHTML = (SUBSCRIPTION_TIERS[currentTier]?.features || [])
+      .map((feature) => `<li>${escapeHtml(feature)}</li>`)
+      .join('');
+  }
+  if (continuePlanFlowAction) {
+    continuePlanFlowAction.textContent = currentTier === 'free'
+      ? 'Open Your Free Review Work Place'
+      : `Open Your ${planName} Work Place`;
+  }
+  if (selectedPlanSteps) selectedPlanSteps.hidden = !hasSelectedPlan;
+  if (freeReviewInvitation) freeReviewInvitation.hidden = hasPaidPlan;
+  if (exploreWaysAction) exploreWaysAction.hidden = hasPaidPlan;
+}
 
 subscriptionPlansDiv?.addEventListener('click', (event) => {
   const upgradeButton = event.target.closest('[data-upgrade-tier]');
@@ -169,7 +241,7 @@ familyTreeDiv.addEventListener('click', (event) => {
   }
 
   if (event.target.closest('[data-open-error-workspace]')) {
-    window.open('errors.html', '_blank', 'noopener');
+    window.open(ERROR_REVIEW_URL, '_blank', 'noopener');
     return;
   }
 
@@ -255,28 +327,39 @@ familyTreeDiv.addEventListener('change', (event) => {
   renderFamilyTree();
 });
 
-gedcomForm.addEventListener('submit', async (event) => {
-  event.preventDefault();
+async function importSelectedGedcom() {
+  if (isImportingGedcom) return;
+  if (!localStorage.getItem(PLAN_SELECTION_STORAGE_KEY)) {
+    window.location.href = '/store#subscriptions';
+    return;
+  }
 
   const file = gedcomFileInput.files[0];
   if (!file) return;
 
+  isImportingGedcom = true;
+  gedcomFileInput.disabled = true;
+  uploadCompleteActions.hidden = true;
   const previousTreeData = treeData;
   treeData = createEmptyTreeData();
   renderFamilyTree();
-  setStatus('Reading GEDCOM file...', 'info');
+  setStatus('Reading your family file...', 'info');
 
   try {
     const gedcom = await readGedcomFile(file);
     const result = parseGedcomText(gedcom);
     const savedLocally = applyGedcomResult(result);
+    const savedForReview = savedLocally || await pendingTreeDatabaseSave;
     const backupSaved = await saveGedcomBackup(gedcom, getGedcomBackupFileName(file.name));
-    const storageText = savedLocally ? '' : ' This tree is too large for browser storage, so it will stay available only until this tab is refreshed.';
+    const storageText = savedForReview
+      ? ''
+      : ' This tree could not be saved in this browser, so it will stay available only until this tab is refreshed.';
     const backupText = backupSaved
       ? ' A local GEDCOM backup is ready to download or restore from this browser.'
       : ' The GEDCOM backup could not be saved in this browser.';
-    setStatus(`${formatGedcomImportStatus(result)}${storageText}${backupText}`, 'success');
+    setStatus(`Your family file is ready. ${formatGedcomImportStatus(result)}${storageText}${backupText}`, 'success');
     gedcomForm.reset();
+    uploadCompleteActions.hidden = false;
   } catch (error) {
     treeData = previousTreeData;
     renderFamilyTree();
@@ -284,7 +367,23 @@ gedcomForm.addEventListener('submit', async (event) => {
       ? ' Previous tree restored; no new GEDCOM was imported.'
       : ' No GEDCOM was imported.';
     setStatus(`${formatGedcomLoadError(error)}${restoreText}`, 'error');
+  } finally {
+    isImportingGedcom = false;
+    gedcomFileInput.disabled = false;
   }
+}
+
+gedcomForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  importSelectedGedcom();
+});
+
+gedcomFileInput.addEventListener('change', () => {
+  if (gedcomFileInput.files[0]) importSelectedGedcom();
+});
+
+continueToTreeReviewButton?.addEventListener('click', () => {
+  window.location.href = TREE_REVIEW_URL;
 });
 
 function parseGedcomText(gedcom) {
@@ -315,7 +414,7 @@ function formatGedcomImportStatus(result) {
   const cleanupText = result.cleanup?.repeatedRecordsRemoved
     ? ` Removed ${result.cleanup.repeatedRecordsRemoved} repeated GEDCOM record(s) before parsing.`
     : '';
-  return `Imported ${people} people, ${families} families, and ${relationships} relationships.${warningText}${cleanupText}`;
+  return `We found ${people} people, ${families} families, and ${relationships} relationships.${warningText}${cleanupText}`;
 }
 
 function getGedcomBackupFileName(fileName = 'family-tree.ged') {
@@ -399,8 +498,12 @@ async function restoreSavedGedcomBackup() {
     if (!backup) throw new Error('No local GEDCOM backup is available in this browser yet.');
     const result = parseGedcomText(backup.gedcom);
     const savedLocally = applyGedcomResult(result);
-    const storageText = savedLocally ? '' : ' This tree is too large for browser storage, so it will stay available only until this tab is refreshed.';
+    const savedForReview = savedLocally || await pendingTreeDatabaseSave;
+    const storageText = savedForReview
+      ? ''
+      : ' This tree could not be saved in this browser, so it will stay available only until this tab is refreshed.';
     setStatus(`Restored ${backup.fileName}. ${formatGedcomImportStatus(result)}${storageText}`, 'success');
+    uploadCompleteActions.hidden = false;
   } catch (error) {
     treeData = previousTreeData;
     renderFamilyTree();
@@ -525,6 +628,8 @@ function renderSubscriptionPlans() {
       </article>
     `;
   }).join('');
+  updateGedcomUploadLimit();
+  updateSelectedPlanGuidance();
 }
 
 function hasTier(requiredTier) {
@@ -613,6 +718,7 @@ function applySubscriptionStatus(subscription, showMessage = true) {
     localStorage.setItem(STRIPE_CUSTOMER_STORAGE_KEY, stripeCustomerId);
   }
   localStorage.setItem(SUBSCRIPTION_STORAGE_KEY, currentTier);
+  localStorage.setItem(PLAN_SELECTION_STORAGE_KEY, 'true');
   localStorage.setItem(BILLING_INTERVAL_STORAGE_KEY, billingInterval);
   updateBillingButtons();
   renderSubscriptionPlans();
@@ -715,8 +821,9 @@ function formatGedcomLoadError(error) {
 }
 
 async function readGedcomFile(file) {
-  if (file.size > MAX_GEDCOM_FILE_BYTES) {
-    throw new Error('GEDCOM file is too large. Maximum size is 150 MB.');
+  const uploadLimit = getGedcomUploadLimitBytes();
+  if (file.size > uploadLimit) {
+    throw new Error(`GEDCOM file is too large for your ${SUBSCRIPTION_TIERS[currentTier]?.name || 'Basic'} plan. Maximum size is ${formatGedcomUploadLimit()}.`);
   }
 
   const buffer = await file.arrayBuffer();
@@ -747,8 +854,9 @@ async function readGedcomFromZip(buffer) {
     throw new Error('No .ged or .gedcom file was found inside this ZIP file.');
   }
 
-  if (gedcomEntry.uncompressedSize > MAX_GEDCOM_FILE_BYTES) {
-    throw new Error('The GEDCOM file inside this ZIP is too large. Maximum size is 150 MB.');
+  const uploadLimit = getGedcomUploadLimitBytes();
+  if (gedcomEntry.uncompressedSize > uploadLimit) {
+    throw new Error(`The GEDCOM file inside this ZIP is too large for your ${SUBSCRIPTION_TIERS[currentTier]?.name || 'Basic'} plan. Maximum size is ${formatGedcomUploadLimit()}.`);
   }
 
   const data = await extractZipEntry(zipBytes, gedcomEntry);
@@ -961,6 +1069,7 @@ function ensureParsedPerson(peopleById, id) {
     peopleById.set(id, {
       id,
       name: null,
+      otherNames: [],
       sex: null,
       birth: {},
       death: {},
@@ -1086,7 +1195,11 @@ function parseGedcomInBrowser(gedcomText) {
 
       if (currentRecord.type === 'INDI') {
         const person = currentRecord.data;
-        if (tag === 'NAME') person.name = normalizeGedcomName(value);
+        if (tag === 'NAME') {
+          const name = normalizeGedcomName(value);
+          if (!person.name?.display) person.name = name;
+          else person.otherNames.push(name);
+        }
         if (tag === 'SEX') person.sex = value || null;
         if (tag === 'FAMC' && value) person.familyAsChild.push(value);
         if (tag === 'FAMS' && value) person.familyAsSpouse.push(value);
@@ -1197,6 +1310,7 @@ function createEmptyTreeData() {
     warnings: [],
     validationReport: createEmptyValidationReport(),
     fixHistory: [],
+    primaryPersonId: '',
   };
 }
 
@@ -1212,6 +1326,7 @@ function loadTreeData() {
         warnings: stored.warnings || [],
         validationReport: stored.validationReport || createEmptyValidationReport(),
         fixHistory: stored.fixHistory || [],
+        primaryPersonId: stored.primaryPersonId || stored.people[0]?.id || '',
       };
     }
   } catch (error) {
@@ -1224,9 +1339,17 @@ function loadTreeData() {
 function saveTreeData() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(treeData));
+    void window.familyTreeClientStorage?.removeTreeFromDatabase?.(STORAGE_KEY);
+    pendingTreeDatabaseSave = Promise.resolve(true);
     return true;
   } catch (error) {
-    console.warn('Tree is too large to save in browser storage:', error);
+    localStorage.removeItem(STORAGE_KEY);
+    pendingTreeDatabaseSave = window.familyTreeClientStorage?.saveTreeInDatabase(STORAGE_KEY, treeData)
+      .then(() => true)
+      .catch((databaseError) => {
+        console.warn('Tree is too large to save in browser storage:', error, databaseError);
+        return false;
+      }) || Promise.resolve(false);
     return false;
   }
 }
@@ -1245,6 +1368,7 @@ function normalizeParsedGedcom(parsed) {
       familyAsChild: person.familyAsChild || [],
       familyAsSpouse: person.familyAsSpouse || [],
       notes: person.notes || [],
+      aliases: (person.otherNames || []).map((name) => name.display).filter(Boolean),
       source: 'gedcom',
     })),
     families: parsed.families || [],
@@ -1252,6 +1376,7 @@ function normalizeParsedGedcom(parsed) {
     warnings: parsed.warnings || [],
     validationReport: createEmptyValidationReport(),
     fixHistory: [],
+    primaryPersonId: parsed.people[0]?.id || '',
   };
 
   normalized.validationReport = analyzeTreeData(normalized);
@@ -1278,19 +1403,21 @@ function analyzeTreeData(data) {
     const birthYear = extractYear(person.birthDate || person.birthYear);
     const deathYear = extractYear(person.deathDate);
 
-    if (birthYear && deathYear && deathYear < birthYear) {
+    const hasApproximateDate = isApproximateDate(person.birthDate || person.birthYear) || isApproximateDate(person.deathDate);
+
+    if (!hasApproximateDate && birthYear && deathYear && deathYear < birthYear) {
       addIssue(report.errors, 'Date inconsistency', `${person.name} has a death year (${deathYear}) before birth year (${birthYear}).`, person.id, 'Manual fix: review the original record and correct either the birth date or death date.');
     }
 
-    if (birthYear && birthYear > new Date().getFullYear()) {
+    if (!hasApproximateDate && birthYear && birthYear > new Date().getFullYear()) {
       addIssue(report.errors, 'Date inconsistency', `${person.name} has a birth year in the future (${birthYear}).`, person.id, 'Manual fix: verify the source and correct the birth date.');
     }
 
-    if (deathYear && deathYear > new Date().getFullYear()) {
+    if (!hasApproximateDate && deathYear && deathYear > new Date().getFullYear()) {
       addIssue(report.errors, 'Date inconsistency', `${person.name} has a death year in the future (${deathYear}).`, person.id, 'Manual fix: verify the source and correct or remove the death date.');
     }
 
-    if (birthYear && deathYear && deathYear - birthYear > 125) {
+    if (!hasApproximateDate && birthYear && deathYear && deathYear - birthYear > 125) {
       addIssue(report.warnings, 'Date warning', `${person.name} appears to have lived ${deathYear - birthYear} years.`, person.id, 'Manual fix: confirm the birth and death dates with a source record.');
     }
 
@@ -1360,15 +1487,19 @@ function analyzeTreeData(data) {
         const parentBirthYear = extractYear(parent.birthDate || parent.birthYear);
         const parentDeathYear = extractYear(parent.deathDate);
 
-        if (parentBirthYear && childBirthYear && childBirthYear < parentBirthYear) {
+        const hasApproximateFamilyDate = isApproximateDate(child.birthDate || child.birthYear)
+          || isApproximateDate(parent.birthDate || parent.birthYear)
+          || isApproximateDate(parent.deathDate);
+
+        if (!hasApproximateFamilyDate && parentBirthYear && childBirthYear && childBirthYear < parentBirthYear) {
           addIssue(report.errors, 'Date inconsistency', `${child.name} appears born before parent ${parent.name}.`, family.id, 'Manual fix: verify the child and parent birth dates or the relationship link.');
         }
 
-        if (parentBirthYear && childBirthYear && childBirthYear - parentBirthYear < 12) {
+        if (!hasApproximateFamilyDate && parentBirthYear && childBirthYear && childBirthYear - parentBirthYear < 12) {
           addIssue(report.warnings, 'Date warning', `${parent.name} appears younger than 12 when ${child.name} was born.`, family.id, 'Manual fix: verify dates and confirm the parent-child relationship.');
         }
 
-        if (parentDeathYear && childBirthYear && childBirthYear > parentDeathYear + 1) {
+        if (!hasApproximateFamilyDate && parentDeathYear && childBirthYear && childBirthYear > parentDeathYear + 1) {
           addIssue(report.errors, 'Date inconsistency', `${child.name} appears born after parent ${parent.name} died.`, family.id, 'Manual fix: verify the parent death date, child birth date, and relationship link.');
         }
       }
@@ -1380,6 +1511,10 @@ function analyzeTreeData(data) {
   }
 
   return report;
+}
+
+function isApproximateDate(value) {
+  return /\b(ABT|ABOUT|EST|ESTIMATED|CAL|CIRCA|CA|BEF|BEFORE|AFT|AFTER|BET|BETWEEN|FROM|TO)\b/i.test(String(value || ''));
 }
 
 function normalizeDuplicateKey(person) {
@@ -1497,10 +1632,11 @@ function showManualFixes() {
 
 function renderFamilyTree() {
   if (treeData.people.length === 0) {
-    familyTreeDiv.innerHTML = '<p class="empty-message">Parse a GEDCOM file or start a family tree manually.</p>';
+    treeOverviewSection.hidden = true;
     return;
   }
 
+  treeOverviewSection.hidden = false;
   const peopleById = new Map(treeData.people.map((person) => [person.id, person]));
   const generationData = buildGenerationData(peopleById);
 
@@ -1531,12 +1667,12 @@ function renderWorkflowOverview() {
 
   return `
     <section class="workflow-overview">
-      <h3>Choose your next step</h3>
-      <p>Your parsed GED is saved in this browser. Continue with one focused workspace at a time.</p>
+      <h3>Step 2: Review your family tree</h3>
+      <p>Your family tree is ready. Open the five-generation Working Tree Preview, choose the direct line you want to work on, then continue to its organized Error Workspace.</p>
       <div class="workflow-actions">
-        <a class="btn-add" href="errors.html">Fix errors${issueCount ? ` (${issueCount})` : ''}</a>
-        <a class="btn-secondary" href="manual.html">Work on the tree manually</a>
-        <a class="btn-secondary" href="ancestor.html">Open Ancestor Discovery</a>
+        <a class="btn-add" href="${TREE_REVIEW_URL}">Review Your Five-Generation Working Tree${issueCount ? ` (${issueCount} errors)` : ''}</a>
+        <a class="btn-secondary" href="manual.html">Edit your tree manually</a>
+        <a class="btn-secondary" href="ancestor.html">Explore ancestor research</a>
       </div>
     </section>
   `;
@@ -2400,11 +2536,40 @@ function escapeHtml(value = '') {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  const startupParams = new URLSearchParams(window.location.search);
+  const administrationReviewTier = startupParams.get('review_tier');
+  if (IS_ADMINISTRATION_REVIEW) {
+    document.querySelectorAll('a[href="store.html#subscriptions"]').forEach((link) => {
+      link.href = 'store.html?admin_review=true#subscriptions';
+    });
+  }
+  if (IS_ADMINISTRATION_REVIEW && SUBSCRIPTION_TIERS[administrationReviewTier]) {
+    currentTier = administrationReviewTier;
+    localStorage.setItem(SUBSCRIPTION_STORAGE_KEY, currentTier);
+    localStorage.setItem(PLAN_SELECTION_STORAGE_KEY, 'true');
+  }
+  if (startupParams.get('free_review') === 'true') {
+    currentTier = 'free';
+    localStorage.setItem(SUBSCRIPTION_STORAGE_KEY, currentTier);
+    localStorage.setItem(PLAN_SELECTION_STORAGE_KEY, 'true');
+  }
   applyCheckoutReturn();
   updateLayoutButtons();
   updateBillingButtons();
   renderSubscriptionPlans();
+  updateGedcomUploadLimit();
   loadSubscriptionConfig();
   loadSubscriptionStatusFromCustomer();
   renderFamilyTree();
+  if (localStorage.getItem(PLAN_SELECTION_STORAGE_KEY)) {
+    welcomeStartAction.href = '/?start=upload';
+    welcomeStartAction.textContent = 'Upload Your Family File';
+  }
+  if (startupParams.get('start') === 'upload') {
+    uploadSection.hidden = false;
+    uploadSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (startupParams.get('test_plan') === 'true') {
+      setStatus(`Test mode: ${SUBSCRIPTION_TIERS[currentTier]?.name || 'selected'} plan is active. Choose a family file to test the guided flow without payment.`, 'info');
+    }
+  }
 });

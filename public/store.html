@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Genealogy Store | Fix Your Tree</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=administration-review-1">
 </head>
 <body>
   <div class="container">
@@ -20,7 +20,7 @@
             <h2>Choose a Subscription</h2>
             <p>Choose the tools that fit your family-tree project, then continue to the products below.</p>
           </div>
-          <button id="manageBilling" type="button" class="btn-secondary">Manage Billing</button>
+          <button id="manageBilling" type="button" class="btn-secondary" hidden>Update payment, plan, or invoices</button>
         </div>
         <div class="billing-toggle" aria-label="Billing interval">
           <button id="monthlyBilling" type="button" class="layout-button active" data-billing-interval="monthly">Monthly</button>
@@ -28,119 +28,31 @@
         </div>
         <div id="subscriptionStatus" class="subscription-status">Current plan: Basic</div>
         <div id="subscriptionPlans" class="subscription-plans" aria-live="polite"></div>
+        <aside class="upload-capacity-addon" aria-label="Coming soon extra-large upload add-on">
+          <div>
+            <p class="eyebrow">Coming soon for Business customers</p>
+            <h3>Extra-Large GEDCOM Upload</h3>
+            <p>Need more room for a commercial-scale family tree? Add one upload up to 5 GB for a one-time $9.99. This add-on will be available once secure large-file processing is ready.</p>
+          </div>
+          <div>
+            <strong>$9.99</strong>
+            <span class="coming-soon-badge">Coming soon</span>
+          </div>
+        </aside>
       </section>
 
-      <section class="store-hero">
-        <h2>Included Free with Pro / Researcher</h2>
-        <p>The Genealogy Pro Package is included with the Pro / Researcher subscription. Review the products below, then return to the app to subscribe.</p>
-        <div class="store-cta-row">
-          <a class="btn-link-primary" href="/">Back to App</a>
-          <a class="btn-link-secondary" href="#subscriptions">View Subscriptions</a>
-          <a class="btn-link-primary" href="#storeProducts">Browse Products</a>
-        </div>
-      </section>
-
-      <section id="storeProducts" class="package-section">
-        <div class="package-grid">
-          <article class="package-card">
-            <h3>Digital Products</h3>
-            <ul>
-              <li>Family Tree PDF Report</li>
-              <li>Fan Chart PDF</li>
-              <li>Pedigree Chart PDF</li>
-              <li>Ancestor Timeline Report</li>
-              <li>Error Correction Report</li>
-              <li>Cleaned GEDCOM Export</li>
-              <li>Duplicate Person Review Sheet</li>
-              <li>Place Standardization Report</li>
-              <li>Source Citation Checklist</li>
-              <li>DNA Match Notes Template</li>
-              <li>Family Group Sheet PDF</li>
-            </ul>
-            <a class="product-access-link" href="#subscriptions">Access with Pro</a>
-          </article>
-
-          <article class="package-card">
-            <h3>Print Products</h3>
-            <ul>
-              <li>Printed Family Tree Poster</li>
-              <li>Printed Fan Chart</li>
-              <li>Printed Pedigree Chart</li>
-              <li>Family History Booklet</li>
-              <li>Framed Ancestor Chart</li>
-              <li>Archival Keepsake Tree</li>
-              <li>Ancestor Research Journal</li>
-              <li>Family Interview Journal</li>
-              <li>Family Reunion Workbook</li>
-            </ul>
-            <a class="product-access-link" href="#subscriptions">Access with Pro</a>
-          </article>
-
-          <article class="package-card">
-            <h3>Research Services</h3>
-            <ul>
-              <li>Researcher Review Session</li>
-              <li>GEDCOM Cleanup Service</li>
-              <li>Duplicate Merge Review</li>
-              <li>Date and Place Verification</li>
-              <li>Obituary / Census Lookup Request</li>
-              <li>Brick-Wall Ancestor Research Request</li>
-              <li>Source Citation Audit</li>
-              <li>Migration Path Research</li>
-              <li>Military Record Lookup</li>
-              <li>Immigration Record Lookup</li>
-            </ul>
-            <a class="product-access-link" href="#subscriptions">Access with Pro</a>
-          </article>
-
-          <article class="package-card">
-            <h3>Research Journals</h3>
-            <ul>
-              <li>Ancestor Research Log</li>
-              <li>Evidence Analysis Journal</li>
-              <li>Source Citation Journal</li>
-              <li>DNA Match Tracker</li>
-              <li>Cemetery Visit Journal</li>
-              <li>Interview Notes Journal</li>
-              <li>Brick-Wall Research Planner</li>
-              <li>Repository Visit Checklist</li>
-            </ul>
-            <a class="product-access-link" href="#subscriptions">Access with Pro</a>
-          </article>
-
-          <article class="package-card">
-            <h3>Memory Keepsakes</h3>
-            <ul>
-              <li>Ancestor Memorial Card</li>
-              <li>Family Recipe Booklet</li>
-              <li>Photo Timeline Keepsake</li>
-              <li>Legacy Letter Template</li>
-              <li>Family Story Prompt Pack</li>
-              <li>Heritage Certificate</li>
-              <li>Printable Memory Wall</li>
-              <li>Celebration of Life Family Sheet</li>
-              <li>Ancestor Birthday Calendar</li>
-              <li>Heritage Scrapbook Pages</li>
-              <li>Personalized Family Tree Poster</li>
-              <li>Family History Diary</li>
-              <li>Custom Family Tree Phone Cover</li>
-              <li>Family Heritage Journal</li>
-            </ul>
-            <a class="product-access-link" href="#customKeepsakes">Preview keepsakes</a>
-          </article>
-        </div>
-      </section>
-
-      <section id="customKeepsakes" class="keepsake-catalog">
+      <section id="customKeepsakes" class="keepsake-catalog coming-soon-catalog">
         <div class="keepsake-catalog-heading">
           <div>
             <h2>Personalized Tree Keepsakes</h2>
-            <p>Celebrate the research you have completed with products designed around your updated family tree.</p>
+            <p>Celebrate completed research with products designed around your updated family tree.</p>
           </div>
-          <span>Coming soon</span>
+          <span>Coming Soon</span>
         </div>
-        <p class="keepsake-catalog-note">These products are being prepared for fulfillment through Printify. Product previews are available now; ordering will open after each design is published in your chosen storefront.</p>
-        <div class="keepsake-product-grid">
+        <button class="coming-soon-button" type="button" data-toggle-coming-soon aria-expanded="false">Coming Soon: Explore Personalized Keepsakes</button>
+        <div id="comingSoonKeepsakes" hidden>
+          <p class="keepsake-catalog-note">These products are being prepared for fulfillment through Printify. Ordering will open after each design is published in your storefront.</p>
+          <div class="keepsake-product-grid">
           <article class="keepsake-product-card">
             <h3>Personalized Family Tree Poster</h3>
             <p>A presentation-ready poster featuring your preferred tree edition, family name, and selected generations.</p>
@@ -161,6 +73,7 @@
             <p>A durable research journal for source notes, interview memories, timelines, and next steps.</p>
             <span class="coming-soon-badge">Coming soon</span>
           </article>
+          </div>
         </div>
       </section>
     </main>
@@ -169,6 +82,8 @@
       <p>© 2026 Genealogy Tree Checker</p>
     </footer>
   </div>
-  <script src="store.js"></script>
+  <script src="admin-review-gate.js?v=administration-server-session-2"></script>
+  <script src="store.js?v=administration-passphrase-1"></script>
+  <script src="supabase-auth.js"></script>
 </body>
 </html>

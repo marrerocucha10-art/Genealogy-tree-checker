@@ -1,13 +1,36 @@
-const STORAGE_KEY = 'familyTreeData';
-const ERROR_PROGRESS_STORAGE_KEY = 'familyTreeErrorProgress';
-const DUPLICATE_MERGE_UNDO_STORAGE_KEY = 'familyTreeDuplicateMergeUndo';
-const SUBSCRIPTION_STORAGE_KEY = 'familyTreeSubscriptionTier';
+const WORKSPACE_PREVIEW_MODE = new URLSearchParams(window.location.search).get('demo') === 'workspace';
+const IS_ADMINISTRATION_REVIEW = isAdministrationReview();
+const SHOW_WORKSPACE_PROGRESS = new URLSearchParams(window.location.search).get('view') === 'progress';
+const TREE_STORAGE_KEY = WORKSPACE_PREVIEW_MODE
+  ? 'familyTreeWorkspacePreviewData'
+  : IS_ADMINISTRATION_REVIEW
+    ? 'familyTreeAdministrationReviewData'
+    : window.familyTreeClientStorage?.getActiveTreeKey() || 'familyTreeData';
+const STORAGE_KEY = `${TREE_STORAGE_KEY}:fiveGenerationReview`;
+const ERROR_REVIEW_HANDOFF_KEY = `${STORAGE_KEY}:errorReviewHandoff`;
+const ERROR_PROGRESS_STORAGE_KEY = `${STORAGE_KEY}:errorProgress`;
+const DUPLICATE_MERGE_UNDO_STORAGE_KEY = `${STORAGE_KEY}:duplicateMergeUndo`;
+const SUBSCRIPTION_STORAGE_KEY = IS_ADMINISTRATION_REVIEW ? 'familyTreeAdministrationReviewTier' : 'familyTreeSubscriptionTier';
+const PLAN_SELECTION_STORAGE_KEY = IS_ADMINISTRATION_REVIEW ? 'familyTreeAdministrationReviewPlanSelected' : 'familyTreePlanSelected';
+const SUBSCRIPTION_STORE_URL = IS_ADMINISTRATION_REVIEW ? 'store.html?admin_review=true#subscriptions' : 'store.html#subscriptions';
 const ERROR_BATCH_SIZE = 10;
-const BASIC_ERROR_FIX_LIMIT = 20;
+const BASIC_ERROR_REVIEW_LIMIT = 5;
+const FREE_DUPLICATE_FIX_LIMIT = 5;
+const ERROR_REVIEW_ORDER_VERSION = 6;
+const VISIBLE_REVIEW_GENERATION_COUNT = 5;
 const workspace = document.getElementById('errorWorkspace');
+const workspaceWelcome = document.getElementById('workspaceWelcome');
+const returnToTreeLink = document.getElementById('returnToTree');
+const planErrorWorkspaceMessage = document.getElementById('planErrorWorkspaceMessage');
+let loadedTreeData = null;
+let inMemoryDuplicateMergeUndo = null;
+let pendingDuplicateMerge = null;
 
 function getTreeData() {
+  if (loadedTreeData) return loadedTreeData;
   try {
+    const handoffTreeData = JSON.parse(sessionStorage.getItem(ERROR_REVIEW_HANDOFF_KEY) || 'null');
+    if (handoffTreeData?.people?.length) return handoffTreeData;
     return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
   } catch (error) {
     return null;
@@ -15,14 +38,31 @@ function getTreeData() {
 }
 
 function saveTreeData(treeData) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(treeData));
+  loadedTreeData = treeData;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(treeData));
+    void window.familyTreeClientStorage?.removeTreeFromDatabase?.(STORAGE_KEY);
+  } catch (error) {
+    localStorage.removeItem(STORAGE_KEY);
+    void window.familyTreeClientStorage?.saveTreeInDatabase?.(STORAGE_KEY, treeData);
+  }
 }
 
-function saveDuplicateMergeUndo(treeData, progress) {
-  localStorage.setItem(DUPLICATE_MERGE_UNDO_STORAGE_KEY, JSON.stringify({ treeData, progress }));
+function saveDuplicateMergeUndo(treeData, progress, mergeSummary) {
+  const undoState = { treeData, progress, mergeSummary };
+  inMemoryDuplicateMergeUndo = undoState;
+  try {
+    localStorage.setItem(DUPLICATE_MERGE_UNDO_STORAGE_KEY, JSON.stringify(undoState));
+  } catch (error) {
+    const databaseSave = window.familyTreeClientStorage?.saveTreeInDatabase?.(DUPLICATE_MERGE_UNDO_STORAGE_KEY, undoState);
+    if (databaseSave) {
+      void databaseSave.catch((databaseError) => console.warn('Could not save duplicate-merge undo state:', databaseError));
+    }
+  }
 }
 
 function getDuplicateMergeUndo() {
+  if (inMemoryDuplicateMergeUndo) return inMemoryDuplicateMergeUndo;
   try {
     return JSON.parse(localStorage.getItem(DUPLICATE_MERGE_UNDO_STORAGE_KEY) || 'null');
   } catch (error) {
@@ -30,37 +70,264 @@ function getDuplicateMergeUndo() {
   }
 }
 
+function clearDuplicateMergeUndo() {
+  inMemoryDuplicateMergeUndo = null;
+  localStorage.removeItem(DUPLICATE_MERGE_UNDO_STORAGE_KEY);
+  void window.familyTreeClientStorage?.removeTreeFromDatabase?.(DUPLICATE_MERGE_UNDO_STORAGE_KEY);
+}
+
 function getIssueId(issue) {
   return JSON.stringify([issue.category || '', issue.message || '', issue.subject || '']);
 }
 
-function getProgress() {
-  try {
-    const progress = JSON.parse(localStorage.getItem(ERROR_PROGRESS_STORAGE_KEY) || '{}');
-    return {
-      completedIssueIds: Array.isArray(progress.completedIssueIds) ? progress.completedIssueIds : [],
-      completedNonDuplicateIssueIds: Array.isArray(progress.completedNonDuplicateIssueIds)
-        ? progress.completedNonDuplicateIssueIds
-        : [],
-      activeGroupIds: progress.batchMode === 'people' && Array.isArray(progress.activeGroupIds) ? progress.activeGroupIds : [],
-      batchMode: 'people',
-    };
-  } catch (error) {
-    return {
-      completedIssueIds: [],
-      completedNonDuplicateIssueIds: [],
-      activeGroupIds: [],
-      batchMode: 'people',
-    };
+function createWorkspacePreviewTree() {
+  const resolvedIssue = {
+    category: 'Missing birth date',
+    message: 'Elena Rivera does not have a birth date.',
+    suggestion: 'Review the family register or census record and add the date when confirmed.',
+    subject: '@I1@',
+  };
+  const pendingIssue = {
+    category: 'Missing birthplace',
+    message: 'Mateo Rivera does not have a birthplace.',
+    suggestion: 'Check immigration, census, or church records before adding a birthplace.',
+    subject: '@I2@',
+  };
+  const activeIssue = {
+    category: 'Relationship detail',
+    message: 'Sofia Rivera has a parent connection that needs review.',
+    suggestion: 'Compare the family record in your working tree, then confirm or correct the parent connection.',
+    subject: '@I3@',
+  };
+  const people = [
+    { id: '@I1@', name: 'Elena Rivera' },
+    { id: '@I2@', name: 'Mateo Rivera' },
+    { id: '@I3@', name: 'Sofia Rivera' },
+  ];
+  const families = [{ id: '@F1@', husbandId: '@I2@', wifeId: '@I1@', childrenIds: ['@I3@'] }];
+  let ancestorGeneration = ['@I2@', '@I1@'];
+  let nextPersonNumber = 4;
+
+  for (let generation = 3; generation <= 5; generation += 1) {
+    const nextGeneration = [];
+    for (const childId of ancestorGeneration) {
+      const firstParentId = `@I${nextPersonNumber}@`;
+      const secondParentId = `@I${nextPersonNumber + 1}@`;
+      const ancestorNumber = nextPersonNumber - 3;
+      people.push(
+        { id: firstParentId, name: `Rivera ancestor ${generation}-${ancestorNumber}` },
+        { id: secondParentId, name: `Rivera ancestor ${generation}-${ancestorNumber + 1}` },
+      );
+      families.push({
+        id: `@F${families.length + 1}@`,
+        husbandId: firstParentId,
+        wifeId: secondParentId,
+        childrenIds: [childId],
+      });
+      nextGeneration.push(firstParentId, secondParentId);
+      nextPersonNumber += 2;
+    }
+    ancestorGeneration = nextGeneration;
   }
+
+  return {
+    people,
+    primaryPersonId: '@I3@',
+    families,
+    relationships: [],
+    validationReport: { errors: [resolvedIssue, pendingIssue, activeIssue], warnings: [], info: [] },
+    errorProgress: {
+      completedIssueIds: [getIssueId(resolvedIssue)],
+      completedNonDuplicateIssueIds: [getIssueId(resolvedIssue)],
+      completedDuplicateIssueIds: [],
+      pendingIssueIds: [getIssueId(pendingIssue)],
+      resolvedItems: [{
+        issueId: getIssueId(resolvedIssue),
+        category: resolvedIssue.category,
+        message: resolvedIssue.message,
+        subject: resolvedIssue.subject,
+        correctionType: 'Manual review',
+      }],
+      activeGroupIds: [`record:${activeIssue.subject}`],
+      batchMode: 'people',
+      reviewOrderVersion: ERROR_REVIEW_ORDER_VERSION,
+      duplicateReviewMode: '',
+      lastReviewedSubject: activeIssue.subject,
+    },
+  };
+}
+
+function addWorkspacePreviewGenerations(treeData) {
+  const previewTree = createWorkspacePreviewTree();
+  const existingPersonIds = new Set((treeData.people || []).map((person) => person.id));
+  const existingFamilyIds = new Set((treeData.families || []).map((family) => family.id));
+  const people = previewTree.people.filter((person) => !existingPersonIds.has(person.id));
+  const families = previewTree.families.filter((family) => !existingFamilyIds.has(family.id));
+
+  if (!people.length && !families.length) return treeData;
+
+  return {
+    ...treeData,
+    people: [...(treeData.people || []), ...people],
+    families: [...(treeData.families || []), ...families],
+  };
+}
+
+function getProgress() {
+  let progress;
+  try {
+    progress = JSON.parse(localStorage.getItem(ERROR_PROGRESS_STORAGE_KEY) || 'null');
+  } catch (error) {
+    progress = null;
+  }
+
+  const savedProgress = progress || getTreeData()?.errorProgress || {};
+  return {
+    completedIssueIds: Array.isArray(savedProgress.completedIssueIds) ? savedProgress.completedIssueIds : [],
+    completedNonDuplicateIssueIds: Array.isArray(savedProgress.completedNonDuplicateIssueIds)
+      ? savedProgress.completedNonDuplicateIssueIds
+      : [],
+    completedDuplicateIssueIds: Array.isArray(savedProgress.completedDuplicateIssueIds)
+      ? savedProgress.completedDuplicateIssueIds
+      : [],
+    pendingIssueIds: Array.isArray(savedProgress.pendingIssueIds) ? savedProgress.pendingIssueIds : [],
+    resolvedItems: Array.isArray(savedProgress.resolvedItems) ? savedProgress.resolvedItems : [],
+    activeGroupIds: savedProgress.batchMode === 'people' && Array.isArray(savedProgress.activeGroupIds) ? savedProgress.activeGroupIds : [],
+    batchMode: 'people',
+    reviewOrderVersion: Number(savedProgress.reviewOrderVersion) || 0,
+    duplicateReviewMode: ['single', 'batch'].includes(savedProgress.duplicateReviewMode) ? savedProgress.duplicateReviewMode : '',
+    lastReviewedSubject: typeof savedProgress.lastReviewedSubject === 'string' ? savedProgress.lastReviewedSubject : '',
+  };
 }
 
 function saveProgress(progress) {
-  localStorage.setItem(ERROR_PROGRESS_STORAGE_KEY, JSON.stringify(progress));
+  try {
+    localStorage.setItem(ERROR_PROGRESS_STORAGE_KEY, JSON.stringify(progress));
+  } catch (error) {
+    const treeData = getTreeData();
+    if (!treeData) throw error;
+    treeData.errorProgress = progress;
+    saveTreeData(treeData);
+  }
+}
+
+function resolveTreeFocusSubject(subject) {
+  if (!subject) return '';
+  const treeData = getTreeData();
+  if ((treeData?.people || []).some((person) => person.id === subject)) return subject;
+  const family = (treeData?.families || []).find((candidate) => candidate.id === subject);
+  if (!family) return subject;
+  return family.husbandId || family.wifeId || (family.childrenIds || [])[0] || subject;
+}
+
+function updateReturnToTreeLink(progress = getProgress()) {
+  if (!returnToTreeLink) return;
+  const parameters = new URLSearchParams();
+  if (WORKSPACE_PREVIEW_MODE) parameters.set('demo', 'workspace');
+  if (IS_ADMINISTRATION_REVIEW) parameters.set('admin_review', 'true');
+  const focusSubject = resolveTreeFocusSubject(progress.lastReviewedSubject);
+  if (focusSubject) parameters.set('focus', focusSubject);
+  returnToTreeLink.href = parameters.size ? `tree.html?${parameters}` : 'tree.html';
+}
+
+function updateWorkspaceTreeLinks(progress = getProgress()) {
+  const parameters = new URLSearchParams();
+  if (WORKSPACE_PREVIEW_MODE) parameters.set('demo', 'workspace');
+  if (IS_ADMINISTRATION_REVIEW) parameters.set('admin_review', 'true');
+  const treeUrl = parameters.size ? `tree.html?${parameters}` : 'tree.html';
+  document.querySelectorAll('[data-workspace-tree-preview]').forEach((link) => {
+    link.href = treeUrl;
+  });
+}
+
+function rememberLastReviewedSubject(subject) {
+  if (!subject) return;
+  const progress = getProgress();
+  if (progress.lastReviewedSubject === subject) return;
+  progress.lastReviewedSubject = subject;
+  saveProgress(progress);
+  updateReturnToTreeLink(progress);
+}
+
+function getResolvedIssueIds(progress) {
+  return new Set([...progress.completedIssueIds, ...progress.pendingIssueIds]);
+}
+
+function recordResolvedItem(progress, issue, correctionType) {
+  const issueId = getIssueId(issue);
+  if (progress.resolvedItems.some((item) => item.issueId === issueId)) return;
+  progress.resolvedItems.push({
+    issueId,
+    category: issue.category || 'Family tree correction',
+    message: issue.message || 'Corrected family-tree item.',
+    subject: issue.subject || 'General validation',
+    correctionType,
+  });
+}
+
+function getRecordResearchLinks(issue, person) {
+  const personName = person?.name || issue.subject || 'family history';
+  const searchTerms = [personName, person?.birthPlace, person?.birthDate, 'genealogy'].filter(Boolean).join(' ');
+  return {
+    familySearch: `https://www.familysearch.org/search/record/results?count=20&q.any=${encodeURIComponent(searchTerms)}`,
+    ancestry: `https://www.ancestry.com/search/?name=${encodeURIComponent(personName)}`,
+    census: 'https://www.archives.gov/research/census',
+    vital: 'https://www.familysearch.org/en/wiki/United_States_Vital_Records',
+    church: 'https://www.familysearch.org/en/wiki/Church_records',
+    immigration: 'https://www.archives.gov/research/immigration',
+    archive: `https://archive.org/search?query=${encodeURIComponent(searchTerms)}`,
+  };
+}
+
+function getResearchSubject(issue, peopleById, familiesById) {
+  const person = peopleById?.get(issue.subject);
+  if (person) return person;
+
+  const family = familiesById?.get(issue.subject);
+  if (!family) return undefined;
+
+  const parentNames = [family.husbandId, family.wifeId]
+    .map((parentId) => peopleById?.get(parentId)?.name?.trim())
+    .filter(Boolean);
+  if (!parentNames.length) return undefined;
+  return { name: parentNames.join(' and ') };
+}
+
+function renderRecordReviewOptions(issue, person) {
+  const resourceKey = encodeURIComponent(getIssueId(issue));
+  const personName = escapeHtml(person?.name || issue.subject || 'this person');
+  const links = getRecordResearchLinks(issue, person);
+  return `
+    <section class="record-review-options">
+      <p><strong>How would you like to review records for ${personName}?</strong></p>
+      <button type="button" class="btn-secondary" data-open-record-sources="${resourceKey}">Choose a Record Source</button>
+      <div class="record-source-options" data-record-source-options="${resourceKey}" hidden>
+        <a class="btn-secondary" href="${links.familySearch}" target="_blank" rel="noopener">Search FamilySearch</a>
+        <a class="btn-secondary" href="${links.ancestry}" target="_blank" rel="noopener">Search Ancestry</a>
+        <a class="btn-secondary" href="${links.census}" target="_blank" rel="noopener">Census Records</a>
+        <a class="btn-secondary" href="${links.vital}" target="_blank" rel="noopener">Vital Records</a>
+        <a class="btn-secondary" href="${links.church}" target="_blank" rel="noopener">Church Records</a>
+        <a class="btn-secondary" href="${links.immigration}" target="_blank" rel="noopener">Immigration Records</a>
+        <a class="btn-secondary" href="${links.archive}" target="_blank" rel="noopener">Internet Archive</a>
+      </div>
+    </section>
+  `;
 }
 
 function getCurrentTier() {
+  if (WORKSPACE_PREVIEW_MODE) return 'pro';
   return localStorage.getItem(SUBSCRIPTION_STORAGE_KEY) || 'free';
+}
+
+function updatePlanErrorWorkspaceMessage() {
+  if (!planErrorWorkspaceMessage) return;
+  const messages = {
+    free: 'Your first five manual fixes are included at no charge. Upgrade when you are ready to correct the rest or use safe automatic fixes.',
+    personal: 'Your Family Builder plan includes unlimited manual error review and correction. Continue at your own pace, one clear step at a time.',
+    pro: 'Your Pro / Researcher plan includes unlimited review, safe automatic fixes, and up to 10 separately organized family-tree workspaces.',
+    business: 'Your Business / Genealogist plan includes client-focused review tools and unlimited separately organized family-tree workspaces.',
+  };
+  planErrorWorkspaceMessage.textContent = messages[getCurrentTier()] || messages.free;
 }
 
 function isDuplicateIssue(issue) {
@@ -69,6 +336,10 @@ function isDuplicateIssue(issue) {
 
 function canUseUnlimitedErrorFixes() {
   return ['personal', 'pro', 'business'].includes(getCurrentTier());
+}
+
+function canUseSafeAutomaticFixes() {
+  return getCurrentTier() !== 'free';
 }
 
 function getCompletedNonDuplicateIssueCount(errors, progress) {
@@ -83,15 +354,38 @@ function getCompletedNonDuplicateIssueCount(errors, progress) {
 function renderBasicPlanOptions(errors, progress) {
   if (getCurrentTier() !== 'free') return '';
 
-  const fixedCount = getCompletedNonDuplicateIssueCount(errors, progress);
-  const remainingFixes = Math.max(BASIC_ERROR_FIX_LIMIT - fixedCount, 0);
-  const limitReached = remainingFixes === 0;
+  const duplicateIssues = errors.filter(isDuplicateIssue);
+  const completedDuplicateFixes = progress.completedDuplicateIssueIds.length;
+  if (duplicateIssues.length || completedDuplicateFixes) {
+    const remainingDuplicateFixes = Math.max(FREE_DUPLICATE_FIX_LIMIT - completedDuplicateFixes, 0);
+    const duplicateProgressMessage = remainingDuplicateFixes
+      ? `You have completed ${completedDuplicateFixes} of ${FREE_DUPLICATE_FIX_LIMIT} so far, with ${remainingDuplicateFixes} still available.`
+      : `You have completed all ${FREE_DUPLICATE_FIX_LIMIT} duplicate corrections included in your free preview. Upgrade to continue reviewing and fixing possible duplicates throughout your tree.`;
+    return `
+      <section class="assistance-options">
+        <h2>Wonderful progress on your family tree.</h2>
+        <p>Your free preview includes up to ${FREE_DUPLICATE_FIX_LIMIT} reviewed duplicate corrections. ${duplicateProgressMessage}</p>
+        <p>Family Builder lets you continue reviewing and correcting possible duplicates, so every person has a clearer place in your family story.</p>
+        <p>Your resolved work stays in this browser workspace when you upgrade, so you can continue from the same place.</p>
+        <a class="btn-secondary assistance-upgrade-link" href="${SUBSCRIPTION_STORE_URL}">Upgrade for more duplicate corrections</a>
+      </section>
+    `;
+  }
+
+  const reviewedCount = Math.min(errors.length, BASIC_ERROR_REVIEW_LIMIT);
+  const remainingErrors = Math.max(errors.length - reviewedCount, 0);
+  const completedFreeReviewCount = Math.min(progress.completedIssueIds.length, BASIC_ERROR_REVIEW_LIMIT);
+  const freeReviewMessage = completedFreeReviewCount >= BASIC_ERROR_REVIEW_LIMIT
+    ? `You have completed the ${BASIC_ERROR_REVIEW_LIMIT} corrections included in your free review. Upgrade to continue reviewing and fixing the rest of your family tree.`
+    : `We spotted ${reviewedCount} error${reviewedCount === 1 ? '' : 's'} you can manually fix at no charge.`;
 
   return `
     <section class="assistance-options">
-      <h2>${limitReached ? 'Basic fix limit reached' : 'Basic plan progress'}</h2>
-      <p>${fixedCount} of ${BASIC_ERROR_FIX_LIMIT} non-duplicate error fixes used.${limitReached ? ' Upgrade to Family Builder for unlimited manual fixes.' : ` ${remainingFixes} fix${remainingFixes === 1 ? '' : 'es'} remaining.`} Duplicate person merges are free and do not use this limit.</p>
-      <a class="btn-secondary assistance-upgrade-link" href="index.html#subscriptionWorkflows">Upgrade to Family Builder</a>
+      <h2>Great news - these details can be fixed.</h2>
+      <p>${freeReviewMessage} An accurate tree is a wonderful way to share your family's story with relatives and friends, while honoring your ancestors and their contributions to society.</p>
+      <p>${remainingErrors ? `Upgrade to Family Builder to fix the remaining ${remainingErrors} error${remainingErrors === 1 ? '' : 's'}, and choose Pro / Researcher when you want safe automatic fixes.` : 'Upgrade to Family Builder whenever you are ready to continue fixing errors and preserving your family history.'}</p>
+      <p>Your resolved work stays in this browser workspace when you upgrade, so you can continue from the same place.</p>
+      <a class="btn-secondary assistance-upgrade-link" href="${SUBSCRIPTION_STORE_URL}">Choose a plan to fix the rest</a>
     </section>
   `;
 }
@@ -101,29 +395,29 @@ function renderProgressEncouragement(errors, progress) {
   const total = errors.length;
   const solved = errors.filter((issue) => completed.has(getIssueId(issue))).length;
   const tier = getCurrentTier();
-  let message = 'Every corrected record makes the next research step clearer.';
+  let message = 'You have chosen to care for your family story, and every corrected record helps preserve names, connections, and memories for the people who come after you.';
 
   if (!total) {
-    message = 'Your current report is clear. Keep this chart as a record of the careful work you have completed.';
+    message = 'What a meaningful beginning. Your current report is clear, and this chart can become a lasting record of the care you have given your family history.';
   } else if (!solved) {
-    message = 'You are off to a great start. Choose one issue, follow the recommendation, and build momentum from there.';
+    message = 'You have taken a wonderful first step by reviewing your family tree. Choose one issue, follow the recommendation, and watch your family story become clearer with every discovery.';
   } else if (solved === total) {
-    message = 'Wonderful work - this report is complete. Your family story is now one step clearer.';
+    message = 'Wonderful work - this report is complete. You have honored your family story by making it clearer and easier to share with relatives and future generations.';
   } else if (solved >= Math.ceil(total / 2)) {
-    message = 'You are more than halfway through this report. Keep going - the remaining steps are already in view.';
+    message = 'You are more than halfway through this report. Keep going - every detail you clarify brings your family’s journey into sharper focus for the people who will treasure it.';
   } else {
-    message = `Nice progress - you have solved ${solved} issue${solved === 1 ? '' : 's'} so far.`;
+    message = `Wonderful progress - you have solved ${solved} issue${solved === 1 ? '' : 's'} so far. Each one is a meaningful step toward a family tree you can share with pride.`;
   }
 
   const tierMessage = tier === 'personal'
     ? ' Family Builder gives you room to keep reviewing and organizing without a fix limit.'
     : tier === 'free'
-      ? ' Duplicate person merges remain free, and Family Builder is ready whenever you want unlimited manual fixes.'
-      : ' Your plan includes the advanced tools needed to keep refining this tree.';
+      ? ' Your first five manual fixes are included at no charge. Upgrade to Family Builder to fix the rest, or choose Pro / Researcher for safe automatic fixes.'
+      : ' Your plan includes safe automatic fixes alongside the manual review tools.';
 
   return `
     <aside class="progress-encouragement" aria-live="polite">
-      <strong>Keep building your family story</strong>
+      <strong>You are preserving something meaningful</strong>
       <p>${message}${tierMessage}</p>
     </aside>
   `;
@@ -133,8 +427,71 @@ function renderUpdatedTreeOffer() {
   return `
     <section class="updated-tree-offer">
       <h2>Your updated tree is ready to celebrate</h2>
-      <p>Personalize a fresh family-tree edition, print it, or explore posters and keepsakes made from the progress you just completed.</p>
+      <p>Your completed work is ready for a fresh family-tree edition, a printed copy, or a personalized keepsake.</p>
       <a class="btn-add" href="index.html#treePresentation">Personalize and print your updated tree</a>
+      <a class="btn-secondary" href="store.html#customKeepsakes">Explore Personalized Tree Keepsakes</a>
+    </section>
+  `;
+}
+
+function renderDuplicateMergeReview() {
+  const undoState = getDuplicateMergeUndo();
+  if (!undoState?.mergeSummary) return '';
+
+  return `
+    <section class="duplicate-merge-review">
+      <h2>Duplicate merge complete</h2>
+      <p><strong>${escapeHtml(undoState.mergeSummary.survivorName)}</strong> now includes ${escapeHtml(undoState.mergeSummary.duplicateNames.join(', '))}.</p>
+    <p>Keep this resolved correction in your workspace and continue reviewing or upgrade when you are ready. If you prefer, you can return this most recent merge to the previous tree state.</p>
+    <button id="approveDuplicateMerge" type="button" class="btn-add">Keep Resolved Work and Continue</button>
+    <button id="undoDuplicateMerge" type="button" class="btn-secondary">Return to Previous Tree State</button>
+    </section>
+  `;
+}
+
+function renderPendingDuplicateMergeReview(treeData) {
+  if (!pendingDuplicateMerge) return '';
+
+  const survivor = treeData?.people?.find((person) => person.id === pendingDuplicateMerge.survivorId);
+  const duplicates = treeData?.people?.filter((person) => pendingDuplicateMerge.duplicateIds.includes(person.id)) || [];
+  if (!survivor || !duplicates.length) {
+    pendingDuplicateMerge = null;
+    return '';
+  }
+
+  function renderDuplicateReviewChoice(duplicateIssues) {
+    return `
+      <section class="duplicate-merge-review">
+        <h2>How would you like to review possible duplicates?</h2>
+        <p>We found ${duplicateIssues.length} possible duplicate record${duplicateIssues.length === 1 ? '' : 's'} in this review. You will always confirm each merge separately before anything changes.</p>
+        <button type="button" class="btn-add" data-duplicate-review-mode="single">Review One Duplicate Group at a Time</button>
+        <button type="button" class="btn-secondary" data-duplicate-review-mode="batch">Review All Duplicate Groups in This Batch</button>
+      </section>
+    `;
+  }
+
+  const personDetails = (person) => [
+    person.birthDate && `Born: ${person.birthDate}`,
+    person.birthPlace && `Place: ${person.birthPlace}`,
+    person.deathDate && `Died: ${person.deathDate}`,
+  ].filter(Boolean).join(' · ') || 'No additional details recorded';
+
+  return `
+    <section class="duplicate-merge-review">
+      <h2>Review possible duplicate records</h2>
+      <p>Compare these records before combining them. Nothing has been changed yet.</p>
+      <article class="tree-review-person selected-tree-person">
+        <h3>Keep this record</h3>
+        <strong>${escapeHtml(survivor.name || survivor.id)}</strong>
+        <p>${escapeHtml(personDetails(survivor))}</p>
+      </article>
+      <h3>Records to combine into it</h3>
+      <ul class="person-error-list">
+        ${duplicates.map((person) => `<li><strong>${escapeHtml(person.name || person.id)}</strong><p>${escapeHtml(personDetails(person))}</p></li>`).join('')}
+      </ul>
+      <p>When you confirm, the selected details are combined into the record you chose to keep. You can still undo the merge immediately afterward.</p>
+      <button id="confirmDuplicateMerge" type="button" class="btn-add">Confirm and Merge These Records</button>
+      <button id="cancelDuplicateMerge" type="button" class="btn-secondary">Return Without Merging</button>
     </section>
   `;
 }
@@ -149,11 +506,110 @@ function escapeHtml(value = '') {
   }[char]));
 }
 
-function printProgressChart(groups, completed, fixedOnly = false) {
+function renderPendingResearch(errors, progress) {
+  const pendingIssues = errors.filter((issue) => progress.pendingIssueIds.includes(getIssueId(issue)));
+  if (!pendingIssues.length) return '';
+
+  return `
+    <section id="researchShelf" class="pending-research">
+      <h2>Fix Later (Pending)</h2>
+      <p>${pendingIssues.length} item${pendingIssues.length === 1 ? '' : 's'} will not block your progress. Return whenever you have more records or information.</p>
+      <ul>
+        ${pendingIssues.map((issue) => `
+          <li>
+            <strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(issue.message)}
+            <button type="button" class="btn-secondary" data-resume-pending-issue="${encodeURIComponent(getIssueId(issue))}">Return to active review</button>
+          </li>
+        `).join('')}
+      </ul>
+    </section>
+  `;
+}
+
+function renderProgressTools(progress, errors = []) {
+  const correctedItems = progress.resolvedItems || [];
+  const completed = new Set(progress.completedIssueIds);
+  const pending = new Set(progress.pendingIssueIds);
+  const unresolvedIssues = errors.filter((issue) => !completed.has(getIssueId(issue)) && !pending.has(getIssueId(issue)));
+  const nextStep = pending.size
+    ? 'Continue with the open items below, then return to Fix Later when you have more records or research.'
+    : unresolvedIssues.length
+      ? 'Continue with the open items below. Each suggested fix explains the next action to take.'
+      : 'Your current review is complete. Open your family tree to see the corrections so far.';
+  return `
+    <section class="progress-tools">
+      <h2>Choose how to review your progress</h2>
+      <p>Use a printable chart for handwritten research notes, or open a computer report for a clear summary and your next step.</p>
+      <div class="issue-fix-actions">
+        <button id="printProgressChart" type="button" class="btn-secondary">Print a Chart for Manual Review</button>
+        <button id="openProgressReport" type="button" class="btn-secondary">Open Your Computer Progress Report</button>
+      </div>
+      <section id="computerProgressReport" class="corrected-items-preview" hidden>
+        <h3>Your computer progress report</h3>
+        <p><strong>${completed.size}</strong> solved · <strong>${pending.size}</strong> saved for later · <strong>${unresolvedIssues.length}</strong> open</p>
+        <p><strong>Your next step:</strong> ${escapeHtml(nextStep)}</p>
+        ${unresolvedIssues.length
+          ? `<h4>Next items to review</h4><ul>${unresolvedIssues.slice(0, 3).map((issue) => `<li><strong>${escapeHtml(issue.subject || issue.category)}:</strong> ${escapeHtml(issue.suggestion || issue.message)}</li>`).join('')}</ul>`
+          : ''}
+      </section>
+      <div class="corrected-items-preview">
+        <h3>Corrected items preview</h3>
+        ${correctedItems.length
+          ? `<ul>${correctedItems.map((item) => `<li><strong>${escapeHtml(item.category)}:</strong> ${escapeHtml(item.message)} <span>${escapeHtml(item.correctionType)}</span></li>`).join('')}</ul>`
+          : '<p class="muted">Corrected items will appear here as you work through the review.</p>'}
+      </div>
+    </section>
+  `;
+}
+
+function renderWorkspaceDesk(errors, progress) {
+  const completed = new Set(progress.completedIssueIds);
+  const pending = new Set(progress.pendingIssueIds);
+  const openCount = errors.filter((issue) => !completed.has(getIssueId(issue)) && !pending.has(getIssueId(issue))).length;
+  const savedWorkMessage = progress.resolvedItems?.length || pending.size
+    ? 'Your corrections, saved-for-later research, and review progress are kept with this family tree in this browser so you can return here and continue.'
+    : 'This is your saved review desk. As you solve items or save research for later, your progress will remain here with this family tree in this browser.';
+  const workingTreeParameters = new URLSearchParams();
+  if (WORKSPACE_PREVIEW_MODE) workingTreeParameters.set('demo', 'workspace');
+  const workingTreeUrl = workingTreeParameters.size ? `tree.html?${workingTreeParameters}` : 'tree.html';
+
+  return `
+    <section class="review-desk">
+      ${WORKSPACE_PREVIEW_MODE ? '<p class="workspace-preview-notice"><strong>Preview workspace:</strong> This sample family tree is only for trying the review desk. Your customer tree is unchanged.</p>' : ''}
+      <div class="review-desk-heading">
+        <div>
+          <p class="eyebrow">Your saved review desk</p>
+          <h2>Your family-tree work is ready when you are</h2>
+          <p>${savedWorkMessage}</p>
+        </div>
+        <a class="btn-secondary" href="${workingTreeUrl}">Open Working Tree Preview</a>
+      </div>
+      <div class="review-desk-metrics" aria-label="Current review progress">
+        <article><strong>${completed.size}</strong><span>Solved</span></article>
+        <article><strong>${pending.size}</strong><span>Saved for later</span></article>
+        <article><strong>${openCount}</strong><span>Open to review</span></article>
+      </div>
+      <div class="review-desk-links">
+        <a href="#activeReview">Continue active review</a>
+        <a href="#researchShelf">Open research shelf</a>
+        <a href="#progressReports">View charts and reports</a>
+      </div>
+      <div id="progressReports">
+        ${renderProgressTools(progress, errors)}
+      </div>
+    </section>
+  `;
+}
+
+function printProgressChart(groups, completed, fixedOnly = false, pending = new Set()) {
   const rows = groups.flatMap((group) => group.issues
     .filter((issue) => !fixedOnly || completed.has(getIssueId(issue)))
     .map((issue) => {
-      const status = completed.has(getIssueId(issue)) ? 'Solved' : 'Open';
+      const status = completed.has(getIssueId(issue))
+        ? 'Solved'
+        : pending.has(getIssueId(issue))
+          ? 'Fix Later (Pending)'
+          : 'Open';
       return `
         <tr>
           <td>${escapeHtml(group.label)}</td>
@@ -261,7 +717,24 @@ function removeStaleIssuesAfterDuplicateMerge(report, duplicateIds) {
   }
 }
 
-function getIssueGroups(errors) {
+function getIssueGroupLabel(subject, peopleById, familiesById) {
+  if (!subject) return 'General validation';
+  const name = peopleById?.get(subject)?.name?.trim();
+  if (name) return `${name} (${subject})`;
+
+  const family = familiesById?.get(subject);
+  if (family) {
+    const parentNames = [family.husbandId, family.wifeId]
+      .map((parentId) => peopleById?.get(parentId)?.name?.trim())
+      .filter(Boolean);
+    if (parentNames.length) return `Family of ${parentNames.join(' and ')} (${subject})`;
+    return `Family record (${subject})`;
+  }
+
+  return subject;
+}
+
+function getIssueGroups(errors, peopleById, familiesById) {
   const groups = new Map();
 
   for (const issue of errors) {
@@ -269,7 +742,7 @@ function getIssueGroups(errors) {
     if (!groups.has(id)) {
       groups.set(id, {
         id,
-        label: issue.subject || 'General validation',
+        label: getIssueGroupLabel(issue.subject, peopleById, familiesById),
         issues: [],
       });
     }
@@ -279,63 +752,406 @@ function getIssueGroups(errors) {
   return Array.from(groups.values());
 }
 
-function getActiveIssueGroups(errors, progress) {
-  const groupsById = new Map(getIssueGroups(errors).map((group) => [group.id, group]));
-  const completed = new Set(progress.completedIssueIds);
+function getDescendantReviewOrder(treeData) {
+  const peopleById = new Map((treeData?.people || []).map((person) => [person.id, person]));
+  const childrenByParentId = new Map();
+
+  for (const family of treeData?.families || []) {
+    const parentIds = [family.husbandId, family.wifeId].filter((id) => peopleById.has(id));
+    const childIds = (family.childrenIds || []).filter((id) => peopleById.has(id));
+    for (const parentId of parentIds) {
+      if (!childrenByParentId.has(parentId)) childrenByParentId.set(parentId, []);
+      childrenByParentId.get(parentId).push(...childIds);
+    }
+  }
+
+  const primaryPersonId = peopleById.has(treeData?.primaryPersonId)
+    ? treeData.primaryPersonId
+    : treeData?.people?.[0]?.id;
+  const queue = primaryPersonId ? [primaryPersonId] : [];
+  const orderedPeople = new Map();
+
+  for (let queueIndex = 0; queueIndex < queue.length; queueIndex += 1) {
+    const personId = queue[queueIndex];
+    if (orderedPeople.has(personId)) continue;
+    orderedPeople.set(personId, orderedPeople.size);
+    queue.push(...(childrenByParentId.get(personId) || []));
+  }
+
+  return orderedPeople;
+}
+
+function getDirectLineReviewOrder(treeData) {
+  const peopleById = new Map((treeData?.people || []).map((person) => [person.id, person]));
+  const parentsByChildId = new Map();
+
+  for (const family of treeData?.families || []) {
+    const parentIds = [family.husbandId, family.wifeId].filter((id) => peopleById.has(id));
+    for (const childId of family.childrenIds || []) {
+      if (!peopleById.has(childId)) continue;
+      if (!parentsByChildId.has(childId)) parentsByChildId.set(childId, []);
+      parentsByChildId.get(childId).push(...parentIds);
+    }
+  }
+
+  const primaryPersonId = peopleById.has(treeData?.primaryPersonId)
+    ? treeData.primaryPersonId
+    : treeData?.people?.[0]?.id;
+  const directOrder = new Map();
+  const queue = primaryPersonId ? [{ id: primaryPersonId, generation: 0 }] : [];
+
+  for (let queueIndex = 0; queueIndex < queue.length; queueIndex += 1) {
+    const { id: personId, generation } = queue[queueIndex];
+    if (directOrder.has(personId)) continue;
+    directOrder.set(personId, generation);
+    for (const parentId of parentsByChildId.get(personId) || []) {
+      queue.push({ id: parentId, generation: generation + 1 });
+    }
+  }
+
+  // Validation issues can be scoped to a family rather than a person. Give each
+  // family the generation of its closest direct-line member so those issues are
+  // reviewed alongside the relatives they describe instead of being dropped.
+  for (const family of treeData?.families || []) {
+    if (!family?.id || directOrder.has(family.id)) continue;
+    const memberGenerations = [family.husbandId, family.wifeId, ...(family.childrenIds || [])]
+      .map((memberId) => directOrder.get(memberId))
+      .filter((generation) => generation !== undefined);
+    if (!memberGenerations.length) continue;
+    directOrder.set(family.id, Math.min(...memberGenerations));
+  }
+
+  return directOrder;
+}
+
+function getGenerationReviewLabel(generation) {
+  if (generation === 0) return 'Starting person';
+  if (generation === 1) return 'Parent generation';
+  return `Ancestor generation ${generation}`;
+}
+
+function getGroupGeneration(group, directLineOrder) {
+  return directLineOrder.get(group.issues[0]?.subject);
+}
+
+function getVisibleGenerationErrors(treeData, errors) {
+  const directLineOrder = getDirectLineReviewOrder(treeData);
+  return errors.filter((issue) => {
+    const generation = directLineOrder.get(issue.subject);
+    return generation !== undefined && generation < VISIBLE_REVIEW_GENERATION_COUNT;
+  });
+}
+
+function buildFamilyLocationIndex(treeData, peopleById) {
+  const index = new Map();
+  const getLocation = (personId) => {
+    if (!index.has(personId)) {
+      index.set(personId, { parents: new Set(), spouses: new Set(), children: new Set() });
+    }
+    return index.get(personId);
+  };
+
+  for (const family of treeData?.families || []) {
+    const parentIds = [family.husbandId, family.wifeId].filter((id) => peopleById.has(id));
+    const childIds = (family.childrenIds || []).filter((id) => peopleById.has(id));
+    for (const parentId of parentIds) {
+      const location = getLocation(parentId);
+      parentIds.filter((id) => id !== parentId).forEach((spouseId) => location.spouses.add(spouseId));
+      childIds.forEach((childId) => location.children.add(childId));
+    }
+    for (const childId of childIds) {
+      const location = getLocation(childId);
+      parentIds.forEach((parentId) => location.parents.add(parentId));
+    }
+  }
+
+  return index;
+}
+
+function renderFamilyLocationPreview(person, peopleById, locationIndex, directOrder, primaryPersonId) {
+  if (!person) return '';
+  const namesFor = (ids) => [...ids]
+    .map((id) => peopleById.get(id))
+    .filter(Boolean)
+    .map((relative) => escapeHtml(relative.name || relative.id));
+  const location = locationIndex.get(person.id) || { parents: new Set(), spouses: new Set(), children: new Set() };
+  const directGeneration = directOrder.get(person.id);
+  const primaryPerson = peopleById.get(primaryPersonId);
+  const lineDescription = directGeneration === 0
+    ? 'Selected starting person'
+    : directGeneration !== undefined
+      ? `Direct ancestor · ${getGenerationReviewLabel(directGeneration)} from ${escapeHtml(primaryPerson?.name || 'your selected person')}`
+      : 'Related family branch · outside the selected direct line';
+  const treeParameters = new URLSearchParams();
+  if (WORKSPACE_PREVIEW_MODE) treeParameters.set('demo', 'workspace');
+  if (IS_ADMINISTRATION_REVIEW) treeParameters.set('admin_review', 'true');
+  treeParameters.set('focus', person.id);
+
+  return `
+    <aside class="family-location-preview">
+      <strong>Family location: ${lineDescription}</strong>
+      <span>Parents: ${namesFor(location.parents).join(' and ') || 'Not recorded'} · Spouse: ${namesFor(location.spouses).join(' and ') || 'Not recorded'} · Children: ${namesFor(location.children).join(', ') || 'Not recorded'}</span>
+      <a href="tree.html?${treeParameters}">View this person in the working tree</a>
+    </aside>
+  `;
+}
+
+function getOrderedIssueGroups(treeData, errors) {
+  const directOrder = getDirectLineReviewOrder(treeData);
+  const descendantOrder = getDescendantReviewOrder(treeData);
+  const peopleById = new Map((treeData?.people || []).map((person) => [person.id, person]));
+  const familiesById = new Map((treeData?.families || []).map((family) => [family.id, family]));
+  return getIssueGroups(errors, peopleById, familiesById)
+    .map((group, index) => ({ group, index }))
+    .sort((left, right) => {
+      const leftDirectOrder = directOrder.get(left.group.issues[0]?.subject) ?? Number.MAX_SAFE_INTEGER;
+      const rightDirectOrder = directOrder.get(right.group.issues[0]?.subject) ?? Number.MAX_SAFE_INTEGER;
+      const leftDuplicateRank = isDuplicateIssue(left.group.issues[0]) ? 0 : 1;
+      const rightDuplicateRank = isDuplicateIssue(right.group.issues[0]) ? 0 : 1;
+      const leftOrder = descendantOrder.get(left.group.issues[0]?.subject) ?? Number.MAX_SAFE_INTEGER;
+      const rightOrder = descendantOrder.get(right.group.issues[0]?.subject) ?? Number.MAX_SAFE_INTEGER;
+      return leftDirectOrder - rightDirectOrder
+        || leftDuplicateRank - rightDuplicateRank
+        || leftOrder - rightOrder
+        || left.index - right.index;
+    })
+    .map(({ group }) => group);
+}
+
+function getActiveIssueGroups(treeData, errors, progress) {
+  if (progress.reviewOrderVersion !== ERROR_REVIEW_ORDER_VERSION) {
+    progress.activeGroupIds = [];
+    progress.reviewOrderVersion = ERROR_REVIEW_ORDER_VERSION;
+  }
+  const groupsById = new Map(getOrderedIssueGroups(treeData, errors).map((group) => [group.id, group]));
+  const resolved = getResolvedIssueIds(progress);
   const activeIds = progress.activeGroupIds.filter((id) => groupsById.has(id));
 
   if (activeIds.length) {
     return activeIds.map((id) => groupsById.get(id));
   }
 
-  const nextGroups = getIssueGroups(errors)
-    .filter((group) => group.issues.some((issue) => !completed.has(getIssueId(issue))))
-    .slice(0, ERROR_BATCH_SIZE);
+  const availableGroups = getOrderedIssueGroups(treeData, errors)
+    .filter((group) => group.issues.some((issue) => !resolved.has(getIssueId(issue))));
+  const directLineOrder = getDirectLineReviewOrder(treeData);
+  const firstDirectGroup = availableGroups.find((group) => (
+    getGroupGeneration(group, directLineOrder) !== undefined
+  ));
+  const currentGeneration = firstDirectGroup
+    ? getGroupGeneration(firstDirectGroup, directLineOrder)
+    : undefined;
+  const generationGroups = currentGeneration === undefined
+    ? availableGroups
+    : availableGroups.filter((group) => (
+      getGroupGeneration(group, directLineOrder) === currentGeneration
+    ));
+  const reviewingDuplicatesOneByOne = progress.duplicateReviewMode === 'single'
+    && isDuplicateIssue(availableGroups[0]?.issues[0]);
+  const nextGroups = generationGroups.slice(0, reviewingDuplicatesOneByOne ? 1 : ERROR_BATCH_SIZE);
   progress.activeGroupIds = nextGroups.map((group) => group.id);
   saveProgress(progress);
   return nextGroups;
 }
 
+function applySafeBatchFixes(treeData, groups, progress) {
+  const appliedIssueIds = [];
+
+  for (const issue of groups.flatMap((group) => group.issues)) {
+    const fix = issue.autoFix;
+    if (!fix || fix.type === 'mergeDuplicatePeople') continue;
+
+    let applied = false;
+    if (fix.type === 'removeMissingFamilyRef') {
+      const person = treeData.people.find((item) => item.id === fix.personId);
+      if (person && Array.isArray(person[fix.field])) {
+        const before = person[fix.field].length;
+        person[fix.field] = person[fix.field].filter((familyId) => familyId !== fix.familyId);
+        applied = person[fix.field].length !== before;
+      }
+    }
+
+    if (fix.type === 'removeMissingPersonFromFamily') {
+      const family = treeData.families.find((item) => item.id === fix.familyId);
+      if (family) {
+        const before = JSON.stringify([family.husbandId, family.wifeId, family.childrenIds || []]);
+        if (family.husbandId === fix.personId) family.husbandId = null;
+        if (family.wifeId === fix.personId) family.wifeId = null;
+        family.childrenIds = (family.childrenIds || []).filter((childId) => childId !== fix.personId);
+        applied = before !== JSON.stringify([family.husbandId, family.wifeId, family.childrenIds || []]);
+      }
+    }
+
+    if (fix.type === 'removeChildFromFamily') {
+      const family = treeData.families.find((item) => item.id === fix.familyId);
+      if (family) {
+        const before = family.childrenIds?.length || 0;
+        family.childrenIds = (family.childrenIds || []).filter((childId) => childId !== fix.childId);
+        applied = family.childrenIds.length !== before;
+      }
+    }
+
+    if (applied) {
+      const issueId = getIssueId(issue);
+      appliedIssueIds.push(issueId);
+      if (!progress.completedIssueIds.includes(issueId)) progress.completedIssueIds.push(issueId);
+      if (!progress.completedNonDuplicateIssueIds.includes(issueId)) progress.completedNonDuplicateIssueIds.push(issueId);
+      recordResolvedItem(progress, issue, 'Safe automatic fix');
+    }
+  }
+
+  if (appliedIssueIds.length) {
+    saveTreeData(treeData);
+    saveProgress(progress);
+  }
+  return appliedIssueIds.length;
+}
+
+function completeDuplicateMerge(treeData, fix) {
+  const progress = getProgress();
+  if (getCurrentTier() === 'free' && progress.completedDuplicateIssueIds.length >= FREE_DUPLICATE_FIX_LIMIT) {
+    throw new Error(`Your free preview includes ${FREE_DUPLICATE_FIX_LIMIT} duplicate corrections. Choose a plan to continue reviewing and correcting possible duplicates.`);
+  }
+
+  const survivor = treeData?.people?.find((person) => person.id === fix.survivorId);
+  const duplicates = treeData?.people?.filter((person) => fix.duplicateIds.includes(person.id)) || [];
+  if (!survivor || !duplicates.length) {
+    throw new Error('The duplicate records are no longer available. Reload the tree and try again.');
+  }
+
+  saveDuplicateMergeUndo(JSON.parse(JSON.stringify(treeData)), progress, {
+    survivorName: survivor.name || survivor.id,
+    duplicateNames: duplicates.map((person) => person.name || person.id),
+  });
+  mergeDuplicatePeople(treeData, fix);
+  removeStaleIssuesAfterDuplicateMerge(treeData.validationReport, fix.duplicateIds);
+  const mergedIssueId = getIssueId({
+    category: 'Possible duplicate',
+    message: `${duplicates.length + 1} people share the same name and birth year: ${[survivor, ...duplicates].map((person) => `${person.name} (${person.id})`).join(', ')}.`,
+    subject: survivor.id,
+  });
+  if (!progress.completedIssueIds.includes(mergedIssueId)) progress.completedIssueIds.push(mergedIssueId);
+  recordResolvedItem(progress, {
+    category: 'Possible duplicate',
+    message: `${duplicates.length + 1} people were reviewed and merged into ${survivor.name || survivor.id}.`,
+    subject: survivor.id,
+  }, 'Confirmed duplicate merge');
+  if (!progress.completedDuplicateIssueIds.includes(mergedIssueId)) {
+    progress.completedDuplicateIssueIds.push(mergedIssueId);
+  }
+  saveTreeData(treeData);
+  saveProgress(progress);
+}
+
 function renderWorkspace() {
+  workspaceWelcome.hidden = !SHOW_WORKSPACE_PROGRESS;
+  updatePlanErrorWorkspaceMessage();
   const treeData = getTreeData();
-  const errors = [
+  const allErrors = [
     ...(treeData?.validationReport?.errors || []),
     ...(treeData?.validationReport?.warnings || []).filter((issue) => issue.autoFix?.type === 'mergeDuplicatePeople'),
   ];
+  const visibleGenerationErrors = getVisibleGenerationErrors(treeData, allErrors);
+  const duplicateIssues = visibleGenerationErrors.filter(isDuplicateIssue);
+  const isBasicPlan = getCurrentTier() === 'free';
   const progress = getProgress();
-  const canUndoDuplicateMerge = Boolean(getDuplicateMergeUndo());
-  const undoButton = canUndoDuplicateMerge ? '<button id="undoDuplicateMerge" type="button" class="btn-secondary">Undo Last Duplicate Merge</button>' : '';
-  const assistanceOptions = renderBasicPlanOptions(errors, progress);
+  updateReturnToTreeLink(progress);
+  updateWorkspaceTreeLinks(progress);
+  const errors = isBasicPlan && duplicateIssues.length
+    ? duplicateIssues.slice(0, FREE_DUPLICATE_FIX_LIMIT)
+    : isBasicPlan
+      ? visibleGenerationErrors.slice(0, BASIC_ERROR_REVIEW_LIMIT)
+      : visibleGenerationErrors;
+  if (isBasicPlan && duplicateIssues.length && progress.duplicateReviewMode !== 'batch') {
+    progress.duplicateReviewMode = 'batch';
+    progress.activeGroupIds = [];
+    saveProgress(progress);
+  }
+  const duplicateMergeUndo = getDuplicateMergeUndo();
+  const canUndoDuplicateMerge = Boolean(duplicateMergeUndo);
+  const undoButton = canUndoDuplicateMerge && !duplicateMergeUndo.mergeSummary
+    ? '<button id="undoDuplicateMerge" type="button" class="btn-secondary">Return to Previous Tree</button>'
+    : '';
+  const duplicateMergeReview = renderDuplicateMergeReview();
+  const assistanceOptions = renderBasicPlanOptions(visibleGenerationErrors, progress);
   const encouragement = renderProgressEncouragement(errors, progress);
+  const pendingResearch = renderPendingResearch(visibleGenerationErrors, progress);
+  const workspaceDesk = SHOW_WORKSPACE_PROGRESS ? renderWorkspaceDesk(visibleGenerationErrors, progress) : '';
 
   if (!treeData?.people?.length) {
-    workspace.innerHTML = '<p class="empty-message">Upload a GEDCOM file before opening the error workspace.</p>';
+    workspace.innerHTML = `
+      ${workspaceDesk}
+      <section id="activeReview" class="batch-complete">
+        <h2>Your five-generation working tree is not available yet</h2>
+        <p>Return to your Working Tree Preview to continue with the five generations you selected. This review does not reopen or require the original GEDCOM.</p>
+        <a class="btn-add" href="${escapeHtml(returnToTreeLink.href)}">Return to Your Five-Generation Working Tree</a>
+      </section>
+    `;
+    return;
+  }
+
+  if (!WORKSPACE_PREVIEW_MODE && !IS_ADMINISTRATION_REVIEW && !localStorage.getItem(PLAN_SELECTION_STORAGE_KEY)) {
+    workspace.innerHTML = `
+      ${workspaceDesk}
+      <section id="activeReview" class="batch-complete">
+        <h2>Choose your plan to begin reviewing</h2>
+        <p>Your family tree is ready. Select the plan that fits your work, then return here to review, save research for later, and print your progress.</p>
+        <a class="btn-add" href="store.html#subscriptions">Choose a Plan</a>
+      </section>
+    `;
+    return;
+  }
+
+  const pendingDuplicateReview = renderPendingDuplicateMergeReview(treeData);
+  if (pendingDuplicateReview) {
+    workspace.innerHTML = `${workspaceDesk}${pendingDuplicateReview}`;
+    return;
+  }
+
+  if (!isBasicPlan && duplicateIssues.length && !progress.duplicateReviewMode) {
+    workspace.innerHTML = `${workspaceDesk}${renderDuplicateReviewChoice(duplicateIssues)}`;
     return;
   }
 
   if (!errors.length) {
-    workspace.innerHTML = `${encouragement}<p class="empty-message">No validation errors are currently available. Return to the family tree to review warnings and notes.</p><button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Errors Chart</button>${renderUpdatedTreeOffer()}${undoButton}${assistanceOptions}`;
+    workspace.innerHTML = `${workspaceDesk}${duplicateMergeReview}${encouragement}${pendingResearch}<p id="activeReview" class="empty-message">There are no open errors in the five generations currently shown in your working tree. Return to the tree to choose another direct line or add more generations when you are ready.</p>${renderUpdatedTreeOffer()}${undoButton}${assistanceOptions}`;
     return;
   }
 
-  const activeGroups = getActiveIssueGroups(errors, progress);
+  const activeGroups = getActiveIssueGroups(treeData, errors, progress);
+  const peopleById = new Map(treeData.people.map((person) => [person.id, person]));
+  const familiesById = new Map((treeData.families || []).map((family) => [family.id, family]));
+  const directLineOrder = getDirectLineReviewOrder(treeData);
+  const activeGeneration = getGroupGeneration(activeGroups[0] || { issues: [] }, directLineOrder);
+  const activeReviewTitle = activeGeneration === undefined
+    ? 'Related family branch review'
+    : `${getGenerationReviewLabel(activeGeneration)} review`;
+  const activeReviewDescription = activeGeneration === undefined
+    ? 'These records are outside the selected direct line. They are shown after the selected person and each ancestor generation are complete.'
+    : `Review the errors for the ${getGenerationReviewLabel(activeGeneration).toLowerCase()} before moving outward through the family tree.`;
+  const familyLocationIndex = buildFamilyLocationIndex(treeData, peopleById);
+  const selectedPrimaryPersonId = peopleById.has(treeData.primaryPersonId)
+    ? treeData.primaryPersonId
+    : treeData.people[0]?.id;
   const completed = new Set(progress.completedIssueIds);
+  const resolved = getResolvedIssueIds(progress);
   const activeDone = activeGroups.length === 0 || activeGroups.every((group) => (
-    group.issues.every((issue) => completed.has(getIssueId(issue)))
+    group.issues.every((issue) => resolved.has(getIssueId(issue)))
   ));
-  const remainingGroups = getIssueGroups(errors).filter((group) => (
-    group.issues.some((issue) => !completed.has(getIssueId(issue)))
+  const remainingGroups = getOrderedIssueGroups(treeData, errors).filter((group) => (
+    group.issues.some((issue) => !resolved.has(getIssueId(issue)))
   )).length;
 
   if (activeDone && remainingGroups) {
     workspace.innerHTML = `
-      <section class="batch-complete">
-        <h2>Batch complete</h2>
-        <p>Great job - you completed this group. ${remainingGroups} person${remainingGroups === 1 ? '' : 's'} or record${remainingGroups === 1 ? '' : 's'} remain.</p>
-        <button id="loadNextBatch" type="button" class="btn-add">Load next ${Math.min(ERROR_BATCH_SIZE, remainingGroups)} people</button>
-        <button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Errors Chart</button>
+      ${workspaceDesk}
+      ${duplicateMergeReview}
+      <section id="activeReview" class="batch-complete">
+        <h2>Generation review complete</h2>
+        <p>Great job - you completed this generation. ${remainingGroups} person${remainingGroups === 1 ? '' : 's'} or record${remainingGroups === 1 ? '' : 's'} remain.</p>
+        <button id="loadNextBatch" type="button" class="btn-add">Continue to the next generation</button>
         ${undoButton}
         ${encouragement}
+        ${pendingResearch}
         ${assistanceOptions}
       </section>
     `;
@@ -343,20 +1159,24 @@ function renderWorkspace() {
   }
 
   if (activeDone) {
-    workspace.innerHTML = `<section class="batch-complete"><h2>All errors completed</h2><p>You completed every issue in this workspace. Take a moment to print your fixed-errors chart and celebrate the progress.</p><button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Errors Chart</button>${undoButton}</section>${renderUpdatedTreeOffer()}${encouragement}${assistanceOptions}`;
+    const pendingMessage = progress.pendingIssueIds.length
+      ? ` You also have ${progress.pendingIssueIds.length} item${progress.pendingIssueIds.length === 1 ? '' : 's'} in Fix Later (Pending), which did not block your progress.`
+      : '';
+    workspace.innerHTML = `${workspaceDesk}${duplicateMergeReview}<section id="activeReview" class="batch-complete"><h2>Active error review complete</h2><p>You completed every active issue in this workspace.${pendingMessage} Your saved review desk above has both your printable chart and your computer progress report.</p>${undoButton}</section>${pendingResearch}${renderUpdatedTreeOffer()}${encouragement}${assistanceOptions}`;
     return;
   }
 
   workspace.innerHTML = `
-    <section class="error-batch">
+    ${workspaceDesk}
+    <section id="activeReview" class="error-batch">
       <div class="report-heading">
-        <h2>Current people batch</h2>
-        <span>${activeGroups.length} of ${ERROR_BATCH_SIZE} selected</span>
+        <h2>${activeReviewTitle}</h2>
+        <span>${activeGroups.length} record${activeGroups.length === 1 ? '' : 's'} in this review</span>
       </div>
-      <p class="batch-help">Each person includes all of their unresolved errors. Mark an error solved only after correcting it in the source GEDCOM or completing its recommended fix. The next batch stays locked until this batch is complete.</p>
+      <p class="batch-help">${activeReviewDescription} ${isBasicPlan && duplicateIssues.length ? `Your free preview shows up to ${FREE_DUPLICATE_FIX_LIMIT} possible duplicate corrections together. Open any record below to review it carefully before confirming its merge. Upgrade to Family Builder when you are ready to correct more duplicates.` : isBasicPlan ? `Your first ${BASIC_ERROR_REVIEW_LIMIT} manual fixes are included at no charge. Use the review guidance below, then mark each corrected record solved. Upgrade to Family Builder to fix the rest, or choose Pro / Researcher for safe automatic fixes.` : 'Each person includes all of their unresolved errors. Mark an error solved after correcting it in this working tree or completing its recommended fix. The next selected generation opens when this generation is complete.'}</p>
+      ${duplicateMergeReview}
       ${encouragement}
-      <button id="printProgressChart" type="button" class="btn-secondary">Print Progress Chart</button>
-      <button id="printFixedProgressChart" type="button" class="btn-secondary">Print Fixed Errors Chart</button>
+      ${pendingResearch}
       ${undoButton}
       ${assistanceOptions}
       <ol class="error-batch-list">
@@ -364,17 +1184,44 @@ function renderWorkspace() {
           return `
             <li>
               <strong>${escapeHtml(group.label)}</strong>
+              ${renderFamilyLocationPreview(
+                peopleById.get(group.issues[0]?.subject),
+                peopleById,
+                familyLocationIndex,
+                directLineOrder,
+                selectedPrimaryPersonId,
+              )}
               <ul class="person-error-list">
                 ${group.issues.map((issue) => {
                   const issueId = getIssueId(issue);
                   const isCompleted = completed.has(issueId);
-                  const basicLimitReached = !canUseUnlimitedErrorFixes() && !isDuplicateIssue(issue) && getCompletedNonDuplicateIssueCount(errors, progress) >= BASIC_ERROR_FIX_LIMIT;
+                  const isPending = progress.pendingIssueIds.includes(issueId);
+                  const isResolved = isCompleted || isPending;
+                  const hasSafeAutomaticFix = Boolean(issue.autoFix) && !isDuplicateIssue(issue);
+                  const freeDuplicateLimitReached = isBasicPlan
+                    && progress.completedDuplicateIssueIds.length >= FREE_DUPLICATE_FIX_LIMIT;
+                  const issueActions = `
+                    ${isDuplicateIssue(issue) ? `
+                    <div class="issue-fix-actions">
+                    <button type="button" class="btn-secondary" data-merge-duplicates="${encodeURIComponent(JSON.stringify(issue.autoFix))}" ${freeDuplicateLimitReached ? 'disabled' : ''}>${freeDuplicateLimitReached ? 'Upgrade for more duplicate corrections' : 'Review and merge possible duplicates'}</button>
+                    </div>` : ''}
+                    ${isBasicPlan ? '' : `
+                    <div class="issue-fix-actions">
+                    <button type="button" class="btn-secondary" data-apply-safe-fix="${encodeURIComponent(issueId)}" ${!hasSafeAutomaticFix || !canUseSafeAutomaticFixes() || isResolved ? 'disabled' : ''}>${hasSafeAutomaticFix && canUseSafeAutomaticFixes() ? 'Apply safe automatic fix' : 'No safe automatic fix'}</button>
+                    </div>`}
+                    <div class="issue-fix-actions">
+                    <button type="button" class="btn-secondary" data-review-manually>Review manually</button>
+                    <button type="button" class="btn-secondary" data-resolve-issue="${encodeURIComponent(issueId)}" data-duplicate-issue="${isDuplicateIssue(issue)}" ${isResolved ? 'disabled' : ''}>${isCompleted ? 'Solved' : isPending ? 'Pending review' : 'Mark solved'}</button>
+                    ${isResolved ? '' : `<button type="button" class="btn-secondary" data-pending-issue="${encodeURIComponent(issueId)}">Save for Later and Continue</button>`}
+                    </div>
+                    ${renderRecordReviewOptions(issue, getResearchSubject(issue, peopleById, familiesById))}
+                    <p class="manual-review-note" hidden>Review the source record and suggestion above, then mark this item solved or move it to Fix Later (Pending) without blocking your progress.</p>
+                  `;
                   return `
-                    <li>
+                    <li data-tree-subject="${encodeURIComponent(issue.subject || '')}">
                       <strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(issue.message)}
                       ${issue.suggestion ? `<p class="fix-suggestion">${escapeHtml(issue.suggestion)}</p>` : ''}
-                      ${isDuplicateIssue(issue) ? `<button type="button" class="btn-secondary" data-merge-duplicates="${encodeURIComponent(JSON.stringify(issue.autoFix))}">Approve &amp; Merge Duplicate People</button>` : ''}
-                      <button type="button" class="btn-secondary" data-resolve-issue="${encodeURIComponent(issueId)}" data-duplicate-issue="${isDuplicateIssue(issue)}" ${isCompleted || basicLimitReached ? 'disabled' : ''}>${isCompleted ? 'Solved' : basicLimitReached ? 'Upgrade to fix more' : 'Mark solved'}</button>
+                      ${issueActions}
                     </li>
                   `;
                 }).join('')}
@@ -388,20 +1235,101 @@ function renderWorkspace() {
 }
 
 workspace.addEventListener('click', (event) => {
+  const reviewedIssue = event.target.closest('[data-tree-subject]');
+  if (reviewedIssue) {
+    rememberLastReviewedSubject(decodeURIComponent(reviewedIssue.dataset.treeSubject));
+  }
+
+  const duplicateReviewModeButton = event.target.closest('[data-duplicate-review-mode]');
+  if (duplicateReviewModeButton) {
+    const progress = getProgress();
+    progress.duplicateReviewMode = duplicateReviewModeButton.dataset.duplicateReviewMode;
+    progress.activeGroupIds = [];
+    saveProgress(progress);
+    renderWorkspace();
+    return;
+  }
+
+  const recordSourcesButton = event.target.closest('[data-open-record-sources]');
+  if (recordSourcesButton) {
+    const sourcePanel = document.querySelector(`[data-record-source-options="${recordSourcesButton.dataset.openRecordSources}"]`);
+    if (sourcePanel) {
+      sourcePanel.hidden = !sourcePanel.hidden;
+      recordSourcesButton.textContent = sourcePanel.hidden ? 'Choose a Record Source' : 'Hide Record Sources';
+    }
+    return;
+  }
+
+  const applySafeFixButton = event.target.closest('[data-apply-safe-fix]');
+  if (applySafeFixButton) {
+    const issueId = decodeURIComponent(applySafeFixButton.dataset.applySafeFix);
+    const treeData = getTreeData();
+    const progress = getProgress();
+    const errors = [
+      ...(treeData?.validationReport?.errors || []),
+      ...(treeData?.validationReport?.warnings || []).filter(isDuplicateIssue),
+    ];
+    const issue = errors.find((item) => getIssueId(item) === issueId);
+    if (!issue?.autoFix || isDuplicateIssue(issue)) {
+      alert('This error needs a manual review.');
+      return;
+    }
+    const appliedCount = applySafeBatchFixes(treeData, [{ issues: [issue] }], progress);
+    alert(appliedCount ? 'Safe automatic fix applied.' : 'This error could not be fixed automatically.');
+    renderWorkspace();
+    return;
+  }
+
+  const reviewManuallyButton = event.target.closest('[data-review-manually]');
+  if (reviewManuallyButton) {
+    const note = reviewManuallyButton.closest('.person-error-list li')?.querySelector('.manual-review-note');
+    if (note) note.hidden = !note.hidden;
+    return;
+  }
+
+  if (event.target.closest('#applySafeBatchFixes')) {
+    if (!canUseSafeAutomaticFixes()) {
+      alert('Safe automatic fixes are available with every paid plan. Review and fix this batch manually, or choose a paid plan in the Store.');
+      return;
+    }
+    const treeData = getTreeData();
+    const progress = getProgress();
+    const errors = [
+      ...(treeData?.validationReport?.errors || []),
+      ...(treeData?.validationReport?.warnings || []).filter(isDuplicateIssue),
+    ];
+    const appliedCount = applySafeBatchFixes(treeData, getActiveIssueGroups(treeData, errors, progress), progress);
+    progress.activeGroupIds = [];
+    saveProgress(progress);
+    alert(appliedCount ? `${appliedCount} safe automatic fix${appliedCount === 1 ? '' : 'es'} applied.` : 'No safe automatic fixes are available in this batch. Review the suggested fixes manually.');
+    renderWorkspace();
+    return;
+  }
+
+  if (event.target.closest('#reviewManualBatchFixes')) {
+    document.querySelector('.error-batch-list')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  if (event.target.closest('#approveDuplicateMerge')) {
+    clearDuplicateMergeUndo();
+    renderWorkspace();
+    return;
+  }
+
   if (event.target.closest('#undoDuplicateMerge')) {
     const undoState = getDuplicateMergeUndo();
     if (!undoState?.treeData || !undoState?.progress) {
       alert('There is no duplicate merge available to undo.');
       return;
     }
-
     if (!confirm('Undo the last duplicate merge and restore the previous family tree?')) {
       return;
     }
 
     saveTreeData(undoState.treeData);
     saveProgress(undoState.progress);
-    localStorage.removeItem(DUPLICATE_MERGE_UNDO_STORAGE_KEY);
+    clearDuplicateMergeUndo();
     renderWorkspace();
     return;
   }
@@ -409,6 +1337,11 @@ workspace.addEventListener('click', (event) => {
   const mergeButton = event.target.closest('[data-merge-duplicates]');
   if (mergeButton) {
     const treeData = getTreeData();
+    const progress = getProgress();
+    if (getCurrentTier() === 'free' && progress.completedDuplicateIssueIds.length >= FREE_DUPLICATE_FIX_LIMIT) {
+      alert(`Your free preview includes ${FREE_DUPLICATE_FIX_LIMIT} duplicate corrections. Choose a plan to continue reviewing and correcting possible duplicates.`);
+      return;
+    }
     const fix = JSON.parse(decodeURIComponent(mergeButton.dataset.mergeDuplicates));
     const survivor = treeData?.people?.find((person) => person.id === fix.survivorId);
     const duplicates = treeData?.people?.filter((person) => fix.duplicateIds.includes(person.id)) || [];
@@ -418,24 +1351,27 @@ workspace.addEventListener('click', (event) => {
       return;
     }
 
-    const names = [survivor, ...duplicates].map((person) => `${person.name} (${person.id})`).join(', ');
-    if (!confirm(`Merge these records into ${survivor.name} (${survivor.id})?\n\n${names}\n\nThis updates family references and removes the duplicate records.`)) {
+    pendingDuplicateMerge = fix;
+    renderWorkspace();
+    return;
+  }
+
+  if (event.target.closest('#cancelDuplicateMerge')) {
+    pendingDuplicateMerge = null;
+    renderWorkspace();
+    return;
+  }
+
+  if (event.target.closest('#confirmDuplicateMerge')) {
+    const treeData = getTreeData();
+    const fix = pendingDuplicateMerge;
+    if (!fix) {
+      renderWorkspace();
       return;
     }
-
     try {
-      const progress = getProgress();
-      saveDuplicateMergeUndo(JSON.parse(JSON.stringify(treeData)), progress);
-      mergeDuplicatePeople(treeData, fix);
-      removeStaleIssuesAfterDuplicateMerge(treeData.validationReport, fix.duplicateIds);
-      const mergedIssueId = getIssueId({
-        category: 'Possible duplicate',
-        message: `${duplicates.length + 1} people share the same name and birth year: ${[survivor, ...duplicates].map((person) => `${person.name} (${person.id})`).join(', ')}.`,
-        subject: survivor.id,
-      });
-      if (!progress.completedIssueIds.includes(mergedIssueId)) progress.completedIssueIds.push(mergedIssueId);
-      saveTreeData(treeData);
-      saveProgress(progress);
+      completeDuplicateMerge(treeData, fix);
+      pendingDuplicateMerge = null;
       renderWorkspace();
     } catch (error) {
       alert(error.message || 'Could not merge the duplicate people.');
@@ -447,13 +1383,50 @@ workspace.addEventListener('click', (event) => {
   if (resolveButton) {
     const issueId = decodeURIComponent(resolveButton.dataset.resolveIssue);
     const progress = getProgress();
+    const treeData = getTreeData();
+    const issue = [
+      ...(treeData?.validationReport?.errors || []),
+      ...(treeData?.validationReport?.warnings || []).filter(isDuplicateIssue),
+    ].find((item) => getIssueId(item) === issueId);
     if (!progress.completedIssueIds.includes(issueId)) {
       progress.completedIssueIds.push(issueId);
       if (resolveButton.dataset.duplicateIssue !== 'true') {
         progress.completedNonDuplicateIssueIds.push(issueId);
       }
+      if (issue) recordResolvedItem(progress, issue, 'Manual review');
+      progress.activeGroupIds = [];
       saveProgress(progress);
     }
+    renderWorkspace();
+    return;
+  }
+
+  const pendingButton = event.target.closest('[data-pending-issue]');
+  if (pendingButton) {
+    const issueId = decodeURIComponent(pendingButton.dataset.pendingIssue);
+    const progress = getProgress();
+    if (!progress.pendingIssueIds.includes(issueId)) {
+      progress.pendingIssueIds.push(issueId);
+      progress.activeGroupIds = [];
+      saveProgress(progress);
+    }
+    renderWorkspace();
+    return;
+  }
+
+  const resumePendingButton = event.target.closest('[data-resume-pending-issue]');
+  if (resumePendingButton) {
+    const issueId = decodeURIComponent(resumePendingButton.dataset.resumePendingIssue);
+    const treeData = getTreeData();
+    const errors = [
+      ...(treeData?.validationReport?.errors || []),
+      ...(treeData?.validationReport?.warnings || []).filter(isDuplicateIssue),
+    ];
+    const issue = errors.find((item) => getIssueId(item) === issueId);
+    const progress = getProgress();
+    progress.pendingIssueIds = progress.pendingIssueIds.filter((id) => id !== issueId);
+    progress.activeGroupIds = issue ? [getIssueGroupId(issue)] : [];
+    saveProgress(progress);
     renderWorkspace();
     return;
   }
@@ -466,26 +1439,71 @@ workspace.addEventListener('click', (event) => {
     return;
   }
 
+  if (event.target.closest('#openProgressReport')) {
+    const report = document.getElementById('computerProgressReport');
+    if (report) {
+      report.hidden = !report.hidden;
+      event.target.closest('#openProgressReport').textContent = report.hidden
+        ? 'Open Your Computer Progress Report'
+        : 'Hide Your Computer Progress Report';
+    }
+    return;
+  }
+
   if (event.target.closest('#printProgressChart')) {
     const treeData = getTreeData();
     const progress = getProgress();
-    const activeGroups = getActiveIssueGroups([
+    const allGroups = getOrderedIssueGroups(treeData, [
       ...(treeData?.validationReport?.errors || []),
       ...(treeData?.validationReport?.warnings || []).filter(isDuplicateIssue),
-    ], progress);
-    printProgressChart(activeGroups, new Set(progress.completedIssueIds));
+    ]);
+    printProgressChart(allGroups, new Set(progress.completedIssueIds), false, new Set(progress.pendingIssueIds));
     return;
   }
 
   if (event.target.closest('#printFixedProgressChart')) {
     const treeData = getTreeData();
     const progress = getProgress();
-    const allGroups = getIssueGroups([
+    const allGroups = getOrderedIssueGroups(treeData, [
       ...(treeData?.validationReport?.errors || []),
       ...(treeData?.validationReport?.warnings || []).filter(isDuplicateIssue),
     ]);
-    printProgressChart(allGroups, new Set(progress.completedIssueIds), true);
+    printProgressChart(allGroups, new Set(progress.completedIssueIds), true, new Set(progress.pendingIssueIds));
   }
 });
 
-renderWorkspace();
+if (WORKSPACE_PREVIEW_MODE && !getTreeData()?.people?.length) {
+  loadedTreeData = createWorkspacePreviewTree();
+  saveTreeData(loadedTreeData);
+} else if (WORKSPACE_PREVIEW_MODE) {
+  const treeData = getTreeData();
+  const upgradedTreeData = addWorkspacePreviewGenerations(treeData);
+  if (upgradedTreeData !== treeData) {
+    loadedTreeData = upgradedTreeData;
+    saveTreeData(loadedTreeData);
+  }
+}
+const storedTreeData = getTreeData();
+if (storedTreeData?.people?.length) {
+  renderWorkspace();
+} else if (window.familyTreeClientStorage?.loadTreeFromDatabase) {
+  workspace.innerHTML = '<p class="empty-message">Opening your saved error review...</p>';
+  let loadedFromDatabase = false;
+  const loadingFallback = window.setTimeout(() => {
+    if (!loadedFromDatabase) renderWorkspace();
+  }, 1500);
+  window.familyTreeClientStorage.loadTreeFromDatabase(STORAGE_KEY)
+    .then((treeData) => {
+      loadedFromDatabase = true;
+      window.clearTimeout(loadingFallback);
+      loadedTreeData = treeData;
+      renderWorkspace();
+    })
+    .catch(() => {
+      loadedFromDatabase = true;
+      window.clearTimeout(loadingFallback);
+      renderWorkspace();
+    });
+} else {
+  renderWorkspace();
+}
