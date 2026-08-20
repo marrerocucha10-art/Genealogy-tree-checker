@@ -132,11 +132,16 @@ being charged. Add `?admin_review=true` to a page — for example
 `/store.html?admin_review=true#subscriptions` — and every plan renders a
 "Review {Plan} at No Charge" button instead of a real checkout button.
 
-Access is decided by the server, not the browser. Requesting administration review
-sends you to `/admin.html` for a passphrase; a correct one sets an HttpOnly,
-HMAC-signed, two-hour cookie that page scripts can neither read nor forge. Failed
-attempts are rate limited, and anything other than an explicit "yes" from the API
-leaves review locked — so a static deploy with no API can never unlock it.
+Access is open by default: with no passphrase configured, the link just works,
+including on a static deploy with no API. That is deliberate. Administration
+review only reveals the no-charge buttons — paid tiers are read from
+`localStorage` and can be edited by anyone with browser devtools, so locking this
+page down protects very little. It is a convenience, not a revenue control.
+
+To require a passphrase anyway, set the variables below. The gate then sends you
+to `/admin.html` first, and a correct passphrase sets an HttpOnly, HMAC-signed,
+two-hour cookie that page scripts can neither read nor forge. Failed attempts are
+rate limited.
 
 ```text
 ADMIN_REVIEW_PASSPHRASE_HASH=sha256_hex_of_the_normalized_passphrase
@@ -160,8 +165,8 @@ node -e "const c=require('crypto');const n=process.argv[1].toLowerCase().replace
 ```
 
 `ADMIN_REVIEW_PASSPHRASE` accepts a plaintext passphrase instead, which is
-convenient for local development. Administration review stays locked wherever
-neither variable is set.
+convenient for local development. Leave both unset to keep administration review
+open.
 
 ## 🛡️ Security Features
 

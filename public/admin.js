@@ -24,6 +24,23 @@ function setStatus(message, isError) {
   statusMessage.classList.toggle('success', !isError && Boolean(message));
 }
 
+// When no passphrase is configured, administration review is already open, so
+// sending the operator to a locked door here would be a dead end. Detect that
+// case and continue straight through to whatever they asked for.
+(async function skipUnlockWhenOpen() {
+  let state;
+  try {
+    state = await requestAdministrationReviewState();
+  } catch (error) {
+    state = { configured: false };
+  }
+  if (state.configured === true) return;
+
+  unlockForm.hidden = true;
+  setStatus('No passphrase is required on this deployment. Opening administration review...', false);
+  window.location.replace(getSafeReturnUrl());
+}());
+
 unlockForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   const passphrase = passphraseInput.value.trim();

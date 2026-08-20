@@ -35,13 +35,13 @@
   </div>
 
   <!--
-    The passphrase is verified on the server. Set ADMIN_REVIEW_PASSPHRASE in the
-    deployment environment, or ADMIN_REVIEW_PASSPHRASE_HASH for the SHA-256 hex
-    of the *normalized* passphrase (lowercased, with every non-alphanumeric
-    character removed). Set ADMIN_REVIEW_SESSION_SECRET so sessions survive a
-    restart. Administration review stays locked wherever those are unset.
+    No passphrase is required unless the server sets one. Set
+    ADMIN_REVIEW_PASSPHRASE (or ADMIN_REVIEW_PASSPHRASE_HASH for the SHA-256 hex
+    of the normalized passphrase: lowercased, non-alphanumerics removed) to make
+    it mandatory, plus ADMIN_REVIEW_SESSION_SECRET so sessions stay valid across
+    instances. With neither set, this page forwards straight through.
   -->
-  <script src="admin-review-gate.js?v=administration-server-session-2"></script>
-  <script src="admin.js?v=administration-server-session-2"></script>
+  <script src="admin-review-gate.js?v=administration-optional-gate-3"></script>
+  <script src="admin.js?v=administration-optional-gate-3"></script>
 </body>
 </html>
