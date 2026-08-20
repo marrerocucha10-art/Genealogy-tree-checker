@@ -2173,6 +2173,18 @@ input[type="file"] {
   text-align: center;
 }
 
+.batch-complete a.btn-add,
+.batch-complete a.btn-secondary {
+  display: inline-block;
+  margin-top: 16px;
+}
+
+.error-workspace footer {
+  margin-top: 28px;
+  padding-top: 16px;
+  border-top: 1px solid #e2e8f0;
+}
+
 .batch-complete h2,
 .error-batch h2 {
   color: #2d3748;

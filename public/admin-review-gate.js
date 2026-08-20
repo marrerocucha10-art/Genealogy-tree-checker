@@ -12,9 +12,28 @@
 // behaviour a static host had before the server gate existed.
 const ADMIN_REVIEW_SESSION_ENDPOINT = '/api/admin-review/session';
 const ADMIN_REVIEW_UNLOCK_PAGE = 'admin.html';
+const ADMIN_REVIEW_STICKY_KEY = 'familyTreeAdministrationReviewRequested';
 
+// Administration review has to survive ordinary navigation. Asking an operator
+// to retype ?admin_review=true on every page meant the no-charge buttons
+// disappeared the moment they followed any link. The flag is kept in
+// sessionStorage, so it lasts for this tab only and a customer never inherits
+// it. Adding ?admin_review=false leaves review immediately.
 function administrationReviewRequested() {
-  return new URLSearchParams(window.location.search).get('admin_review') === 'true';
+  const requested = new URLSearchParams(window.location.search).get('admin_review');
+  try {
+    if (requested === 'true') {
+      sessionStorage.setItem(ADMIN_REVIEW_STICKY_KEY, 'true');
+      return true;
+    }
+    if (requested === 'false') {
+      sessionStorage.removeItem(ADMIN_REVIEW_STICKY_KEY);
+      return false;
+    }
+    return sessionStorage.getItem(ADMIN_REVIEW_STICKY_KEY) === 'true';
+  } catch (error) {
+    return requested === 'true';
+  }
 }
 
 // Page scripts read the administration flag while parsing, so the answer has to
