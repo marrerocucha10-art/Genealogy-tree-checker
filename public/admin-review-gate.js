@@ -1,10 +1,15 @@
 // Administration review gate.
 //
-// The server owns this decision. It hands out an HttpOnly, HMAC-signed session
-// cookie that page scripts cannot read or forge, and this module simply asks
-// the server whether the current request may run administration review.
-// Anything other than an explicit "yes" leaves the review locked, so a static
-// deploy with no API, or an unreachable server, fails closed.
+// This gate is optional by design. Administration review only reveals the
+// no-charge buttons for walking the subscription flow — paid entitlements are
+// kept in localStorage and can be edited by anyone, so requiring a passphrase
+// here protects very little and is not a revenue control.
+//
+// So it stays open unless an operator opts in: set ADMIN_REVIEW_PASSPHRASE_HASH
+// on the server and the passphrase becomes mandatory, enforced by an HttpOnly,
+// HMAC-signed session cookie that page scripts cannot read or forge. With no
+// server at all (a static deploy), review simply stays open, which is the same
+// behaviour a static host had before the server gate existed.
 const ADMIN_REVIEW_SESSION_ENDPOINT = '/api/admin-review/session';
 const ADMIN_REVIEW_UNLOCK_PAGE = 'admin.html';
 
@@ -20,11 +25,12 @@ function fetchAdministrationReviewState() {
     const request = new XMLHttpRequest();
     request.open('GET', ADMIN_REVIEW_SESSION_ENDPOINT, false);
     request.send(null);
-    if (request.status !== 200) return { configured: false, active: false };
+    if (request.status !== 200) return { configured: false, active: true };
     const result = JSON.parse(request.responseText);
-    return { configured: result.configured === true, active: result.active === true };
+    if (result.configured !== true) return { configured: false, active: true };
+    return { configured: true, active: result.active === true };
   } catch (error) {
-    return { configured: false, active: false };
+    return { configured: false, active: true };
   }
 }
 

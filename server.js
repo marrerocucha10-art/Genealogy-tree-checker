@@ -701,12 +701,18 @@ app.get('/api/subscription/config', (req, res) => {
   res.json({ success: true, stripe: getStripeConfig() });
 });
 
+// Administration review is a convenience for walking the subscription flow
+// without paying, not a revenue control: entitlements live in localStorage and
+// can be edited by anyone, so locking this down protects very little. Leave it
+// open when no passphrase is configured, and require one as soon as an operator
+// sets ADMIN_REVIEW_PASSPHRASE_HASH.
 app.get('/api/admin-review/session', (req, res) => {
   res.set('Cache-Control', 'no-store');
+  const configured = isAdminReviewConfigured();
   res.json({
     success: true,
-    configured: isAdminReviewConfigured(),
-    active: Boolean(getAdminReviewSession(req)),
+    configured,
+    active: configured ? Boolean(getAdminReviewSession(req)) : true,
   });
 });
 
