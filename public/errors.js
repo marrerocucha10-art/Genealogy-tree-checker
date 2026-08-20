@@ -1055,6 +1055,42 @@ function completeDuplicateMerge(treeData, fix) {
 }
 
 function renderWorkspace() {
+  try {
+    renderWorkspaceContent();
+  } catch (error) {
+    renderWorkspaceRecovery(error);
+  }
+  ensureWorkspaceIsNeverBlank();
+}
+
+// A thrown error used to leave the workspace completely empty, which reads as the
+// review having lost everything. Always leave the customer something to act on.
+function renderWorkspaceRecovery(error) {
+  const detail = error?.message ? String(error.message) : 'An unexpected problem interrupted the review.';
+  workspace.innerHTML = `
+    <section id="activeReview" class="batch-complete">
+      <h2>Your review needs a moment</h2>
+      <p>Your family tree is safe. Something interrupted this screen before your errors could be listed, so nothing was lost and nothing was changed.</p>
+      <p class="fix-suggestion">${escapeHtml(detail)}</p>
+      <div class="workflow-actions">
+        <button type="button" class="btn-add" onclick="window.location.reload()">Try This Screen Again</button>
+        <a class="btn-secondary" href="${escapeHtml(returnToTreeLink?.href || 'tree.html')}">Return to Your Five-Generation Working Tree</a>
+        <a class="btn-secondary" href="workplace.html">Open Your Work Place</a>
+      </div>
+    </section>
+  `;
+}
+
+function ensureWorkspaceIsNeverBlank() {
+  if (workspace && !workspace.textContent.trim()) {
+    renderWorkspaceRecovery(new Error('This screen finished loading without any content to show.'));
+  }
+}
+
+window.addEventListener('error', ensureWorkspaceIsNeverBlank);
+window.addEventListener('unhandledrejection', ensureWorkspaceIsNeverBlank);
+
+function renderWorkspaceContent() {
   workspaceWelcome.hidden = !SHOW_WORKSPACE_PROGRESS;
   updatePlanErrorWorkspaceMessage();
   const treeData = getTreeData();
