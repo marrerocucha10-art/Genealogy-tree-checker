@@ -526,8 +526,69 @@ function escapeHtml(value = '') {
   }[char]));
 }
 
-function renderPendingResearch(errors, progress) {
-  const pendingIssues = errors.filter((issue) => progress.pendingIssueIds.includes(getIssueId(issue)));
+const RECORD_ID_PATTERN = /@[^@\s]+@/g;
+
+let readerLookupPeople = new Map();
+let readerLookupFamilies = new Map();
+
+function setReaderLookups(peopleById, familiesById) {
+  readerLookupPeople = peopleById || new Map();
+  readerLookupFamilies = familiesById || new Map();
+}
+
+// Record ids come from the GEDCOM file and mean nothing to the person reading the
+// screen, so every message is shown with names in their place.
+function toReaderFriendlyText(text, peopleById = readerLookupPeople, familiesById = readerLookupFamilies) {
+  if (!text) return '';
+  return String(text)
+    .replace(/missing (child|spouse)-family @[^@\s]+@/g, (match, kind) => (
+      kind === 'child' ? 'a parent family that is missing from the file' : 'a spouse family that is missing from the file'
+    ))
+    .replace(new RegExp(`\\s*\\(${RECORD_ID_PATTERN.source}\\)`, 'g'), '')
+    .replace(RECORD_ID_PATTERN, (id) => {
+      const personName = peopleById?.get(id)?.name?.trim();
+      if (personName) return personName;
+
+      const family = familiesById?.get(id);
+      if (family) {
+        const parentNames = [family.husbandId, family.wifeId]
+          .map((parentId) => peopleById?.get(parentId)?.name?.trim())
+          .filter(Boolean);
+        if (parentNames.length) return `the family of ${parentNames.join(' and ')}`;
+        return 'a family record';
+      }
+
+      return 'a record that is no longer in the file';
+    })
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+// A duplicate group is easier to judge by dates and places than by a stored sentence
+// that only repeats the same name, so the records are described from the tree itself.
+function describeDuplicatePeople(issue, peopleById = readerLookupPeople) {
+  const fix = issue?.autoFix;
+  if (!fix || fix.type !== 'mergeDuplicatePeople') return null;
+
+  const people = [fix.survivorId, ...(fix.duplicateIds || [])]
+    .map((id) => peopleById?.get(id))
+    .filter(Boolean);
+  if (people.length < 2) return null;
+
+  const described = people.map((person) => {
+    const name = (person.name || '').trim() || 'Unnamed record';
+    const details = [];
+    if (person.birthDate && person.birthPlace) details.push(`born ${person.birthDate} in ${person.birthPlace}`);
+    else if (person.birthDate) details.push(`born ${person.birthDate}`);
+    else if (person.birthPlace) details.push(`born in ${person.birthPlace}`);
+    if (person.deathDate) details.push(`died ${person.deathDate}`);
+    return `${name} (${details.length ? details.join(', ') : 'no dates recorded'})`;
+  });
+
+  return `${people.length} records look like the same person: ${described.join('; ')}.`;
+}
+
+function renderPendingResearch(errors, progress) {  const pendingIssues = errors.filter((issue) => progress.pendingIssueIds.includes(getIssueId(issue)));
   if (!pendingIssues.length) return '';
 
   return `
@@ -537,7 +598,7 @@ function renderPendingResearch(errors, progress) {
       <ul>
         ${pendingIssues.map((issue) => `
           <li>
-            <strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(issue.message)}
+            <strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(toReaderFriendlyText(issue.message))}
             <button type="button" class="btn-secondary" data-resume-pending-issue="${encodeURIComponent(getIssueId(issue))}">Return to active review</button>
           </li>
         `).join('')}
@@ -569,13 +630,13 @@ function renderProgressTools(progress, errors = []) {
         <p><strong>${completed.size}</strong> solved · <strong>${pending.size}</strong> saved for later · <strong>${unresolvedIssues.length}</strong> open</p>
         <p><strong>Your next step:</strong> ${escapeHtml(nextStep)}</p>
         ${unresolvedIssues.length
-          ? `<h4>Next items to review</h4><ul>${unresolvedIssues.slice(0, 3).map((issue) => `<li><strong>${escapeHtml(issue.subject || issue.category)}:</strong> ${escapeHtml(issue.suggestion || issue.message)}</li>`).join('')}</ul>`
+          ? `<h4>Next items to review</h4><ul>${unresolvedIssues.slice(0, 3).map((issue) => `<li><strong>${escapeHtml(toReaderFriendlyText(issue.subject || issue.category))}:</strong> ${escapeHtml(toReaderFriendlyText(issue.suggestion || issue.message))}</li>`).join('')}</ul>`
           : ''}
       </section>
       <div class="corrected-items-preview">
         <h3>Corrected items preview</h3>
         ${correctedItems.length
-          ? `<ul>${correctedItems.map((item) => `<li><strong>${escapeHtml(item.category)}:</strong> ${escapeHtml(item.message)} <span>${escapeHtml(item.correctionType)}</span></li>`).join('')}</ul>`
+          ? `<ul>${correctedItems.map((item) => `<li><strong>${escapeHtml(item.category)}:</strong> ${escapeHtml(toReaderFriendlyText(item.message))} <span>${escapeHtml(item.correctionType)}</span></li>`).join('')}</ul>`
           : '<p class="muted">Corrected items will appear here as you work through the review.</p>'}
       </div>
     </section>
@@ -633,7 +694,7 @@ function printProgressChart(groups, completed, fixedOnly = false, pending = new 
       return `
         <tr>
           <td>${escapeHtml(group.label)}</td>
-          <td>${escapeHtml(issue.category)}: ${escapeHtml(issue.message)}</td>
+          <td>${escapeHtml(issue.category)}: ${escapeHtml(toReaderFriendlyText(issue.message))}</td>
           <td>${escapeHtml(issue.suggestion || 'Review this record.')}</td>
           <td><div class="note-lines"></div><span>${status}</span></td>
         </tr>
@@ -740,18 +801,18 @@ function removeStaleIssuesAfterDuplicateMerge(report, duplicateIds) {
 function getIssueGroupLabel(subject, peopleById, familiesById) {
   if (!subject) return 'General validation';
   const name = peopleById?.get(subject)?.name?.trim();
-  if (name) return `${name} (${subject})`;
+  if (name) return name;
 
   const family = familiesById?.get(subject);
   if (family) {
     const parentNames = [family.husbandId, family.wifeId]
       .map((parentId) => peopleById?.get(parentId)?.name?.trim())
       .filter(Boolean);
-    if (parentNames.length) return `Family of ${parentNames.join(' and ')} (${subject})`;
-    return `Family record (${subject})`;
+    if (parentNames.length) return `Family of ${parentNames.join(' and ')}`;
+    return 'Family record';
   }
 
-  return subject;
+  return toReaderFriendlyText(subject, peopleById, familiesById) || 'General validation';
 }
 
 function getIssueGroups(errors, peopleById, familiesById) {
@@ -1156,6 +1217,10 @@ function renderWorkspaceContent() {
   workspaceWelcome.hidden = !SHOW_WORKSPACE_PROGRESS;
   updatePlanErrorWorkspaceMessage();
   const treeData = getTreeData();
+  setReaderLookups(
+    new Map((treeData?.people || []).map((person) => [person.id, person])),
+    new Map((treeData?.families || []).map((family) => [family.id, family]))
+  );
   const allErrors = [
     ...(treeData?.validationReport?.errors || []),
     ...(treeData?.validationReport?.warnings || []).filter((issue) => issue.autoFix?.type === 'mergeDuplicatePeople'),
@@ -1337,7 +1402,7 @@ function renderWorkspaceContent() {
                   `;
                   return `
                     <li data-tree-subject="${encodeURIComponent(issue.subject || '')}">
-                      <strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(issue.message)}
+                      <strong>${escapeHtml(issue.category)}:</strong> ${escapeHtml(describeDuplicatePeople(issue, peopleById) || toReaderFriendlyText(issue.message))}
                       ${issue.suggestion ? `<p class="fix-suggestion">${escapeHtml(issue.suggestion)}</p>` : ''}
                       ${issueActions}
                     </li>
