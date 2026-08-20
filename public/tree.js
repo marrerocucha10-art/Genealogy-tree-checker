@@ -284,6 +284,34 @@ function renderGenerations(treeData, peopleById, families) {
 }
 
 function renderTreeReview(treeData = loadedTreeData || getTreeData()) {
+  try {
+    renderTreeReviewContent(treeData);
+  } catch (error) {
+    renderTreeReviewRecovery(error);
+  }
+  if (review && !review.textContent.trim()) {
+    renderTreeReviewRecovery(new Error('This screen finished loading without any content to show.'));
+  }
+}
+
+// Never leave the preview empty: a blank screen reads as a lost family tree.
+function renderTreeReviewRecovery(error) {
+  const detail = error?.message ? String(error.message) : 'An unexpected problem interrupted the preview.';
+  review.innerHTML = `
+    <section class="batch-complete">
+      <h2>Your working tree preview needs a moment</h2>
+      <p>Your family tree is safe. Something interrupted this screen, so nothing was lost and nothing was changed.</p>
+      <p class="fix-suggestion">${escapeHtml(detail)}</p>
+      <div class="workflow-actions">
+        <button type="button" class="btn-add" onclick="window.location.reload()">Try This Screen Again</button>
+        <a class="btn-secondary" href="${errorWorkspaceUrl}">Continue to Fix Errors</a>
+        <a class="btn-secondary" href="workplace.html">Open Your Work Place</a>
+      </div>
+    </section>
+  `;
+}
+
+function renderTreeReviewContent(treeData = loadedTreeData || getTreeData()) {
   loadedTreeData = treeData;
   if (!treeData?.people?.length) {
     review.innerHTML = `
