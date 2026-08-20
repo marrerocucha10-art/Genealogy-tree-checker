@@ -5,6 +5,9 @@ const STORAGE_KEY = WORKSPACE_PREVIEW_MODE
   : IS_ADMINISTRATION_REVIEW
     ? 'familyTreeAdministrationReviewData'
     : window.familyTreeClientStorage?.getActiveTreeKey() || 'familyTreeData';
+if (IS_ADMINISTRATION_REVIEW) {
+  window.familyTreeClientStorage?.seedAdministrationReviewTree?.(STORAGE_KEY);
+}
 const review = document.getElementById('treeReview');
 const GENERATIONS_PER_PAGE = 5;
 let visibleGenerationCount = GENERATIONS_PER_PAGE;

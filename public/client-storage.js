@@ -83,6 +83,21 @@ function getActiveTreeKey() {
   return activeId ? `familyTreeClient:${activeId}` : LEGACY_FAMILY_TREE_KEY;
 }
 
+// Administration review keeps its own copy of the tree so reviewing never edits a
+// real client's records. Without a copy the review pages look empty, which reads as
+// "the tree disappeared", so take one from the tree already loaded instead of asking
+// for the GEDCOM again.
+function seedAdministrationReviewTree(administrationKey) {
+  try {
+    if (!administrationKey || localStorage.getItem(administrationKey)) return;
+    const loadedTree = localStorage.getItem(getActiveTreeKey()) || localStorage.getItem(LEGACY_FAMILY_TREE_KEY);
+    if (!loadedTree) return;
+    localStorage.setItem(administrationKey, loadedTree);
+  } catch (error) {
+    // A full or unavailable storage just leaves the review empty, as before.
+  }
+}
+
 function createClient(name, surname = '', generation = '') {
   const client = {
     id: `client-${Date.now()}`,
@@ -122,5 +137,6 @@ window.familyTreeClientStorage = {
   loadTreeFromDatabase,
   removeTreeFromDatabase,
   saveTreeInDatabase,
+  seedAdministrationReviewTree,
   setActiveClient,
 };
