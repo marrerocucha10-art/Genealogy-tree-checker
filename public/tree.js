@@ -142,6 +142,27 @@ function createFiveGenerationReviewTree(treeData) {
       .filter(([, generation]) => generation <= GENERATIONS_PER_PAGE)
       .map(([personId]) => personId),
   );
+
+  // Generations are counted upward through parents, so a spouse, child or
+  // sibling of someone in these five generations was left out and their errors
+  // disappeared from the review. Keep each included person's immediate family.
+  for (const family of treeData.families || []) {
+    const memberIds = [family.husbandId, family.wifeId, ...(family.childrenIds || [])]
+      .filter((id) => id && peopleById.has(id));
+    if (!memberIds.some((id) => includedPersonIds.has(id))) continue;
+    memberIds.forEach((id) => includedPersonIds.add(id));
+  }
+
+  // Records with no family links at all, such as unmatched duplicates, still
+  // carry errors the customer needs to see.
+  const linkedPersonIds = new Set(
+    (treeData.families || []).flatMap((family) => [family.husbandId, family.wifeId, ...(family.childrenIds || [])])
+      .filter(Boolean),
+  );
+  for (const person of treeData.people || []) {
+    if (!linkedPersonIds.has(person.id)) includedPersonIds.add(person.id);
+  }
+
   const includesPerson = (personId) => personId && includedPersonIds.has(personId);
 
   const families = (treeData.families || [])
