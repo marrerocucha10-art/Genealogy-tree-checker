@@ -1670,7 +1670,7 @@ function renderWorkflowOverview() {
   const issueCount = report.errors.length + duplicateIssues.length;
   const duplicateNotice = duplicateIssues.length ? `
       <aside class="pro-package-highlight">
-        <strong>${duplicateIssues.length.toLocaleString()} set${duplicateIssues.length === 1 ? '' : 's'} of records may each be the same person</strong>
+        <strong>${duplicateIssues.length.toLocaleString()} ${duplicateIssues.length === 1 ? 'set of records may be the same person' : 'sets of records may each be the same person'}</strong>
         <p>Combine these first. A duplicate splits one person's life across two records, so settling them before anything else keeps you from correcting the same dates and relationships twice. Your error workspace opens with them.</p>
       </aside>` : '';
 
