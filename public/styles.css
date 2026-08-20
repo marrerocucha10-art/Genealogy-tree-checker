@@ -3477,3 +3477,27 @@ input[type="file"] {
 .step-nav-link:hover {
   background: #eef3f9;
 }
+
+/* A merge is confirmed in one line and the review carries straight on. */
+.merge-confirmation {
+  background: #eefaf1;
+  border: 1px solid #b7e2c6;
+  border-radius: 8px;
+  padding: 0.6rem 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.merge-confirmation p {
+  margin: 0;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-left: 0.6rem;
+  color: #1c5f8b;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
