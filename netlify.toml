@@ -1,0 +1,9 @@
+[build]
+  publish = "public"
+
+# Mirror the Express route that serves the store page without the .html
+# suffix so the static deploy matches server.js.
+[[redirects]]
+  from = "/store"
+  to = "/store.html"
+  status = 200
