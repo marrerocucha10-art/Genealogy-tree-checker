@@ -452,12 +452,9 @@ function renderDuplicateMergeReview() {
   if (!undoState?.mergeSummary) return '';
 
   return `
-    <section class="duplicate-merge-review">
-      <h2>Duplicate merge complete</h2>
-      <p><strong>${escapeHtml(undoState.mergeSummary.survivorName)}</strong> now includes ${escapeHtml(undoState.mergeSummary.duplicateNames.join(', '))}.</p>
-    <p>Keep this resolved correction in your workspace and continue reviewing or upgrade when you are ready. If you prefer, you can return this most recent merge to the previous tree state.</p>
-    <button id="approveDuplicateMerge" type="button" class="btn-add">Keep Resolved Work and Continue</button>
-    <button id="undoDuplicateMerge" type="button" class="btn-secondary">Return to Previous Tree State</button>
+    <section class="duplicate-merge-review merge-confirmation">
+      <p><strong>Merged:</strong> ${escapeHtml(undoState.mergeSummary.survivorName)} now includes ${escapeHtml(undoState.mergeSummary.duplicateNames.join(', '))}.
+      <button id="undoDuplicateMerge" type="button" class="btn-link">Undo</button></p>
     </section>
   `;
 }
@@ -821,8 +818,14 @@ function mergeDuplicatePeople(treeData, fix) {
 
 function removeStaleIssuesAfterDuplicateMerge(report, duplicateIds) {
   const removedIds = [...duplicateIds];
+  // Matching on the message text alone left the merged duplicate in the report
+  // whenever the wording did not happen to contain the record id, so the same
+  // group was offered again and again. What the fix points at is what counts.
   const referencesRemovedPerson = (issue) => (
-    removedIds.includes(issue.subject) || removedIds.some((id) => issue.message.includes(id))
+    removedIds.includes(issue.subject)
+    || removedIds.some((id) => (issue.message || '').includes(id))
+    || removedIds.includes(issue.autoFix?.personId)
+    || (issue.autoFix?.duplicateIds || []).some((id) => removedIds.includes(id))
   );
 
   for (const category of ['errors', 'warnings', 'info']) {
@@ -1189,9 +1192,20 @@ function completeDuplicateMerge(treeData, fix) {
     survivorName: survivor.name || survivor.id,
     duplicateNames: duplicates.map((person) => person.name || person.id),
   });
+
+  // The issue has to be identified before the merge, from the report itself.
+  // Rebuilding its wording afterwards produced an id that matched nothing, so
+  // the settled duplicate was never marked done and kept coming back.
+  const report = treeData.validationReport || {};
+  const mergedIssue = ['errors', 'warnings', 'info']
+    .flatMap((category) => report[category] || [])
+    .find((candidate) => candidate.autoFix?.type === 'mergeDuplicatePeople'
+      && candidate.autoFix.survivorId === fix.survivorId
+      && (candidate.autoFix.duplicateIds || []).join() === (fix.duplicateIds || []).join());
+
   mergeDuplicatePeople(treeData, fix);
   removeStaleIssuesAfterDuplicateMerge(treeData.validationReport, fix.duplicateIds);
-  const mergedIssueId = getIssueId({
+  const mergedIssueId = mergedIssue ? getIssueId(mergedIssue) : getIssueId({
     category: 'Possible duplicate',
     message: `${duplicates.length + 1} people share the same name and birth year: ${[survivor, ...duplicates].map((person) => `${person.name} (${person.id})`).join(', ')}.`,
     subject: survivor.id,
