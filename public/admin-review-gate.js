@@ -14,13 +14,18 @@ const ADMIN_REVIEW_SESSION_ENDPOINT = '/api/admin-review/session';
 const ADMIN_REVIEW_UNLOCK_PAGE = 'admin.html';
 const ADMIN_REVIEW_STICKY_KEY = 'familyTreeAdministrationReviewRequested';
 
+// The application is still being prepared, so administration review is ON for
+// every page by default. It was previously remembered per browser, which meant
+// clearing site data or opening a page that had been loaded earlier silently
+// took the no-charge review buttons away mid-test. Nothing that can be wiped is
+// relied on now. Set this to false in the same commit that opens the
+// application to customers; ?admin_review=false still switches it off for one
+// browser in the meantime.
+const ADMIN_REVIEW_ALWAYS_ON = true;
+
 // Administration review has to survive ordinary navigation and closing the tab.
 // Asking an operator to retype ?admin_review=true on every page meant the
-// no-charge buttons disappeared the moment they followed any link. The request
-// is remembered on this computer until it is switched off with
-// ?admin_review=false, so review stays on while the application is being
-// prepared. A customer never inherits it: nothing is stored until the
-// administration address is opened deliberately.
+// no-charge buttons disappeared the moment they followed any link.
 function administrationReviewRequested() {
   const requested = new URLSearchParams(window.location.search).get('admin_review');
   try {
@@ -29,12 +34,15 @@ function administrationReviewRequested() {
       return true;
     }
     if (requested === 'false') {
-      localStorage.removeItem(ADMIN_REVIEW_STICKY_KEY);
+      localStorage.setItem(ADMIN_REVIEW_STICKY_KEY, 'false');
       return false;
     }
-    return localStorage.getItem(ADMIN_REVIEW_STICKY_KEY) === 'true';
+    if (localStorage.getItem(ADMIN_REVIEW_STICKY_KEY) === 'false') return false;
+    if (localStorage.getItem(ADMIN_REVIEW_STICKY_KEY) === 'true') return true;
+    return ADMIN_REVIEW_ALWAYS_ON;
   } catch (error) {
-    return requested === 'true';
+    if (requested === 'false') return false;
+    return ADMIN_REVIEW_ALWAYS_ON || requested === 'true';
   }
 }
 
