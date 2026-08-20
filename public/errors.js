@@ -1,21 +1,22 @@
 const WORKSPACE_PREVIEW_MODE = new URLSearchParams(window.location.search).get('demo') === 'workspace';
 const IS_ADMINISTRATION_REVIEW = isAdministrationReview();
+const IS_ADMINISTRATION_WORKSPACE = isAdministrationReviewWorkspace();
 const SHOW_WORKSPACE_PROGRESS = new URLSearchParams(window.location.search).get('view') === 'progress';
 const TREE_STORAGE_KEY = WORKSPACE_PREVIEW_MODE
   ? 'familyTreeWorkspacePreviewData'
-  : IS_ADMINISTRATION_REVIEW
+  : IS_ADMINISTRATION_WORKSPACE
     ? 'familyTreeAdministrationReviewData'
     : window.familyTreeClientStorage?.getActiveTreeKey() || 'familyTreeData';
 const STORAGE_KEY = `${TREE_STORAGE_KEY}:fiveGenerationReview`;
-if (IS_ADMINISTRATION_REVIEW) {
+if (IS_ADMINISTRATION_WORKSPACE) {
   window.familyTreeClientStorage?.seedAdministrationReviewTree?.(TREE_STORAGE_KEY);
 }
 const ERROR_REVIEW_HANDOFF_KEY = `${STORAGE_KEY}:errorReviewHandoff`;
 const ERROR_PROGRESS_STORAGE_KEY = `${STORAGE_KEY}:errorProgress`;
 const DUPLICATE_MERGE_UNDO_STORAGE_KEY = `${STORAGE_KEY}:duplicateMergeUndo`;
-const SUBSCRIPTION_STORAGE_KEY = IS_ADMINISTRATION_REVIEW ? 'familyTreeAdministrationReviewTier' : 'familyTreeSubscriptionTier';
-const PLAN_SELECTION_STORAGE_KEY = IS_ADMINISTRATION_REVIEW ? 'familyTreeAdministrationReviewPlanSelected' : 'familyTreePlanSelected';
-const SUBSCRIPTION_STORE_URL = IS_ADMINISTRATION_REVIEW ? 'store.html?admin_review=true#subscriptions' : 'store.html#subscriptions';
+const SUBSCRIPTION_STORAGE_KEY = IS_ADMINISTRATION_WORKSPACE ? 'familyTreeAdministrationReviewTier' : 'familyTreeSubscriptionTier';
+const PLAN_SELECTION_STORAGE_KEY = IS_ADMINISTRATION_WORKSPACE ? 'familyTreeAdministrationReviewPlanSelected' : 'familyTreePlanSelected';
+const SUBSCRIPTION_STORE_URL = IS_ADMINISTRATION_WORKSPACE ? 'store.html?admin_review=true#subscriptions' : 'store.html#subscriptions';
 const ERROR_BATCH_SIZE = 10;
 const BASIC_ERROR_REVIEW_LIMIT = 5;
 const FREE_DUPLICATE_FIX_LIMIT = 5;
