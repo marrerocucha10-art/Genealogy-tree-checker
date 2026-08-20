@@ -14,23 +14,25 @@ const ADMIN_REVIEW_SESSION_ENDPOINT = '/api/admin-review/session';
 const ADMIN_REVIEW_UNLOCK_PAGE = 'admin.html';
 const ADMIN_REVIEW_STICKY_KEY = 'familyTreeAdministrationReviewRequested';
 
-// Administration review has to survive ordinary navigation. Asking an operator
-// to retype ?admin_review=true on every page meant the no-charge buttons
-// disappeared the moment they followed any link. The flag is kept in
-// sessionStorage, so it lasts for this tab only and a customer never inherits
-// it. Adding ?admin_review=false leaves review immediately.
+// Administration review has to survive ordinary navigation and closing the tab.
+// Asking an operator to retype ?admin_review=true on every page meant the
+// no-charge buttons disappeared the moment they followed any link. The request
+// is remembered on this computer until it is switched off with
+// ?admin_review=false, so review stays on while the application is being
+// prepared. A customer never inherits it: nothing is stored until the
+// administration address is opened deliberately.
 function administrationReviewRequested() {
   const requested = new URLSearchParams(window.location.search).get('admin_review');
   try {
     if (requested === 'true') {
-      sessionStorage.setItem(ADMIN_REVIEW_STICKY_KEY, 'true');
+      localStorage.setItem(ADMIN_REVIEW_STICKY_KEY, 'true');
       return true;
     }
     if (requested === 'false') {
-      sessionStorage.removeItem(ADMIN_REVIEW_STICKY_KEY);
+      localStorage.removeItem(ADMIN_REVIEW_STICKY_KEY);
       return false;
     }
-    return sessionStorage.getItem(ADMIN_REVIEW_STICKY_KEY) === 'true';
+    return localStorage.getItem(ADMIN_REVIEW_STICKY_KEY) === 'true';
   } catch (error) {
     return requested === 'true';
   }
