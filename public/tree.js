@@ -337,6 +337,59 @@ function renderCoupleUnit(unit, peopleById, familyConnections, primaryPersonId) 
   `;
 }
 
+// The family view mirrors the layout genealogists already know: the person in
+// the middle, their partner beside them, parents on the row above and children
+// on the row below. Only people the file records are placed.
+function renderFamilyTile(person, label) {
+  if (!person) return '';
+  const years = [person.birth?.date, person.death?.date].filter(Boolean).join(' \u2013 ');
+  return `
+    <article class="family-view-tile${label === 'you' ? ' family-view-focus' : ''}">
+      ${label && label !== 'you' ? `<p class="family-view-role">${escapeHtml(label)}</p>` : ''}
+      <h4>${escapeHtml(person.name || person.id)}</h4>
+      ${years ? `<p class="family-view-years">${escapeHtml(years)}</p>` : ''}
+      ${person.birth?.place ? `<p class="family-view-place">${escapeHtml(person.birth.place)}</p>` : ''}
+    </article>
+  `;
+}
+
+function renderFamilyView(primaryPerson, peopleById, familyConnections) {
+  if (!primaryPerson) return '';
+  const connections = familyConnections.get(primaryPerson.id)
+    || { parents: new Set(), spouses: new Set(), children: new Set() };
+  const byId = (id) => peopleById.get(id);
+  const parents = [...connections.parents].map(byId).filter(Boolean)
+    .sort((a, b) => sexRank(a) - sexRank(b));
+  const spouses = [...connections.spouses].map(byId).filter(Boolean);
+  const children = [...connections.children].map(byId).filter(Boolean);
+
+  const parentRow = parents.length
+    ? `<div class="family-view-row family-view-parents">
+        ${parents.map((person) => renderFamilyTile(person, ['Father', 'Mother', 'Parent'][sexRank(person)])).join('')}
+      </div>`
+    : '';
+  const childRow = children.length
+    ? `<div class="family-view-row family-view-children">
+        ${children.map((person) => renderFamilyTile(person, 'Child')).join('')}
+      </div>`
+    : '';
+
+  return `
+    <section class="family-view" aria-label="Family view">
+      <h2>Family of ${escapeHtml(primaryPerson.name || primaryPerson.id)}</h2>
+      ${parentRow ? '<p class="family-view-label">Parents</p>' : ''}
+      ${parentRow}
+      <p class="family-view-label">This person${spouses.length ? ' and partner' : ''}</p>
+      <div class="family-view-row family-view-couple">
+        ${renderFamilyTile(primaryPerson, 'you')}
+        ${spouses.map((person) => renderFamilyTile(person, 'Partner')).join('')}
+      </div>
+      ${childRow ? '<p class="family-view-label">Children</p>' : ''}
+      ${childRow}
+    </section>
+  `;
+}
+
 function renderGenerations(treeData, peopleById, families) {
   const primaryPerson = getPrimaryPerson(treeData);
   const generationByPerson = buildGenerationData(treeData, peopleById, primaryPerson);
@@ -405,6 +458,7 @@ function renderGenerations(treeData, peopleById, families) {
         <a class="btn-add" href="${errorWorkspaceUrl}" data-continue-to-errors>Continue to Fix Errors</a>
         <a class="btn-secondary" href="${workspaceProgressUrl}">Review Work Space Progress</a>
       </div>
+      ${renderFamilyView(primaryPerson, peopleById, familyConnections)}
       <div class="ancestry-tree" aria-label="Family ancestry tree">
         ${sections.join('')}
       </div>

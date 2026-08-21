@@ -3713,3 +3713,64 @@ input[type="file"] {
   font-size: 0.9rem;
   margin: 2px 0 6px;
 }
+
+.family-view {
+  margin: 1.5rem 0 2rem;
+  padding: 1.25rem;
+  border: 1px solid #d9dee5;
+  border-radius: 10px;
+  background: #fbfcfe;
+}
+
+.family-view h2 {
+  margin: 0 0 0.75rem;
+}
+
+.family-view-label {
+  margin: 1rem 0 0.5rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #5b6875;
+}
+
+.family-view-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.family-view-tile {
+  flex: 0 1 220px;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid #d9dee5;
+  border-radius: 8px;
+  background: #ffffff;
+  text-align: center;
+}
+
+.family-view-tile h4 {
+  margin: 0.15rem 0;
+  font-size: 1rem;
+}
+
+.family-view-focus {
+  border-color: #2f6f4f;
+  box-shadow: 0 0 0 2px rgba(47, 111, 79, 0.15);
+}
+
+.family-view-role {
+  margin: 0;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #5b6875;
+}
+
+.family-view-years,
+.family-view-place {
+  margin: 0.1rem 0 0;
+  font-size: 0.85rem;
+  color: #5b6875;
+}
