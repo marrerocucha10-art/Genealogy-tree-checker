@@ -34,9 +34,18 @@ function getPersonName(person) {
   return String(person?.name || '').replace(/\//g, '').trim() || 'Unnamed person';
 }
 
+// Places are shown as recorded, and a place with no country named is marked as
+// such so nobody reads a bare town as a complete location.
+function formatPlace(place) {
+  const parts = String(place || '').split(',').map((part) => part.trim()).filter(Boolean);
+  if (!parts.length) return '';
+  if (parts.length === 1) return `${parts[0]} (country not recorded)`;
+  return parts.join(', ');
+}
+
 function getPersonDetail(person) {
   const years = [extractYear(person?.birthDate), extractYear(person?.deathDate)].filter(Boolean).join(' - ');
-  return [person?.birthPlace, years].filter(Boolean).join(' · ');
+  return [formatPlace(person?.birthPlace), years].filter(Boolean).join(' · ');
 }
 
 function getGenerationLabel(generation) {
@@ -103,7 +112,7 @@ function getSearchLinks(person) {
   const nameParts = name.split(' ').filter(Boolean);
   const surname = nameParts.length > 1 ? nameParts[nameParts.length - 1] : name;
   const given = nameParts.length > 1 ? nameParts.slice(0, -1).join(' ') : name;
-  const searchTerms = [name, person?.birthPlace, 'family history'].filter(Boolean).join(' ');
+  const searchTerms = [name, String(person?.birthPlace || '').trim(), 'family history'].filter(Boolean).join(' ');
   return {
     familySearch: `https://www.familysearch.org/search/record/results?count=20&q.any=${encodeURIComponent(searchTerms)}`,
     ancestry: `https://www.ancestry.com/search/?name=${encodeURIComponent(name)}`,
