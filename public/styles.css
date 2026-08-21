@@ -3857,6 +3857,19 @@ input[type="file"] {
   color: #5b6875;
 }
 
+.free-trial-remaining {
+  padding: 0.6rem 0.9rem;
+  border: 1px solid #d7dee6;
+  border-radius: 8px;
+  background: #fbfcfd;
+}
+
+.free-trial-remaining p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #4a5663;
+}
+
 .free-trial-complete {
   border: 1px solid #2f6f4f;
   border-radius: 10px;
