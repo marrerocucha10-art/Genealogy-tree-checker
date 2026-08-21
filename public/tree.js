@@ -30,7 +30,8 @@ const ERROR_REVIEW_HANDOFF_KEY = `${FIVE_GENERATION_REVIEW_STORAGE_KEY}:errorRev
 
 function getTreeData() {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+    const treeData = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+    return window.familyTreeClientStorage?.normalizeFamilyLinks?.(treeData) || treeData;
   } catch (error) {
     return null;
   }
