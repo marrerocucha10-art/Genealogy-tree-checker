@@ -54,7 +54,7 @@ function renderPlans() {
   const current = tiers[currentTier] || tiers.free;
   manageBillingButton.hidden = !stripeCustomerId;
   subscriptionStatus.textContent = currentTier === 'free'
-    ? 'Current access: Free tree review'
+    ? 'Choose the plan that fits the family tree you are working on.'
     : `Current plan: ${current.name} · ${billingInterval === 'annual' ? 'Annual billing' : 'Monthly billing'}`;
   subscriptionPlans.innerHTML = Object.entries(tiers).filter(([id]) => id !== 'free').map(([id, tier]) => {
     const isCurrent = id === currentTier;
