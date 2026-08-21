@@ -266,6 +266,15 @@ function renderPersonCard(person, peopleById, familyConnections, isStartingPerso
 // A generation reads as a list of strangers unless the couples in it are kept
 // together. Each couple is shown side by side and named as the parents of the
 // person below them, so the customer can follow their own line down the page.
+function sexRank(person, family) {
+  const sex = String(person?.sex || '').trim().toUpperCase();
+  if (sex.startsWith('M')) return 0;
+  if (sex.startsWith('F')) return 1;
+  if (family?.husbandId === person?.id) return 0;
+  if (family?.wifeId === person?.id) return 1;
+  return 2;
+}
+
 function getGenerationCouples(peopleInGeneration, families, childOrder) {
   const inGeneration = new Map(peopleInGeneration.map((person) => [person.id, person]));
   const used = new Set();
@@ -274,7 +283,11 @@ function getGenerationCouples(peopleInGeneration, families, childOrder) {
   for (const family of families) {
     const husband = inGeneration.get(family.husbandId);
     const wife = inGeneration.get(family.wifeId);
-    const members = [husband, wife].filter((person) => person && !used.has(person.id));
+    // The man is always shown first, beside the woman he is recorded with, so
+    // every couple in a generation reads the same way across the page.
+    const members = [husband, wife]
+      .filter((person) => person && !used.has(person.id))
+      .sort((left, right) => sexRank(left, family) - sexRank(right, family));
     if (!members.length) continue;
     members.forEach((person) => used.add(person.id));
     const childRanks = (family.childrenIds || [])
@@ -299,7 +312,7 @@ function getGenerationCouples(peopleInGeneration, families, childOrder) {
 
 function renderCoupleUnit(unit, peopleById, familyConnections, primaryPersonId) {
   const nameOf = (person) => escapeHtml(person?.name || person?.id || '');
-  const coupleName = unit.members.map(nameOf).join(' and ');
+  const listedNames = unit.members.map(nameOf).join(', ');
   const childNames = unit.childIds
     .map((childId) => peopleById.get(childId))
     .filter(Boolean)
@@ -308,8 +321,7 @@ function renderCoupleUnit(unit, peopleById, familyConnections, primaryPersonId) 
   return `
     <article class="ancestry-couple">
       <div class="ancestry-couple-heading">
-        <h4>${coupleName}</h4>
-        ${relationLine ? `<p class="muted">${relationLine}</p>` : ''}
+        <h4>${relationLine || listedNames}</h4>
       </div>
       <div class="ancestry-couple-people">
         ${unit.members.map((person) => renderPersonCard(
@@ -318,7 +330,6 @@ function renderCoupleUnit(unit, peopleById, familyConnections, primaryPersonId) 
           familyConnections,
           person.id === primaryPersonId,
           '',
-          unit.members.filter((other) => other.id !== person.id).map((other) => other.id),
         )).join('')}
       </div>
     </article>
