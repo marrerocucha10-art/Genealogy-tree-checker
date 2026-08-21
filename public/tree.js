@@ -420,7 +420,7 @@ function getPedigreeSlots(primaryPerson, peopleById, familyConnections) {
 
 function renderPedigreeSlot(person, role) {
   if (!person) {
-    return `<div class="pedigree-slot pedigree-slot-empty"><span>${escapeHtml(role)} not recorded</span></div>`;
+    return `<div class="pedigree-slot pedigree-slot-empty" title="${escapeHtml(role)} not recorded" aria-label="${escapeHtml(role)} not recorded">&mdash;</div>`;
   }
   const years = [person.birth?.date, person.death?.date].filter(Boolean).join(' \u2013 ');
   return `
