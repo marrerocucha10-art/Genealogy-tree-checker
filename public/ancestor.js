@@ -9,6 +9,7 @@ let loadedTreeData = null;
 let searchTerm = '';
 let visibleCount = PEOPLE_PER_BATCH;
 let selectedIds = requestedFocusPersonId ? [requestedFocusPersonId] : [];
+let startingPersonId = '';
 
 function getTreeData() {
   if (loadedTreeData) return loadedTreeData;
@@ -45,6 +46,7 @@ function getSearchLinks(person) {
   return {
     familySearch: `https://www.familysearch.org/search/record/results?count=20&q.any=${encodeURIComponent(searchTerms)}`,
     ancestry: `https://www.ancestry.com/search/?name=${encodeURIComponent(name)}`,
+    myHeritage: `https://www.myheritage.com/research?formId=master&formMode=&useTranslation=1&exactSearch=&p=1&action=query&qname=${encodeURIComponent(`Name fn.${name.split(' ').slice(0, -1).join(' ') || name} ln.${name.split(' ').slice(-1).join('')}`)}`,
     census: 'https://www.archives.gov/research/census',
     vital: 'https://www.familysearch.org/en/wiki/United_States_Vital_Records',
     church: 'https://www.familysearch.org/en/wiki/Church_records',
@@ -53,50 +55,93 @@ function getSearchLinks(person) {
   };
 }
 
-function getRelationshipLabel(step) {
-  if (step === 0) return 'Starting person in your tree';
-  if (step === 1) return 'Closest relatives';
-  if (step === 2) return 'Next circle of relatives';
-  return `${step} steps from your starting person`;
+function getGenerationLabel(generation) {
+  if (generation === 0) return 'Starting person';
+  if (generation === 1) return 'Parents';
+  if (generation === 2) return 'Grandparents';
+  if (generation === 3) return 'Great-grandparents';
+  const greats = generation - 2;
+  return `${greats}${greats === 2 ? 'nd' : greats === 3 ? 'rd' : 'th'} great-grandparents`;
 }
 
-// The list follows the family, not the order the GEDCOM happened to store people
-// in: the starting person first, then outward through parents, partners and
-// children one circle at a time.
+function buildFamilyIndex(treeData) {
+  const parentsByChild = new Map();
+  const partnersById = new Map();
+  const childrenById = new Map();
+  const add = (map, key, value) => {
+    if (!key || !value) return;
+    if (!map.has(key)) map.set(key, new Set());
+    map.get(key).add(value);
+  };
+  for (const family of treeData?.families || []) {
+    const parents = [family.husbandId, family.wifeId].filter(Boolean);
+    const children = (family.childrenIds || []).filter(Boolean);
+    for (const child of children) {
+      for (const parent of parents) {
+        add(parentsByChild, child, parent);
+        add(childrenById, parent, child);
+      }
+    }
+    for (const parent of parents) {
+      for (const other of parents) if (parent !== other) add(partnersById, parent, other);
+    }
+  }
+  return { parentsByChild, partnersById, childrenById };
+}
+
+// Organised the way the family tree reads: the starting person, then their
+// parents, then grandparents, and so on up the direct ancestry line. Partners
+// sit with the ancestor they married, and anyone off that line follows after.
 function getOrderedPeople() {
   const treeData = loadedTreeData || getTreeData();
   const people = treeData?.people || [];
   if (!people.length) return [];
   const peopleById = new Map(people.map((person) => [person.id, person]));
-  const relatives = new Map(people.map((person) => [person.id, new Set()]));
-  const link = (a, b) => {
-    if (!a || !b || a === b || !relatives.has(a) || !relatives.has(b)) return;
-    relatives.get(a).add(b);
-    relatives.get(b).add(a);
-  };
-  for (const family of treeData?.families || []) {
-    const members = [family.husbandId, family.wifeId, ...(family.childrenIds || [])].filter(Boolean);
-    for (const member of members) {
-      for (const other of members) link(member, other);
-    }
-  }
+  const { parentsByChild, partnersById, childrenById } = buildFamilyIndex(treeData);
+  const startId = peopleById.has(startingPersonId) ? startingPersonId
+    : peopleById.has(treeData?.primaryPersonId) ? treeData.primaryPersonId
+      : people[0].id;
 
-  const startId = peopleById.has(treeData?.primaryPersonId) ? treeData.primaryPersonId : people[0].id;
   const ordered = [];
   const seen = new Set();
-  const queue = [{ id: startId, step: 0 }];
-  while (queue.length) {
-    const { id, step } = queue.shift();
-    if (seen.has(id) || !peopleById.has(id)) continue;
+  const push = (id, generation, group) => {
+    if (!peopleById.has(id) || seen.has(id)) return;
     seen.add(id);
-    ordered.push({ person: peopleById.get(id), step });
-    const next = [...(relatives.get(id) || [])]
-      .filter((relativeId) => !seen.has(relativeId))
+    ordered.push({ person: peopleById.get(id), generation, group });
+  };
+
+  push(startId, 0, getGenerationLabel(0));
+  let currentGeneration = [startId];
+  let generation = 1;
+  while (currentGeneration.length && generation < 25) {
+    const nextGeneration = [];
+    const sorted = currentGeneration
+      .flatMap((childId) => [...(parentsByChild.get(childId) || [])])
+      .filter((id) => peopleById.has(id) && !seen.has(id))
       .sort((a, b) => getPersonName(peopleById.get(a)).localeCompare(getPersonName(peopleById.get(b))));
-    for (const relativeId of next) queue.push({ id: relativeId, step: step + 1 });
+    for (const parentId of sorted) {
+      push(parentId, generation, getGenerationLabel(generation));
+      nextGeneration.push(parentId);
+    }
+    currentGeneration = nextGeneration;
+    generation += 1;
   }
+
+  // Partners and children of anyone already listed: still family, but not on the
+  // direct line, so they follow the ancestry list instead of interrupting it.
+  const directIds = [...seen];
+  const relatedIds = directIds
+    .flatMap((id) => [...(partnersById.get(id) || []), ...(childrenById.get(id) || [])])
+    .filter((id) => peopleById.has(id) && !seen.has(id));
+  for (const id of [...new Set(relatedIds)].sort((a, b) => getPersonName(peopleById.get(a)).localeCompare(getPersonName(peopleById.get(b))))) {
+    push(id, null, 'Partners and children');
+  }
+
   for (const person of people) {
-    if (!seen.has(person.id)) ordered.push({ person, step: null });
+    if (!seen.has(person.id)) {
+      seen.add(person.id);
+      ordered.push({ person, generation: null, group: 'Not linked to your starting person yet' });
+    }
   }
   return ordered;
 }
@@ -133,6 +178,7 @@ function renderResearchOptions(people) {
             <div class="ancestor-resource-links">
               <a class="btn-secondary" href="${links.familySearch}" target="_blank" rel="noopener">Search FamilySearch Records</a>
               <a class="btn-secondary" href="${links.ancestry}" target="_blank" rel="noopener">Search Ancestry</a>
+              <a class="btn-secondary" href="${links.myHeritage}" target="_blank" rel="noopener">Search MyHeritage</a>
               <a class="btn-secondary" href="${links.census}" target="_blank" rel="noopener">Open Census Records Guide</a>
               <a class="btn-secondary" href="${links.vital}" target="_blank" rel="noopener">Find Vital Records</a>
               <a class="btn-secondary" href="${links.church}" target="_blank" rel="noopener">Find Church Records</a>
@@ -152,13 +198,16 @@ function renderDiscovery() {
     workspace.innerHTML = `
       <section class="ancestor-discovery">
         <h2>Start your ancestor research</h2>
-        <p class="ancestor-discovery-intro">Upload a GEDCOM file first. Then pick people from your family tree here to open Census, vital, church, immigration, Ancestry, FamilySearch, and archive research options.</p>
+        <p class="ancestor-discovery-intro">Upload a GEDCOM file first. Then pick people from your family tree here to open Census, vital, church, immigration, Ancestry, MyHeritage, FamilySearch, and archive research options.</p>
         <a class="btn-add" href="/?start=upload">Upload Your GEDCOM</a>
       </section>
     `;
     return;
   }
 
+  const orderedForSelect = getOrderedPeople();
+  const treeData = loadedTreeData || getTreeData();
+  const activeStartId = orderedForSelect[0]?.person?.id || treeData?.primaryPersonId || '';
   const matching = getMatchingPeople();
   const shown = matching.slice(0, visibleCount);
   const selectedPeople = selectedIds
@@ -169,21 +218,30 @@ function renderDiscovery() {
   workspace.innerHTML = `
     <section class="ancestor-discovery person-picker">
       <h2>Select a person from your family tree</h2>
-      <p class="ancestor-discovery-intro">You work with ${PEOPLE_PER_BATCH} people from your family tree at a time. The list begins with the person you chose as the starting person in your tree and moves outward through their closest relatives. Tick up to ${PEOPLE_PER_BATCH} names and their research options open underneath.</p>
+      <p class="ancestor-discovery-intro">You work with ${PEOPLE_PER_BATCH} people from your family tree at a time. The list is ordered the way your tree reads: your starting person first, then parents, grandparents and back up the line. Tick up to ${PEOPLE_PER_BATCH} names and their research options open underneath.</p>
+      <label class="person-picker-search">
+        <span>Starting person</span>
+        <select id="startingPerson">
+          ${orderedForSelect.map(({ person, group }) => `<option value="${escapeHtml(person.id)}"${person.id === activeStartId ? ' selected' : ''}>${escapeHtml(getPersonName(person))}${group ? ` — ${escapeHtml(group)}` : ''}</option>`).join('')}
+        </select>
+      </label>
       <label class="person-picker-search">
         <span>Search your tree by name or place</span>
         <input type="search" id="personSearch" value="${escapeHtml(searchTerm)}" placeholder="Type a name, for example Lopez" autocomplete="off">
       </label>
       <p class="person-picker-count">${selectedIds.length} of ${PEOPLE_PER_BATCH} people selected${selectedIds.length ? ' · <button type="button" class="btn-link" id="clearSelection">Clear selection</button>' : ''}</p>
       ${shown.length ? `<ul class="person-picker-list">
-        ${shown.map(({ person, step }) => {
+        ${shown.map(({ person, group }, index) => {
           const checked = selectedIds.includes(person.id);
           const detail = getPersonDetail(person);
-          return `<li>
+          const heading = index === 0 || shown[index - 1].group !== group
+            ? `<li class="person-picker-group">${escapeHtml(group)}</li>`
+            : '';
+          return `${heading}<li>
             <label class="person-picker-option${checked ? ' is-selected' : ''}">
               <input type="checkbox" data-person-id="${escapeHtml(person.id)}"${checked ? ' checked' : ''}${!checked && limitReached ? ' disabled' : ''}>
               <span class="person-picker-name">${escapeHtml(getPersonName(person))}</span>
-              <span class="person-picker-detail">${escapeHtml([step === null ? 'Not connected to your starting person yet' : getRelationshipLabel(step), detail].filter(Boolean).join(' · '))}</span>
+              <span class="person-picker-detail">${escapeHtml(detail || 'No place or dates recorded')}</span>
             </label>
           </li>`;
         }).join('')}
@@ -234,10 +292,22 @@ workspace.addEventListener('click', (event) => {
     visibleCount += PEOPLE_PER_BATCH;
     renderDiscovery();
   }
+  if (event.target.closest('#showAncestryTop')) {
+    visibleCount = PEOPLE_PER_BATCH;
+    renderDiscovery();
+  }
   if (event.target.closest('#clearSelection')) {
     selectedIds = [];
     refreshSelectionState();
   }
+});
+
+workspace.addEventListener('change', (event) => {
+  const select = event.target.closest('#startingPerson');
+  if (!select) return;
+  startingPersonId = select.value;
+  visibleCount = PEOPLE_PER_BATCH;
+  renderDiscovery();
 });
 
 workspace.addEventListener('input', (event) => {
