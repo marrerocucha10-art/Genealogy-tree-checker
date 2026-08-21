@@ -390,6 +390,80 @@ function renderFamilyView(primaryPerson, peopleById, familyConnections) {
   `;
 }
 
+// A six-generation pedigree chart, read left to right: the starting person, then
+// their father above their mother in each following column. Slots the file does
+// not record are left visibly blank rather than filled in with a guess.
+const PEDIGREE_GENERATIONS = 6;
+
+function getPedigreeSlots(primaryPerson, peopleById, familyConnections) {
+  const columns = [[primaryPerson]];
+  for (let generation = 1; generation < PEDIGREE_GENERATIONS; generation += 1) {
+    const previous = columns[generation - 1];
+    const next = [];
+    for (const person of previous) {
+      const connections = person ? familyConnections.get(person.id) : null;
+      const parents = [...(connections?.parents || [])]
+        .map((id) => peopleById.get(id))
+        .filter(Boolean);
+      const father = parents.find((parent) => sexRank(parent) === 0)
+        || parents.find((parent) => sexRank(parent) === 2)
+        || null;
+      const mother = parents.find((parent) => sexRank(parent) === 1 && parent !== father)
+        || parents.find((parent) => parent !== father)
+        || null;
+      next.push(father, mother);
+    }
+    columns.push(next);
+  }
+  return columns;
+}
+
+function renderPedigreeSlot(person, role) {
+  if (!person) {
+    return `<div class="pedigree-slot pedigree-slot-empty"><span>${escapeHtml(role)} not recorded</span></div>`;
+  }
+  const years = [person.birth?.date, person.death?.date].filter(Boolean).join(' \u2013 ');
+  return `
+    <div class="pedigree-slot">
+      <p class="pedigree-name">${escapeHtml(person.name || person.id)}</p>
+      ${years ? `<p class="pedigree-years">${escapeHtml(years)}</p>` : ''}
+    </div>
+  `;
+}
+
+function renderPedigreeChart(primaryPerson, peopleById, familyConnections) {
+  if (!primaryPerson) return '';
+  const columns = getPedigreeSlots(primaryPerson, peopleById, familyConnections);
+  const filled = columns.reduce((total, column) => total + column.filter(Boolean).length, 0);
+  const headings = [
+    'Starting person',
+    'Parents',
+    'Grandparents',
+    'Great-grandparents',
+    '2nd great-grandparents',
+    '3rd great-grandparents',
+  ];
+
+  return `
+    <section class="pedigree-chart" aria-label="Six generation pedigree chart">
+      <h2>Six-generation chart for ${escapeHtml(primaryPerson.name || primaryPerson.id)}</h2>
+      <p class="muted">${filled} of ${columns.reduce((total, column) => total + column.length, 0)} places on this chart are filled from your file. Blank places are the ancestors your file has not recorded yet.</p>
+      <div class="pedigree-scroll">
+        <div class="pedigree-columns">
+          ${columns.map((column, index) => `
+            <div class="pedigree-column">
+              <p class="pedigree-column-heading">${escapeHtml(headings[index] || `Generation ${index + 1}`)}</p>
+              <div class="pedigree-column-slots">
+                ${column.map((person, slotIndex) => renderPedigreeSlot(person, index === 0 ? 'Person' : slotIndex % 2 === 0 ? 'Father' : 'Mother')).join('')}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
 function renderGenerations(treeData, peopleById, families) {
   const primaryPerson = getPrimaryPerson(treeData);
   const generationByPerson = buildGenerationData(treeData, peopleById, primaryPerson);
@@ -459,6 +533,7 @@ function renderGenerations(treeData, peopleById, families) {
         <a class="btn-secondary" href="${workspaceProgressUrl}">Review Work Space Progress</a>
       </div>
       ${renderFamilyView(primaryPerson, peopleById, familyConnections)}
+      ${renderPedigreeChart(primaryPerson, peopleById, familyConnections)}
       <div class="ancestry-tree" aria-label="Family ancestry tree">
         ${sections.join('')}
       </div>
