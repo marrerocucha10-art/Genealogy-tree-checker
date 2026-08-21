@@ -52,6 +52,16 @@ manual fix, and mark solved.
 
 ## Locked work — frozen unless specifically requested
 
+**The blanket rule: anything we have worked on is locked the moment it is done.**
+It does not need to appear on the list below to be locked. If a screen, wording,
+layout or flow has already been reviewed, it is finished — do not touch it again
+unless the owner asks for that exact change. No "while I was in there", no
+rewording, no tidying, no reverting. The list below is a record, not the limit.
+
+Before any change, name the one thing that was asked for, change only that, and
+gate it to the tier or screen it belongs to so nothing else can shift. If a fix
+appears to require touching finished work, stop and ask first.
+
 1. **Typography** — sans-serif everywhere. `public/styles.css`.
 2. **Administration review is open by default** — with no passphrase configured
    the gate returns `{configured:false, active:true}` and fails open on any
@@ -70,6 +80,35 @@ manual fix, and mark solved.
 6. **Guided error review shape** — grouped by generation, limited to the first
    five generations, with preview, manual fix, mark solved, record source, and
    save for later. `public/errors.js`.
+7. **One-sided GEDCOM parent links** — `normalizeFamilyLinks()` reconciles
+   `FAMC`/`FAMS` against `CHIL`/`HUSB`/`WIFE` both ways, so a parent recorded on
+   only one side is never lost. Called from `getTreeData()` on both pages.
+   `public/client-storage.js`, `public/tree.js`, `public/errors.js`.
+8. **Ancestry-style family view and the six-generation chart** — parents above,
+   person and partner centred, children below; the chart keeps its small sizing.
+   Blanks show as `—` and are never guessed. `public/tree.js`, `public/styles.css`.
+9. **`[hidden]` always wins** — the global `[hidden] { display: none !important; }`
+   at the very top of `public/styles.css` must stay. Section rules that set
+   `display: grid`/`flex` beat the browser default without it.
+10. **Straight to upload after paying** — `start=upload` hides the welcome panel,
+    video preview, workflow preview, free-review invitation and options section,
+    then scrolls to the top. Paying never returns the customer to the landing
+    page. `public/script.js`.
+11. **One review preview** — both choices under "What would you like to work
+    on?" lead to the same heading, family preview and record list. Duplicates
+    add one sentence, nothing more. `public/errors.js`.
+12. **Free trial** — five corrections in total, duplicates included, as one
+    shared allowance. No focus-choice screen and no explanation blocks ahead of
+    the records: the family and its errors come first. When the five are spent,
+    the trial-complete panel with the perks list and the plan button appears.
+    All of it is gated behind the free tier; paid tiers keep the full guidance.
+    `public/errors.js`, `public/store.js`, `public/script.js`.
+13. **The store never mentions free options.** It speaks only about the plans.
+    `public/store.js`.
+
+**Changing any of the above without being asked for that specific change is a
+regression, even if the new version reads better.** Scope every change to the
+tier or screen that was named, so one plan's fix can never alter another's.
 
 ## Technical notes that save hours
 
