@@ -20,7 +20,7 @@ const SUBSCRIPTION_STORE_URL = IS_ADMINISTRATION_WORKSPACE ? 'store.html?admin_r
 const ERROR_BATCH_SIZE = 10;
 const BASIC_ERROR_REVIEW_LIMIT = 5;
 const FREE_DUPLICATE_FIX_LIMIT = 5;
-const ERROR_REVIEW_ORDER_VERSION = 9;
+const ERROR_REVIEW_ORDER_VERSION = 10;
 const VISIBLE_REVIEW_GENERATION_COUNT = 5;
 const workspace = document.getElementById('errorWorkspace');
 const workspaceWelcome = document.getElementById('workspaceWelcome');
@@ -1112,41 +1112,92 @@ function getGenerationReviewLabel(generation) {
   return `Ancestor generation ${generation}`;
 }
 
-function getGroupGeneration(group, directLineOrder) {
-  return directLineOrder.get(group.issues[0]?.subject);
+function getGroupPlacement(group, placements) {
+  return placements.get(group?.issues?.[0]?.subject);
 }
 
-// The direct line only walks parents, so spouses, children and unconnected
-// records were dropped from the review even when their errors sit inside the
-// first five generations. Place every person in the tree so no error is hidden.
-function getReviewGenerationOrder(treeData) {
-  const order = new Map(getDirectLineReviewOrder(treeData));
+// Every record in the review is placed against the person the customer chose.
+// Only that person's own ancestors carry a generation label. Anyone else is
+// named as a relative of the ancestor they attach to, so an in-law, a spouse or
+// an unconnected record is never shown under "Parent generation".
+function getReviewPlacements(treeData) {
   const peopleById = new Map((treeData?.people || []).map((person) => [person.id, person]));
+  const directOrder = getDirectLineReviewOrder(treeData);
+  const placements = new Map();
 
-  // Relatives share the generation of the closest placed member of their family.
+  for (const [id, generation] of directOrder) {
+    placements.set(id, {
+      generation,
+      direct: true,
+      anchorId: peopleById.has(id) ? id : null,
+      key: `direct:${generation}`,
+    });
+  }
+
+  // Relatives take the placement of the closest ancestor they share a family
+  // with, and are kept apart from that ancestor's own generation.
   let placedAnother = true;
   while (placedAnother) {
     placedAnother = false;
     for (const family of treeData?.families || []) {
       const memberIds = [family.husbandId, family.wifeId, ...(family.childrenIds || [])]
         .filter((id) => peopleById.has(id));
-      const placed = memberIds.map((id) => order.get(id)).filter((generation) => generation !== undefined);
-      if (!placed.length) continue;
-      const generation = Math.min(...placed);
+      const placedMembers = memberIds
+        .map((id) => placements.get(id))
+        .filter(Boolean);
+      if (!placedMembers.length) continue;
+      const closest = placedMembers.reduce((best, entry) => (
+        entry.generation < best.generation ? entry : best
+      ));
+      const anchorId = closest.direct ? closest.anchorId : closest.anchorId;
+      const relative = {
+        generation: closest.generation,
+        direct: false,
+        anchorId,
+        key: anchorId ? `relatives:${anchorId}` : 'unconnected',
+      };
       for (const id of memberIds) {
-        if (order.has(id)) continue;
-        order.set(id, generation);
+        if (placements.has(id)) continue;
+        placements.set(id, relative);
         placedAnother = true;
       }
-      if (family?.id && !order.has(family.id)) order.set(family.id, generation);
+      if (family?.id && !placements.has(family.id)) placements.set(family.id, relative);
     }
   }
 
-  // Records with no family links still carry errors worth correcting.
+  // Records with no family links still carry errors worth correcting, but they
+  // are never presented as part of the selected person's ancestry.
   for (const person of treeData?.people || []) {
-    if (!order.has(person.id)) order.set(person.id, 0);
+    if (placements.has(person.id)) continue;
+    placements.set(person.id, { generation: 0, direct: false, anchorId: null, key: 'unconnected' });
   }
 
+  return placements;
+}
+
+function getPlacementRank(placement) {
+  if (!placement) return Number.MAX_SAFE_INTEGER;
+  // The customer's own ancestry is reviewed first, generation by generation.
+  // Relatives come after every ancestor, and unconnected records come last.
+  if (placement.key === 'unconnected') return Number.MAX_SAFE_INTEGER - 1;
+  if (placement.direct) return placement.generation;
+  return 1000 + placement.generation;
+}
+
+function getPlacementLabel(placement, peopleById, primaryPersonId) {
+  if (!placement) return 'Related family branch';
+  if (placement.direct) return getGenerationReviewLabel(placement.generation);
+  const anchorName = String(peopleById?.get(placement.anchorId)?.name || '').replace(/\//g, '').trim();
+  if (anchorName) return `Relatives of ${anchorName}`;
+  const primaryName = String(peopleById?.get(primaryPersonId)?.name || '').replace(/\//g, '').trim();
+  return primaryName ? `Records not connected to ${primaryName}` : 'Records not connected to your tree';
+}
+
+function getReviewGenerationOrder(treeData) {
+  const order = new Map();
+  for (const [id, placement] of getReviewPlacements(treeData)) {
+    order.set(id, placement.generation);
+  }
   return order;
 }
 
@@ -1191,13 +1242,17 @@ function renderFamilyLocationPreview(person, peopleById, locationIndex, directOr
     .filter(Boolean)
     .map((relative) => escapeHtml(relative.name || relative.id));
   const location = locationIndex.get(person.id) || { parents: new Set(), spouses: new Set(), children: new Set() };
-  const directGeneration = directOrder.get(person.id);
+  const placement = directOrder.get(person.id);
   const primaryPerson = peopleById.get(primaryPersonId);
-  const lineDescription = directGeneration === 0
+  const primaryName = escapeHtml(String(primaryPerson?.name || 'your selected person').replace(/\//g, '').trim());
+  const anchorName = escapeHtml(String(peopleById.get(placement?.anchorId)?.name || '').replace(/\//g, '').trim());
+  const lineDescription = placement?.direct && placement.generation === 0
     ? 'Selected starting person'
-    : directGeneration !== undefined
-      ? `Direct ancestor · ${getGenerationReviewLabel(directGeneration)} from ${escapeHtml(primaryPerson?.name || 'your selected person')}`
-      : 'Related family branch · outside the selected direct line';
+    : placement?.direct
+      ? `Direct ancestor · ${getGenerationReviewLabel(placement.generation)} from ${primaryName}`
+      : anchorName
+        ? `Not an ancestor of ${primaryName} · related to ${anchorName}`
+        : `Not connected to ${primaryName}`;
   const treeParameters = new URLSearchParams();
   if (WORKSPACE_PREVIEW_MODE) treeParameters.set('demo', 'workspace');
   if (IS_ADMINISTRATION_REVIEW) treeParameters.set('admin_review', 'true');
@@ -1213,15 +1268,15 @@ function renderFamilyLocationPreview(person, peopleById, locationIndex, directOr
 }
 
 function getOrderedIssueGroups(treeData, errors) {
-  const directOrder = getDirectLineReviewOrder(treeData);
+  const placements = getReviewPlacements(treeData);
   const descendantOrder = getDescendantReviewOrder(treeData);
   const peopleById = new Map((treeData?.people || []).map((person) => [person.id, person]));
   const familiesById = new Map((treeData?.families || []).map((family) => [family.id, family]));
   return getIssueGroups(errors, peopleById, familiesById)
     .map((group, index) => ({ group, index }))
     .sort((left, right) => {
-      const leftDirectOrder = directOrder.get(left.group.issues[0]?.subject) ?? Number.MAX_SAFE_INTEGER;
-      const rightDirectOrder = directOrder.get(right.group.issues[0]?.subject) ?? Number.MAX_SAFE_INTEGER;
+      const leftDirectOrder = getPlacementRank(getGroupPlacement(left.group, placements));
+      const rightDirectOrder = getPlacementRank(getGroupPlacement(right.group, placements));
       const leftDuplicateRank = isDuplicateIssue(left.group.issues[0]) ? 0 : 1;
       const rightDuplicateRank = isDuplicateIssue(right.group.issues[0]) ? 0 : 1;
       const leftOrder = descendantOrder.get(left.group.issues[0]?.subject) ?? Number.MAX_SAFE_INTEGER;
@@ -1271,18 +1326,14 @@ function getActiveIssueGroups(treeData, errors, progress) {
     return activeIds.map((id) => groupsById.get(id));
   }
 
-  const directLineOrder = getReviewGenerationOrder(treeData);
-  const firstDirectGroup = availableGroups.find((group) => (
-    getGroupGeneration(group, directLineOrder) !== undefined
-  ));
-  const currentGeneration = firstDirectGroup
-    ? getGroupGeneration(firstDirectGroup, directLineOrder)
-    : undefined;
-  const generationGroups = currentGeneration === undefined
+  // A review screen only ever holds records that sit in the same place in the
+  // customer's tree, so an in-law is never mixed into an ancestor generation.
+  const placements = getReviewPlacements(treeData);
+  const firstGroup = availableGroups.find((group) => getGroupPlacement(group, placements));
+  const currentKey = firstGroup ? getGroupPlacement(firstGroup, placements).key : undefined;
+  const generationGroups = currentKey === undefined
     ? availableGroups
-    : availableGroups.filter((group) => (
-      getGroupGeneration(group, directLineOrder) === currentGeneration
-    ));
+    : availableGroups.filter((group) => getGroupPlacement(group, placements)?.key === currentKey);
   const nextGroups = generationGroups.slice(0, ERROR_BATCH_SIZE);
   progress.activeGroupIds = nextGroups.map((group) => group.id);
   saveProgress(progress);
@@ -1529,18 +1580,20 @@ function renderWorkspaceContent() {
     && activeGroups.every((group) => isDuplicateIssue(group.issues[0]));
   const peopleById = new Map(treeData.people.map((person) => [person.id, person]));
   const familiesById = new Map((treeData.families || []).map((family) => [family.id, family]));
-  const directLineOrder = getReviewGenerationOrder(treeData);
-  const activeGeneration = getGroupGeneration(activeGroups[0] || { issues: [] }, directLineOrder);
+  const reviewPlacements = getReviewPlacements(treeData);
+  const activePlacement = getGroupPlacement(activeGroups[0], reviewPlacements);
+  const activePrimaryPersonId = peopleById.has(treeData.primaryPersonId)
+    ? treeData.primaryPersonId
+    : treeData.people[0]?.id;
+  const activePlacementLabel = getPlacementLabel(activePlacement, peopleById, activePrimaryPersonId);
   const activeReviewTitle = reviewingDuplicates
     ? 'Possible duplicate records'
-    : activeGeneration === undefined
-      ? 'Related family branch review'
-      : `${getGenerationReviewLabel(activeGeneration)} review`;
+    : `${activePlacementLabel} review`;
   const activeReviewDescription = reviewingDuplicates
     ? 'Combine these first. A duplicate splits one person\u2019s life across two records, so settling them now keeps you from correcting the same dates and relationships twice. The rest of your errors open once the duplicates are handled.'
-    : activeGeneration === undefined
-      ? 'These records are outside the selected direct line. They are shown after the selected person and each ancestor generation are complete.'
-      : `Review the errors for the ${getGenerationReviewLabel(activeGeneration).toLowerCase()} before moving outward through the family tree.`;
+    : activePlacement?.direct
+      ? `Review the errors for the ${activePlacementLabel.toLowerCase()} before moving outward through the family tree.`
+      : `These records are not ancestors of ${escapeHtml(String(peopleById.get(activePrimaryPersonId)?.name || 'your selected person').replace(/\//g, '').trim())}. They are shown after each ancestor generation is complete.`;
   const familyLocationIndex = buildFamilyLocationIndex(treeData, peopleById);
   const selectedPrimaryPersonId = peopleById.has(treeData.primaryPersonId)
     ? treeData.primaryPersonId
@@ -1605,7 +1658,7 @@ function renderWorkspaceContent() {
                 peopleById.get(group.issues[0]?.subject),
                 peopleById,
                 familyLocationIndex,
-                directLineOrder,
+                reviewPlacements,
                 selectedPrimaryPersonId,
               )}
               <ul class="person-error-list">
