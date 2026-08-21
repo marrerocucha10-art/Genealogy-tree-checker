@@ -3604,3 +3604,19 @@ input[type="file"] {
   font-size: 1.05rem;
   color: #1f2a44;
 }
+
+.review-focus-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.review-focus-switch {
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.9rem;
+  background: #f2f6ff;
+  border: 1px solid #d7dcf0;
+  border-radius: 8px;
+  font-weight: 600;
+}

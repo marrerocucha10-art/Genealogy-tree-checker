@@ -20,7 +20,7 @@ const SUBSCRIPTION_STORE_URL = IS_ADMINISTRATION_WORKSPACE ? 'store.html?admin_r
 const ERROR_BATCH_SIZE = 10;
 const BASIC_ERROR_REVIEW_LIMIT = 5;
 const FREE_DUPLICATE_FIX_LIMIT = 5;
-const ERROR_REVIEW_ORDER_VERSION = 8;
+const ERROR_REVIEW_ORDER_VERSION = 9;
 const VISIBLE_REVIEW_GENERATION_COUNT = 5;
 const workspace = document.getElementById('errorWorkspace');
 const workspaceWelcome = document.getElementById('workspaceWelcome');
@@ -165,6 +165,7 @@ function createWorkspacePreviewTree() {
       batchMode: 'people',
       reviewOrderVersion: ERROR_REVIEW_ORDER_VERSION,
       duplicateReviewMode: '',
+      reviewFocus: '',
       lastReviewedSubject: activeIssue.subject,
     },
   };
@@ -209,6 +210,7 @@ function getProgress() {
     batchMode: 'people',
     reviewOrderVersion: Number(savedProgress.reviewOrderVersion) || 0,
     duplicateReviewMode: ['single', 'batch'].includes(savedProgress.duplicateReviewMode) ? savedProgress.duplicateReviewMode : '',
+    reviewFocus: ['duplicates', 'other'].includes(savedProgress.reviewFocus) ? savedProgress.reviewFocus : '',
     lastReviewedSubject: typeof savedProgress.lastReviewedSubject === 'string' ? savedProgress.lastReviewedSubject : '',
   };
 }
@@ -457,6 +459,29 @@ function renderDuplicateMergeReview() {
       <button id="undoDuplicateMerge" type="button" class="btn-link">Undo</button></p>
     </section>
   `;
+}
+
+function renderReviewFocusChoice(duplicateCount, otherCount) {
+  return `
+    <section id="activeReview" class="batch-complete">
+      <h2>What would you like to work on?</h2>
+      <div class="review-focus-choice">
+        <button type="button" class="btn-add" data-review-focus="duplicates">Merge Duplicate Records (${duplicateCount})</button>
+        <button type="button" class="btn-secondary" data-review-focus="other">Fix Other Errors (${otherCount})</button>
+      </div>
+    </section>
+  `;
+}
+
+function renderReviewFocusSwitch(focus, duplicateCount, otherCount) {
+  if (!focus) return '';
+  const working = focus === 'duplicates'
+    ? `Working on duplicate records${duplicateCount ? ` · ${duplicateCount} left` : ''}`
+    : `Working on other errors${otherCount ? ` · ${otherCount} left` : ''}`;
+  const other = focus === 'duplicates'
+    ? `<button type="button" class="btn-link" data-review-focus="other">Switch to other errors (${otherCount})</button>`
+    : `<button type="button" class="btn-link" data-review-focus="duplicates">Switch to duplicate records (${duplicateCount})</button>`;
+  return `<p class="review-focus-switch">${escapeHtml(working)} · ${other}</p>`;
 }
 
 function renderDuplicateReviewChoice(duplicateIssues) {
@@ -1271,10 +1296,25 @@ function renderWorkspaceContent() {
     ...(treeData?.validationReport?.errors || []),
     ...(treeData?.validationReport?.warnings || []).filter((issue) => issue.autoFix?.type === 'mergeDuplicatePeople'),
   ];
-  const visibleGenerationErrors = getVisibleGenerationErrors(treeData, allErrors);
-  const duplicateIssues = visibleGenerationErrors.filter(isDuplicateIssue);
+  const allVisibleGenerationErrors = getVisibleGenerationErrors(treeData, allErrors);
+  const openDuplicateIssues = allVisibleGenerationErrors.filter(isDuplicateIssue);
+  const openOtherIssues = allVisibleGenerationErrors.filter((issue) => !isDuplicateIssue(issue));
   const isBasicPlan = getCurrentTier() === 'free';
   const progress = getProgress();
+  // The customer decides whether this sitting is about duplicates or the rest of
+  // the errors; only that kind is shown until they switch.
+  const reviewFocus = openDuplicateIssues.length && openOtherIssues.length
+    ? progress.reviewFocus
+    : openDuplicateIssues.length ? 'duplicates' : 'other';
+  const visibleGenerationErrors = reviewFocus === 'duplicates'
+    ? openDuplicateIssues
+    : reviewFocus === 'other' ? openOtherIssues : allVisibleGenerationErrors;
+  const duplicateIssues = visibleGenerationErrors.filter(isDuplicateIssue);
+  const reviewFocusSwitch = renderReviewFocusSwitch(
+    openDuplicateIssues.length && openOtherIssues.length ? reviewFocus : '',
+    openDuplicateIssues.length,
+    openOtherIssues.length
+  );
   updateReturnToTreeLink(progress);
   updateWorkspaceTreeLinks(progress);
   const errors = isBasicPlan && duplicateIssues.length
@@ -1328,13 +1368,18 @@ function renderWorkspaceContent() {
     return;
   }
 
+  if (openDuplicateIssues.length && openOtherIssues.length && !progress.reviewFocus) {
+    workspace.innerHTML = `${workspaceDesk}${duplicateMergeReview}${renderReviewFocusChoice(openDuplicateIssues.length, openOtherIssues.length)}`;
+    return;
+  }
+
   if (!isBasicPlan && duplicateIssues.length && !progress.duplicateReviewMode) {
-    workspace.innerHTML = `${workspaceDesk}${renderDuplicateReviewChoice(duplicateIssues)}`;
+    workspace.innerHTML = `${workspaceDesk}${reviewFocusSwitch}${renderDuplicateReviewChoice(duplicateIssues)}`;
     return;
   }
 
   if (!errors.length) {
-    workspace.innerHTML = `${workspaceDesk}${duplicateMergeReview}${encouragement}${pendingResearch}<p id="activeReview" class="empty-message">There are no open errors in the five generations currently shown in your working tree. Return to the tree to choose another direct line or add more generations when you are ready.</p>${renderUpdatedTreeOffer()}${undoButton}${assistanceOptions}`;
+    workspace.innerHTML = `${workspaceDesk}${reviewFocusSwitch}${duplicateMergeReview}${encouragement}${pendingResearch}<p id="activeReview" class="empty-message">There are no open errors in the five generations currently shown in your working tree. Return to the tree to choose another direct line or add more generations when you are ready.</p>${renderUpdatedTreeOffer()}${undoButton}${assistanceOptions}`;
     return;
   }
 
@@ -1371,6 +1416,7 @@ function renderWorkspaceContent() {
   if (activeDone && remainingGroups) {
     workspace.innerHTML = `
       ${workspaceDesk}
+      ${reviewFocusSwitch}
       ${duplicateMergeReview}
       <section id="activeReview" class="batch-complete">
         <h2>${reviewingDuplicates ? 'Duplicate settled' : 'Generation review complete'}</h2>
@@ -1391,12 +1437,13 @@ function renderWorkspaceContent() {
     const pendingMessage = progress.pendingIssueIds.length
       ? ` You also have ${progress.pendingIssueIds.length} item${progress.pendingIssueIds.length === 1 ? '' : 's'} in Fix Later (Pending), which did not block your progress.`
       : '';
-    workspace.innerHTML = `${workspaceDesk}${duplicateMergeReview}<section id="activeReview" class="batch-complete"><h2>Active error review complete</h2><p>You completed every active issue in this workspace.${pendingMessage} Your saved review desk above has both your printable chart and your computer progress report.</p>${undoButton}</section>${pendingResearch}${renderUpdatedTreeOffer()}${encouragement}${assistanceOptions}`;
+    workspace.innerHTML = `${workspaceDesk}${reviewFocusSwitch}${duplicateMergeReview}<section id="activeReview" class="batch-complete"><h2>Active error review complete</h2><p>You completed every active issue in this workspace.${pendingMessage} Your saved review desk above has both your printable chart and your computer progress report.</p>${undoButton}</section>${pendingResearch}${renderUpdatedTreeOffer()}${encouragement}${assistanceOptions}`;
     return;
   }
 
   workspace.innerHTML = `
     ${workspaceDesk}
+    ${reviewFocusSwitch}
     <section id="activeReview" class="error-batch">
       <div class="report-heading">
         <h2>${activeReviewTitle}</h2>
@@ -1474,6 +1521,17 @@ workspace.addEventListener('click', (event) => {
   const reviewedIssue = event.target.closest('[data-tree-subject]');
   if (reviewedIssue) {
     rememberLastReviewedSubject(decodeURIComponent(reviewedIssue.dataset.treeSubject));
+  }
+
+  const reviewFocusButton = event.target.closest('[data-review-focus]');
+  if (reviewFocusButton) {
+    const progress = getProgress();
+    progress.reviewFocus = reviewFocusButton.dataset.reviewFocus;
+    if (progress.reviewFocus === 'duplicates' && !progress.duplicateReviewMode) progress.duplicateReviewMode = 'single';
+    progress.activeGroupIds = [];
+    saveProgress(progress);
+    renderWorkspace();
+    return;
   }
 
   const duplicateReviewModeButton = event.target.closest('[data-duplicate-review-mode]');
