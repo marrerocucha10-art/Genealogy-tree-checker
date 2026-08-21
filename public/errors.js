@@ -33,18 +33,19 @@ let pendingDuplicateMerge = null;
 function getTreeData() {
   if (loadedTreeData) return loadedTreeData;
   try {
+    const normalize = (tree) => window.familyTreeClientStorage?.normalizeFamilyLinks?.(tree) || tree;
     const handoffTreeData = JSON.parse(sessionStorage.getItem(ERROR_REVIEW_HANDOFF_KEY) || 'null');
-    if (handoffTreeData?.people?.length) return handoffTreeData;
+    if (handoffTreeData?.people?.length) return normalize(handoffTreeData);
 
     const reviewTreeData = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
-    if (reviewTreeData?.people?.length) return reviewTreeData;
+    if (reviewTreeData?.people?.length) return normalize(reviewTreeData);
 
     // Only the tree page writes the five-generation subset, so arriving here any
     // other way — "Continue to fix errors" from the upload page or the workplace,
     // a bookmark, a reopened tab — used to show an empty workspace. Fall back to
     // the full tree; the review is limited to the first five generations further
     // down regardless of which tree it started from.
-    return JSON.parse(localStorage.getItem(TREE_STORAGE_KEY) || 'null');
+    return normalize(JSON.parse(localStorage.getItem(TREE_STORAGE_KEY) || 'null'));
   } catch (error) {
     return null;
   }

@@ -128,7 +128,56 @@ function deleteClient(id) {
   if (wasActive) localStorage.removeItem(ACTIVE_FAMILY_TREE_CLIENT_KEY);
 }
 
+// A GEDCOM can record a family link on one side only: the child names the
+// family it belongs to while the family itself never lists that child, or a
+// parent names the family while the family has no husband or wife recorded.
+// Reading one side alone loses a parent that is plainly in the file, so both
+// sides are filled in from each other before anything is shown.
+function normalizeFamilyLinks(treeData) {
+  if (!treeData?.people?.length || !treeData?.families?.length) return treeData;
+  const familiesById = new Map(treeData.families.map((family) => [family.id, family]));
+
+  for (const person of treeData.people) {
+    for (const familyId of person.familyAsChild || []) {
+      const family = familiesById.get(familyId);
+      if (!family) continue;
+      if (!Array.isArray(family.childrenIds)) family.childrenIds = [];
+      if (!family.childrenIds.includes(person.id)) family.childrenIds.push(person.id);
+    }
+
+    for (const familyId of person.familyAsSpouse || []) {
+      const family = familiesById.get(familyId);
+      if (!family) continue;
+      if (family.husbandId === person.id || family.wifeId === person.id) continue;
+      const sex = String(person.sex || '').trim().toUpperCase();
+      if (sex.startsWith('M') && !family.husbandId) family.husbandId = person.id;
+      else if (sex.startsWith('F') && !family.wifeId) family.wifeId = person.id;
+      else if (!family.husbandId) family.husbandId = person.id;
+      else if (!family.wifeId) family.wifeId = person.id;
+    }
+  }
+
+  for (const family of treeData.families) {
+    for (const parentId of [family.husbandId, family.wifeId]) {
+      if (!parentId) continue;
+      const parent = treeData.people.find((person) => person.id === parentId);
+      if (!parent) continue;
+      if (!Array.isArray(parent.familyAsSpouse)) parent.familyAsSpouse = [];
+      if (!parent.familyAsSpouse.includes(family.id)) parent.familyAsSpouse.push(family.id);
+    }
+    for (const childId of family.childrenIds || []) {
+      const child = treeData.people.find((person) => person.id === childId);
+      if (!child) continue;
+      if (!Array.isArray(child.familyAsChild)) child.familyAsChild = [];
+      if (!child.familyAsChild.includes(family.id)) child.familyAsChild.push(family.id);
+    }
+  }
+
+  return treeData;
+}
+
 window.familyTreeClientStorage = {
+  normalizeFamilyLinks,
   createClient,
   deleteClient,
   getActiveClientId,
