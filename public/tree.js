@@ -305,7 +305,7 @@ function renderCoupleUnit(unit, peopleById, familyConnections, primaryPersonId) 
       : '';
   const partnerLabel = (person) => {
     const partner = unit.members.find((other) => other.id !== person.id);
-    if (!partner) return unit.members.length === 1 ? 'Spouse not recorded in this generation' : '';
+    if (!partner) return '';
     const role = person.id === unit.husbandId ? 'Husband' : person.id === unit.wifeId ? 'Wife' : 'Married';
     return `${role} of ${nameOf(partner)}`;
   };
