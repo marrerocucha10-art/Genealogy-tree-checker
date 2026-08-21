@@ -18,16 +18,42 @@ const SUBSCRIPTION_STORAGE_KEY = IS_ADMINISTRATION_WORKSPACE ? 'familyTreeAdmini
 const PLAN_SELECTION_STORAGE_KEY = IS_ADMINISTRATION_WORKSPACE ? 'familyTreeAdministrationReviewPlanSelected' : 'familyTreePlanSelected';
 const SUBSCRIPTION_STORE_URL = IS_ADMINISTRATION_WORKSPACE ? 'store.html?admin_review=true#subscriptions' : 'store.html#subscriptions';
 const ERROR_BATCH_SIZE = 10;
-// The free trial is one simple allowance: five corrections in total, whether
-// they are duplicates or any other kind of error.
+// The free preview is five duplicate corrections and five other corrections.
+// They are separate allowances so combining duplicates never uses up the
+// chance to fix dates, places or relationships.
 const BASIC_ERROR_REVIEW_LIMIT = 5;
-const FREE_DUPLICATE_FIX_LIMIT = BASIC_ERROR_REVIEW_LIMIT;
+const FREE_DUPLICATE_FIX_LIMIT = 5;
 
-function getFreeReviewUsed(progress) {
+function getFreeDuplicatesUsed(progress) {
+  const others = new Set(progress?.completedNonDuplicateIssueIds || []);
   return new Set([
-    ...(progress?.completedIssueIds || []),
     ...(progress?.completedDuplicateIssueIds || []),
+    ...(progress?.completedIssueIds || []).filter((id) => !others.has(id)),
   ]).size;
+}
+
+function getFreeOtherUsed(progress) {
+  return new Set(progress?.completedNonDuplicateIssueIds || []).size;
+}
+
+function getFreeDuplicatesLeft(progress) {
+  return Math.max(FREE_DUPLICATE_FIX_LIMIT - getFreeDuplicatesUsed(progress), 0);
+}
+
+function getFreeOtherLeft(progress) {
+  return Math.max(BASIC_ERROR_REVIEW_LIMIT - getFreeOtherUsed(progress), 0);
+}
+
+// The whole free preview is the five duplicates and five other errors the
+// customer is actually allowed to fix. Every count on the page reads from this
+// list, so nothing ever reports the size of the untouched tree.
+function getFreePreviewErrors(visibleGenerationErrors) {
+  const duplicates = visibleGenerationErrors.filter(isDuplicateIssue);
+  const others = visibleGenerationErrors.filter((issue) => !isDuplicateIssue(issue));
+  return [
+    ...duplicates.slice(0, FREE_DUPLICATE_FIX_LIMIT),
+    ...others.slice(0, BASIC_ERROR_REVIEW_LIMIT),
+  ];
 }
 const ERROR_REVIEW_ORDER_VERSION = 10;
 const VISIBLE_REVIEW_GENERATION_COUNT = 5;
@@ -379,25 +405,15 @@ function getCompletedNonDuplicateIssueCount(errors, progress) {
 function renderBasicPlanOptions(errors, progress) {
   if (getCurrentTier() !== 'free') return '';
 
-  // One allowance covers every kind of correction, duplicates included, so the
-  // customer is never counting two separate totals.
-  const used = getFreeReviewUsed(progress);
-  const remainingFreeFixes = Math.max(BASIC_ERROR_REVIEW_LIMIT - used, 0);
-  // Finishing the trial is a moment worth marking: say what was achieved, what
-  // is left, and exactly what a plan adds.
-  if (!remainingFreeFixes) {
-    const finished = new Set([
-      ...(progress?.completedIssueIds || []),
-      ...(progress?.completedDuplicateIssueIds || []),
-    ]);
-    const stillOpen = errors.filter((issue) => !finished.has(getIssueId(issue))).length;
-    const waiting = stillOpen
-      ? `${stillOpen} error${stillOpen === 1 ? '' : 's'} in this working tree ${stillOpen === 1 ? 'is' : 'are'} still waiting.`
-      : 'The rest of your tree is ready whenever you are.';
+  const duplicatesLeft = getFreeDuplicatesLeft(progress);
+  const othersLeft = getFreeOtherLeft(progress);
+  // Finishing the preview is a moment worth marking: say what was achieved and
+  // exactly what a plan adds.
+  if (!duplicatesLeft && !othersLeft) {
     return `
       <section class="assistance-options free-trial-complete">
-        <h2>You finished all ${BASIC_ERROR_REVIEW_LIMIT} free corrections</h2>
-        <p>That is real progress on your family history. ${waiting} Choose a plan to keep going, and your finished work stays exactly where it is.</p>
+        <h2>You finished all ${FREE_DUPLICATE_FIX_LIMIT + BASIC_ERROR_REVIEW_LIMIT} free corrections</h2>
+        <p>That is real progress on your family history. Choose a plan to keep going through the rest of your tree, and your finished work stays exactly where it is.</p>
         <ul class="free-trial-perks">
           <li>Unlimited error corrections, duplicates included</li>
           <li>GEDCOM uploads up to 500 MB</li>
@@ -410,7 +426,7 @@ function renderBasicPlanOptions(errors, progress) {
     `;
   }
 
-  const freeReviewMessage = `${remainingFreeFixes} of your ${BASIC_ERROR_REVIEW_LIMIT} free corrections ${remainingFreeFixes === 1 ? 'is' : 'are'} left.`;
+  const freeReviewMessage = `Your free preview covers ${FREE_DUPLICATE_FIX_LIMIT} duplicate corrections and ${BASIC_ERROR_REVIEW_LIMIT} other corrections. ${duplicatesLeft} duplicate${duplicatesLeft === 1 ? '' : 's'} and ${othersLeft} other error${othersLeft === 1 ? '' : 's'} left.`;
 
   return `
     <section class="assistance-options free-trial-remaining">
@@ -1451,8 +1467,8 @@ function applySafeBatchFixes(treeData, groups, progress) {
 
 function completeDuplicateMerge(treeData, fix) {
   const progress = getProgress();
-  if (getCurrentTier() === 'free' && getFreeReviewUsed(progress) >= BASIC_ERROR_REVIEW_LIMIT) {
-    throw new Error(`Your free trial covers ${BASIC_ERROR_REVIEW_LIMIT} corrections in total. Choose a plan to keep correcting your tree.`);
+  if (getCurrentTier() === 'free' && !getFreeDuplicatesLeft(progress)) {
+    throw new Error(`Your free preview covers ${FREE_DUPLICATE_FIX_LIMIT} duplicate corrections. Choose a plan to keep combining duplicate records.`);
   }
 
   const survivor = treeData?.people?.find((person) => person.id === fix.survivorId);
@@ -1566,9 +1582,11 @@ function renderWorkspaceContent() {
   updateReturnToTreeLink(progress);
   updateWorkspaceTreeLinks(progress);
   const errors = isBasicPlan
-    ? [...duplicateIssues, ...visibleGenerationErrors.filter((issue) => !isDuplicateIssue(issue))]
-      .slice(0, BASIC_ERROR_REVIEW_LIMIT)
+    ? getFreePreviewErrors(visibleGenerationErrors)
     : visibleGenerationErrors;
+  // Everything on the free preview counts the preview itself, never the whole
+  // tree, so no panel can announce 58 duplicates the customer cannot fix.
+  const countedErrors = isBasicPlan ? errors : visibleGenerationErrors;
   if (isBasicPlan && duplicateIssues.length && progress.duplicateReviewMode !== 'batch') {
     progress.duplicateReviewMode = 'batch';
     progress.activeGroupIds = [];
@@ -1580,12 +1598,12 @@ function renderWorkspaceContent() {
     ? '<button id="undoDuplicateMerge" type="button" class="btn-secondary">Return to Previous Tree</button>'
     : '';
   const duplicateMergeReview = renderDuplicateMergeReview();
-  const assistanceOptions = renderBasicPlanOptions(visibleGenerationErrors, progress);
-  // The free trial is five corrections; the customer wants the family and the
+  const assistanceOptions = renderBasicPlanOptions(countedErrors, progress);
+  // The free preview is ten corrections; the customer wants the family and the
   // errors, not a page of explanation before them.
   const encouragement = isBasicPlan ? '' : renderProgressEncouragement(errors, progress);
-  const pendingResearch = renderPendingResearch(visibleGenerationErrors, progress);
-  const workspaceDesk = SHOW_WORKSPACE_PROGRESS ? renderWorkspaceDesk(visibleGenerationErrors, progress) : '';
+  const pendingResearch = renderPendingResearch(countedErrors, progress);
+  const workspaceDesk = SHOW_WORKSPACE_PROGRESS ? renderWorkspaceDesk(countedErrors, progress) : '';
 
   if (!treeData?.people?.length) {
     workspace.innerHTML = `
@@ -1739,8 +1757,7 @@ function renderWorkspaceContent() {
                   const isPending = progress.pendingIssueIds.includes(issueId);
                   const isResolved = isCompleted || isPending;
                   const hasSafeAutomaticFix = Boolean(issue.autoFix) && !isDuplicateIssue(issue);
-                  const freeDuplicateLimitReached = isBasicPlan
-                    && getFreeReviewUsed(progress) >= BASIC_ERROR_REVIEW_LIMIT;
+                  const freeDuplicateLimitReached = isBasicPlan && !getFreeDuplicatesLeft(progress);
                   const issueActions = `
                     ${isDuplicateIssue(issue) ? `
                     <div class="issue-fix-actions">
@@ -1901,8 +1918,8 @@ workspace.addEventListener('click', (event) => {
   if (mergeButton) {
     const treeData = getTreeData();
     const progress = getProgress();
-    if (getCurrentTier() === 'free' && getFreeReviewUsed(progress) >= BASIC_ERROR_REVIEW_LIMIT) {
-      alert(`Your free trial covers ${BASIC_ERROR_REVIEW_LIMIT} corrections in total. Choose a plan to keep correcting your tree.`);
+    if (getCurrentTier() === 'free' && !getFreeDuplicatesLeft(progress)) {
+      alert(`Your free preview covers ${FREE_DUPLICATE_FIX_LIMIT} duplicate corrections. Choose a plan to keep combining duplicate records.`);
       return;
     }
     const fix = JSON.parse(decodeURIComponent(mergeButton.dataset.mergeDuplicates));
@@ -1952,8 +1969,17 @@ workspace.addEventListener('click', (event) => {
       ...(treeData?.validationReport?.warnings || []).filter(isDuplicateIssue),
     ].find((item) => getIssueId(item) === issueId);
     if (!progress.completedIssueIds.includes(issueId)) {
+      const isDuplicate = resolveButton.dataset.duplicateIssue === 'true';
+      // The free preview's two allowances are enforced here as well, so the
+      // count can never be walked past by marking records solved.
+      if (getCurrentTier() === 'free' && (isDuplicate ? !getFreeDuplicatesLeft(progress) : !getFreeOtherLeft(progress))) {
+        alert(isDuplicate
+          ? `Your free preview covers ${FREE_DUPLICATE_FIX_LIMIT} duplicate corrections. Choose a plan to keep combining duplicate records.`
+          : `Your free preview covers ${BASIC_ERROR_REVIEW_LIMIT} other corrections. Choose a plan to keep correcting your tree.`);
+        return;
+      }
       progress.completedIssueIds.push(issueId);
-      if (resolveButton.dataset.duplicateIssue !== 'true') {
+      if (!isDuplicate) {
         progress.completedNonDuplicateIssueIds.push(issueId);
       }
       if (issue) recordResolvedItem(progress, issue, 'Manual review');
