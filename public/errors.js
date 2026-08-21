@@ -1629,14 +1629,16 @@ function renderWorkspaceContent() {
     ? treeData.primaryPersonId
     : treeData.people[0]?.id;
   const activePlacementLabel = getPlacementLabel(activePlacement, peopleById, activePrimaryPersonId);
-  const activeReviewTitle = reviewingDuplicates
-    ? 'Possible duplicate records'
-    : `${activePlacementLabel} review`;
-  const activeReviewDescription = reviewingDuplicates
-    ? 'Combine these first. A duplicate splits one person\u2019s life across two records, so settling them now keeps you from correcting the same dates and relationships twice. The rest of your errors open once the duplicates are handled.'
-    : activePlacement?.direct
+  const activeReviewTitle = `${activePlacementLabel} review`;
+  // Both choices lead to the same review screen: the same heading for where the
+  // person sits in the family, the same family preview, the same record list.
+  // Duplicates only add a sentence explaining why they are settled first.
+  const placementDescription = activePlacement?.direct
       ? `Review the errors for the ${activePlacementLabel.toLowerCase()} before moving outward through the family tree.`
       : `These records are not ancestors of ${escapeHtml(String(peopleById.get(activePrimaryPersonId)?.name || 'your selected person').replace(/\//g, '').trim())}. They are shown after each ancestor generation is complete.`;
+  const activeReviewDescription = reviewingDuplicates
+    ? `${placementDescription} These records look like the same person recorded twice, so they are settled first: a duplicate splits one life across two records, and combining them now saves correcting the same dates and relationships twice.`
+    : placementDescription;
   const familyLocationIndex = buildFamilyLocationIndex(treeData, peopleById);
   const selectedPrimaryPersonId = peopleById.has(treeData.primaryPersonId)
     ? treeData.primaryPersonId

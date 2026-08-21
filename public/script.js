@@ -2577,8 +2577,15 @@ document.addEventListener('DOMContentLoaded', () => {
     welcomeStartAction.textContent = 'Upload Your Family File';
   }
   if (startupParams.get('start') === 'upload') {
+    // Somebody who has already chosen a plan is past being sold to. The
+    // introduction, the previews and the plan invitation are put away so the
+    // page opens on the one thing they came back for: their file.
+    for (const selector of ['.welcome-panel', '.research-video-preview', '.workflow-preview', '#freeReviewInvitation', '.options-section']) {
+      const section = document.querySelector(selector);
+      if (section) section.hidden = true;
+    }
     uploadSection.hidden = false;
-    uploadSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    window.scrollTo(0, 0);
     if (startupParams.get('test_plan') === 'true') {
       setStatus(`Test mode: ${SUBSCRIPTION_TIERS[currentTier]?.name || 'selected'} plan is active. Choose a family file to test the guided flow without payment.`, 'info');
     }
