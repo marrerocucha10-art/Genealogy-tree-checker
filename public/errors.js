@@ -1258,8 +1258,7 @@ function getPlacementLabel(placement, peopleById, primaryPersonId) {
   if (placement.direct) return getGenerationReviewLabel(placement.generation);
   const anchorName = String(peopleById?.get(placement.anchorId)?.name || '').replace(/\//g, '').trim();
   if (anchorName) return `Relatives of ${anchorName}`;
-  const primaryName = String(peopleById?.get(primaryPersonId)?.name || '').replace(/\//g, '').trim();
-  return primaryName ? `Records not connected to ${primaryName}` : 'Records not connected to your tree';
+  return 'Related family branch';
 }
 
 function getReviewGenerationOrder(treeData) {
@@ -1323,8 +1322,8 @@ function renderFamilyLocationPreview(person, peopleById, locationIndex, directOr
     : placement?.direct
       ? `Direct ancestor · ${getGenerationReviewLabel(placement.generation)} from ${primaryName}`
       : anchorName
-        ? `Not an ancestor of ${primaryName} · related to ${anchorName}`
-        : `Not connected to ${primaryName}`;
+        ? `Related to ${anchorName}`
+        : 'In your working tree';
   const treeParameters = new URLSearchParams();
   if (WORKSPACE_PREVIEW_MODE) treeParameters.set('demo', 'workspace');
   if (IS_ADMINISTRATION_REVIEW) treeParameters.set('admin_review', 'true');
@@ -1664,12 +1663,9 @@ function renderWorkspaceContent() {
     : treeData.people[0]?.id;
   const activePlacementLabel = getPlacementLabel(activePlacement, peopleById, activePrimaryPersonId);
   const activeReviewTitle = `${activePlacementLabel} review`;
-  // Both choices lead to the same review screen: the same heading for where the
-  // person sits in the family, the same family preview, the same record list.
-  // Duplicates only add a sentence explaining why they are settled first.
-  const placementDescription = activePlacement?.direct
-      ? `Review the errors for the ${activePlacementLabel.toLowerCase()} before moving outward through the family tree.`
-      : `These records are not ancestors of ${escapeHtml(String(peopleById.get(activePrimaryPersonId)?.name || 'your selected person').replace(/\//g, '').trim())}. They are shown after each ancestor generation is complete.`;
+  // Never tell the customer who is or is not an ancestor — the tree says that.
+  // This line only says what to do next.
+  const placementDescription = `Review the errors for the ${activePlacementLabel.toLowerCase()} before moving outward through the family tree.`;
   const activeReviewDescription = reviewingDuplicates
     ? `${placementDescription} These records look like the same person recorded twice, so they are settled first: a duplicate splits one life across two records, and combining them now saves correcting the same dates and relationships twice.`
     : placementDescription;
