@@ -3774,3 +3774,78 @@ input[type="file"] {
   font-size: 0.85rem;
   color: #5b6875;
 }
+
+.pedigree-chart {
+  margin: 0 0 2rem;
+  padding: 1.25rem;
+  border: 1px solid #d9dee5;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.pedigree-chart h2 {
+  margin: 0 0 0.35rem;
+}
+
+.pedigree-scroll {
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.pedigree-columns {
+  display: flex;
+  gap: 0.6rem;
+  min-width: 900px;
+}
+
+.pedigree-column {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 150px;
+}
+
+.pedigree-column-heading {
+  margin: 0 0 0.4rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #5b6875;
+  text-align: center;
+}
+
+.pedigree-column-slots {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  gap: 0.25rem;
+}
+
+.pedigree-slot {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #d9dee5;
+  border-left: 3px solid #2f6f4f;
+  border-radius: 5px;
+  background: #fbfcfe;
+}
+
+.pedigree-slot-empty {
+  border-left-color: #d9dee5;
+  background: transparent;
+  color: #97a1ad;
+  font-size: 0.75rem;
+  font-style: italic;
+}
+
+.pedigree-name {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.pedigree-years {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #5b6875;
+}
