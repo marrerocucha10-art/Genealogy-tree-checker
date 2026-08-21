@@ -739,6 +739,50 @@ select:focus {
   margin-top: 12px;
 }
 
+.ancestry-couple {
+  background: #fff;
+  border: 1px solid #c7d2fe;
+  border-radius: 12px;
+  min-width: 0;
+  padding: 10px;
+}
+
+.ancestry-couple-heading {
+  text-align: center;
+}
+
+.ancestry-couple-heading h4 {
+  color: #312e81;
+  margin: 0 0 2px;
+  overflow-wrap: anywhere;
+}
+
+.ancestry-couple-heading .muted {
+  margin: 0 0 8px;
+}
+
+.ancestry-couple-people {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ancestry-couple-people .tree-review-person:only-child {
+  grid-column: 1 / -1;
+}
+
+.tree-person-role {
+  color: #4338ca;
+  font-size: 0.85rem;
+  margin: 0 0 6px;
+}
+
+@media (max-width: 700px) {
+  .ancestry-couple-people {
+    grid-template-columns: 1fr;
+  }
+}
+
 .ancestry-generation:first-child .ancestry-people,
 .ancestry-generation:nth-child(2) .ancestry-people {
   grid-template-columns: 1fr;
@@ -762,7 +806,7 @@ select:focus {
   padding: 8px;
 }
 
-.ancestry-generation:nth-child(n + 3) .tree-review-person p {
+.ancestry-generation:nth-child(n + 3) .tree-review-person p:not(.tree-person-role) {
   display: none;
 }
 
