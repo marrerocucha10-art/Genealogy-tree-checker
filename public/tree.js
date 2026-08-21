@@ -584,7 +584,18 @@ function renderTreeReviewContent(treeData = loadedTreeData || getTreeData()) {
   restoreDefaultStartingPerson(treeData);
   const errors = treeData.validationReport?.errors || [];
   const duplicateWarnings = (treeData.validationReport?.warnings || []).filter((issue) => issue.autoFix?.type === 'mergeDuplicatePeople');
-  const issueCount = errors.length + duplicateWarnings.length;
+  const allDuplicates = errors.filter((issue) => issue.autoFix?.type === 'mergeDuplicatePeople').length + duplicateWarnings.length;
+  const allOther = errors.length - errors.filter((issue) => issue.autoFix?.type === 'mergeDuplicatePeople').length;
+  // On the free preview the customer can only fix five duplicates and five
+  // other errors, so this heading promises exactly that and never the size of
+  // the whole tree.
+  const isFreePreview = (localStorage.getItem('familyTreeSubscriptionTier') || 'free') === 'free';
+  const issueCount = isFreePreview
+    ? Math.min(allDuplicates, 5) + Math.min(allOther, 5)
+    : errors.length + duplicateWarnings.length;
+  const issueHeading = isFreePreview
+    ? `${issueCount} error${issueCount === 1 ? '' : 's'} to fix in your free preview`
+    : `${issueCount} error${issueCount === 1 ? '' : 's'} to fix`;
   const peopleById = new Map(treeData.people.map((person) => [person.id, person]));
   const families = treeData.families || [];
 
@@ -595,7 +606,7 @@ function renderTreeReviewContent(treeData = loadedTreeData || getTreeData()) {
         <span><strong>${families.length}</strong> families</span>
         <span><strong>${treeData.relationships?.length || 0}</strong> relationships</span>
       </div>
-      <h2>${issueCount} error${issueCount === 1 ? '' : 's'} to fix</h2>
+      <h2>${issueHeading}</h2>
       <p>Fixing these items helps make your family tree more complete and reliable.</p>
       <div class="tree-summary-actions">
         <a class="btn-secondary" href="${errorWorkspaceUrl}" data-continue-to-errors>Return to Error Workspace</a>

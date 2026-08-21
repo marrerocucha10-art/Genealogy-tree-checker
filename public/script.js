@@ -49,10 +49,10 @@ const SUBSCRIPTION_TIERS = {
   free: {
     name: 'Basic',
     rank: 0,
-    description: 'Upload a GEDCOM file and fix five errors of any kind, duplicates included, at no charge.',
+    description: 'Upload a GEDCOM file and fix five duplicate records and five other errors at no charge.',
     monthlyPrice: 0,
     annualPrice: 0,
-    features: ['GEDCOM uploads up to 150 MB', 'Fix 5 errors in total, duplicates included', 'Choose a plan to fix the rest'],
+    features: ['GEDCOM uploads up to 150 MB', 'Fix 5 duplicates and 5 other errors', 'Choose a plan to fix the rest'],
   },
   personal: {
     name: 'Family Builder',

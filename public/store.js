@@ -11,9 +11,9 @@ const billingButtons = document.querySelectorAll('[data-billing-interval]');
 const tiers = {
   free: {
     name: 'Basic',
-    description: 'Upload a GEDCOM file and fix five errors of any kind, duplicates included, at no charge.',
+    description: 'Upload a GEDCOM file and fix five duplicate records and five other errors at no charge.',
     prices: { monthly: 0, annual: 0 },
-    features: ['GEDCOM uploads up to 150 MB', 'Fix 5 errors in total, duplicates included', 'Choose a plan to fix the rest'],
+    features: ['GEDCOM uploads up to 150 MB', 'Fix 5 duplicates and 5 other errors', 'Choose a plan to fix the rest'],
   },
   personal: {
     name: 'Family Builder',

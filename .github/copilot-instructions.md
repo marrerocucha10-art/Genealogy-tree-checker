@@ -97,12 +97,16 @@ appears to require touching finished work, stop and ask first.
 11. **One review preview** — both choices under "What would you like to work
     on?" lead to the same heading, family preview and record list. Duplicates
     add one sentence, nothing more. `public/errors.js`.
-12. **Free trial** — five corrections in total, duplicates included, as one
-    shared allowance. No focus-choice screen and no explanation blocks ahead of
-    the records: the family and its errors come first. When the five are spent,
-    the trial-complete panel with the perks list and the plan button appears.
-    All of it is gated behind the free tier; paid tiers keep the full guidance.
-    `public/errors.js`, `public/store.js`, `public/script.js`.
+12. **Free preview** — five duplicate corrections **and** five other
+    corrections, as two separate allowances, so combining duplicates never uses
+    up the chance to fix dates, places or relationships. Every count on the
+    free preview reads from those ten records only — the tree page says "10
+    errors to fix in your free preview", never the size of the whole tree. No
+    focus-choice screen and no explanation blocks ahead of the records. When
+    both allowances are spent, the completion panel with the perks list and the
+    plan button appears, and merging or marking solved is blocked with a plain
+    message. All of it is gated behind the free tier; paid tiers are untouched.
+    `public/errors.js`, `public/tree.js`, `public/store.js`, `public/script.js`.
 13. **The store never mentions free options.** It speaks only about the plans.
     `public/store.js`.
 
