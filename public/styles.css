@@ -3620,3 +3620,45 @@ input[type="file"] {
   border-radius: 8px;
   font-weight: 600;
 }
+
+.manual-review-note h4 {
+  margin: 0.75rem 0 0.4rem;
+  font-size: 1.05rem;
+}
+
+.manual-review-record {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 0.75rem;
+  background: #fff;
+}
+
+.manual-review-record th,
+.manual-review-record td {
+  border: 1px solid #d7dcf0;
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+  font-size: 0.95rem;
+}
+
+.manual-review-record th {
+  width: 34%;
+  background: #f2f6ff;
+}
+
+.manual-review-problem {
+  margin: 0 0 0.5rem;
+}
+
+.manual-review-heading {
+  margin: 0 0 0.25rem;
+}
+
+.manual-review-steps {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.manual-review-steps li {
+  margin-bottom: 0.3rem;
+}
