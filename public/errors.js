@@ -1201,11 +1201,14 @@ function getReviewGenerationOrder(treeData) {
   return order;
 }
 
+// The review only ever covers the selected person's own family. A record with
+// no link to them is not shown at all, so nobody is asked to fix a stranger.
 function getVisibleGenerationErrors(treeData, errors) {
-  const reviewOrder = getReviewGenerationOrder(treeData);
+  const placements = getReviewPlacements(treeData);
   return errors.filter((issue) => {
-    const generation = reviewOrder.get(issue.subject);
-    return generation !== undefined && generation < VISIBLE_REVIEW_GENERATION_COUNT;
+    const placement = placements.get(issue.subject);
+    if (!placement || placement.key === 'unconnected') return false;
+    return placement.generation < VISIBLE_REVIEW_GENERATION_COUNT;
   });
 }
 
