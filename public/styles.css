@@ -3856,3 +3856,18 @@ input[type="file"] {
   font-size: 0.62rem;
   color: #5b6875;
 }
+
+.free-trial-complete {
+  border: 1px solid #2f6f4f;
+  border-radius: 10px;
+  background: #f4f9f6;
+}
+
+.free-trial-perks {
+  margin: 0.75rem 0 1rem;
+  padding-left: 1.15rem;
+}
+
+.free-trial-perks li {
+  margin-bottom: 0.25rem;
+}
