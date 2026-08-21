@@ -304,18 +304,7 @@ function renderCoupleUnit(unit, peopleById, familyConnections, primaryPersonId) 
     .map((childId) => peopleById.get(childId))
     .filter(Boolean)
     .map(nameOf);
-  const relationLine = childNames.length
-    ? `Parents of ${childNames.join(' and ')}`
-    : unit.members.length > 1
-      ? 'Married couple'
-      : '';
-  const partnerLabel = (person) => {
-    const partner = unit.members.find((other) => other.id !== person.id);
-    if (!partner) return '';
-    const role = person.id === unit.husbandId ? 'Husband' : person.id === unit.wifeId ? 'Wife' : 'Married';
-    return `${role} of ${nameOf(partner)}`;
-  };
-
+  const relationLine = childNames.length ? `Parents of ${childNames.join(' and ')}` : '';
   return `
     <article class="ancestry-couple">
       <div class="ancestry-couple-heading">
@@ -328,7 +317,7 @@ function renderCoupleUnit(unit, peopleById, familyConnections, primaryPersonId) 
           peopleById,
           familyConnections,
           person.id === primaryPersonId,
-          partnerLabel(person),
+          '',
           unit.members.filter((other) => other.id !== person.id).map((other) => other.id),
         )).join('')}
       </div>
