@@ -18,8 +18,17 @@ const SUBSCRIPTION_STORAGE_KEY = IS_ADMINISTRATION_WORKSPACE ? 'familyTreeAdmini
 const PLAN_SELECTION_STORAGE_KEY = IS_ADMINISTRATION_WORKSPACE ? 'familyTreeAdministrationReviewPlanSelected' : 'familyTreePlanSelected';
 const SUBSCRIPTION_STORE_URL = IS_ADMINISTRATION_WORKSPACE ? 'store.html?admin_review=true#subscriptions' : 'store.html#subscriptions';
 const ERROR_BATCH_SIZE = 10;
+// The free trial is one simple allowance: five corrections in total, whether
+// they are duplicates or any other kind of error.
 const BASIC_ERROR_REVIEW_LIMIT = 5;
-const FREE_DUPLICATE_FIX_LIMIT = 5;
+const FREE_DUPLICATE_FIX_LIMIT = BASIC_ERROR_REVIEW_LIMIT;
+
+function getFreeReviewUsed(progress) {
+  return new Set([
+    ...(progress?.completedIssueIds || []),
+    ...(progress?.completedDuplicateIssueIds || []),
+  ]).size;
+}
 const ERROR_REVIEW_ORDER_VERSION = 10;
 const VISIBLE_REVIEW_GENERATION_COUNT = 5;
 const workspace = document.getElementById('errorWorkspace');
@@ -370,30 +379,39 @@ function getCompletedNonDuplicateIssueCount(errors, progress) {
 function renderBasicPlanOptions(errors, progress) {
   if (getCurrentTier() !== 'free') return '';
 
-  const duplicateIssues = errors.filter(isDuplicateIssue);
-  const completedDuplicateFixes = progress.completedDuplicateIssueIds.length;
-  if (duplicateIssues.length || completedDuplicateFixes) {
-    const remainingDuplicateFixes = Math.max(FREE_DUPLICATE_FIX_LIMIT - completedDuplicateFixes, 0);
-    const duplicateProgressMessage = remainingDuplicateFixes
-      ? `You have completed ${completedDuplicateFixes} of ${FREE_DUPLICATE_FIX_LIMIT} so far, with ${remainingDuplicateFixes} still available.`
-      : `You have completed all ${FREE_DUPLICATE_FIX_LIMIT} duplicate corrections included in your free preview. Upgrade to continue reviewing and fixing possible duplicates throughout your tree.`;
+  // One allowance covers every kind of correction, duplicates included, so the
+  // customer is never counting two separate totals.
+  const used = getFreeReviewUsed(progress);
+  const remainingFreeFixes = Math.max(BASIC_ERROR_REVIEW_LIMIT - used, 0);
+  const remainingErrors = Math.max(errors.length - remainingFreeFixes, 0);
+  // Finishing the trial is a moment worth marking: say what was achieved, what
+  // is left, and exactly what a plan adds.
+  if (!remainingFreeFixes) {
+    const finished = new Set([
+      ...(progress?.completedIssueIds || []),
+      ...(progress?.completedDuplicateIssueIds || []),
+    ]);
+    const stillOpen = errors.filter((issue) => !finished.has(getIssueId(issue))).length;
+    const waiting = stillOpen
+      ? `${stillOpen} error${stillOpen === 1 ? '' : 's'} in this working tree ${stillOpen === 1 ? 'is' : 'are'} still waiting.`
+      : 'The rest of your tree is ready whenever you are.';
     return `
-      <section class="assistance-options">
-        <h2>Wonderful progress on your family tree.</h2>
-        <p>Your free preview includes up to ${FREE_DUPLICATE_FIX_LIMIT} reviewed duplicate corrections. ${duplicateProgressMessage}</p>
-        <p>Family Builder lets you continue reviewing and correcting possible duplicates, so every person has a clearer place in your family story.</p>
-        <p>Your resolved work stays in this browser workspace when you upgrade, so you can continue from the same place.</p>
-        <a class="btn-secondary assistance-upgrade-link" href="${SUBSCRIPTION_STORE_URL}">Upgrade for more duplicate corrections</a>
+      <section class="assistance-options free-trial-complete">
+        <h2>You finished all ${BASIC_ERROR_REVIEW_LIMIT} free corrections</h2>
+        <p>That is real progress on your family history. ${waiting} Choose a plan to keep going, and your finished work stays exactly where it is.</p>
+        <ul class="free-trial-perks">
+          <li>Unlimited error corrections, duplicates included</li>
+          <li>GEDCOM uploads up to 500 MB</li>
+          <li>Printable family tree and chart exports</li>
+          <li>Research worksheets and Ancestor Discovery prompts</li>
+          <li>Safe automatic fixes and a full correction report on Pro / Researcher</li>
+        </ul>
+        <a class="btn-add assistance-upgrade-link" href="${SUBSCRIPTION_STORE_URL}">Choose a plan and keep correcting</a>
       </section>
     `;
   }
 
-  const reviewedCount = Math.min(errors.length, BASIC_ERROR_REVIEW_LIMIT);
-  const remainingErrors = Math.max(errors.length - reviewedCount, 0);
-  const completedFreeReviewCount = Math.min(progress.completedIssueIds.length, BASIC_ERROR_REVIEW_LIMIT);
-  const freeReviewMessage = completedFreeReviewCount >= BASIC_ERROR_REVIEW_LIMIT
-    ? `You have completed the ${BASIC_ERROR_REVIEW_LIMIT} corrections included in your free review. Upgrade to continue reviewing and fixing the rest of your family tree.`
-    : `We spotted ${reviewedCount} error${reviewedCount === 1 ? '' : 's'} you can manually fix at no charge.`;
+  const freeReviewMessage = `Your free trial covers ${BASIC_ERROR_REVIEW_LIMIT} corrections in total, duplicates included. You have finished ${used}, so ${remainingFreeFixes} ${remainingFreeFixes === 1 ? 'is' : 'are'} still available.`;
 
   return `
     <section class="assistance-options">
@@ -1438,8 +1456,8 @@ function applySafeBatchFixes(treeData, groups, progress) {
 
 function completeDuplicateMerge(treeData, fix) {
   const progress = getProgress();
-  if (getCurrentTier() === 'free' && progress.completedDuplicateIssueIds.length >= FREE_DUPLICATE_FIX_LIMIT) {
-    throw new Error(`Your free preview includes ${FREE_DUPLICATE_FIX_LIMIT} duplicate corrections. Choose a plan to continue reviewing and correcting possible duplicates.`);
+  if (getCurrentTier() === 'free' && getFreeReviewUsed(progress) >= BASIC_ERROR_REVIEW_LIMIT) {
+    throw new Error(`Your free trial covers ${BASIC_ERROR_REVIEW_LIMIT} corrections in total. Choose a plan to keep correcting your tree.`);
   }
 
   const survivor = treeData?.people?.find((person) => person.id === fix.survivorId);
@@ -1552,11 +1570,10 @@ function renderWorkspaceContent() {
   );
   updateReturnToTreeLink(progress);
   updateWorkspaceTreeLinks(progress);
-  const errors = isBasicPlan && duplicateIssues.length
-    ? duplicateIssues.slice(0, FREE_DUPLICATE_FIX_LIMIT)
-    : isBasicPlan
-      ? visibleGenerationErrors.slice(0, BASIC_ERROR_REVIEW_LIMIT)
-      : visibleGenerationErrors;
+  const errors = isBasicPlan
+    ? [...duplicateIssues, ...visibleGenerationErrors.filter((issue) => !isDuplicateIssue(issue))]
+      .slice(0, BASIC_ERROR_REVIEW_LIMIT)
+    : visibleGenerationErrors;
   if (isBasicPlan && duplicateIssues.length && progress.duplicateReviewMode !== 'batch') {
     progress.duplicateReviewMode = 'batch';
     progress.activeGroupIds = [];
@@ -1603,7 +1620,9 @@ function renderWorkspaceContent() {
     return;
   }
 
-  if (openDuplicateIssues.length && openOtherIssues.length && !progress.reviewFocus) {
+  // Five corrections is a short enough list that asking which kind to work on
+  // first only adds a step; the free trial goes straight to the records.
+  if (!isBasicPlan && openDuplicateIssues.length && openOtherIssues.length && !progress.reviewFocus) {
     workspace.innerHTML = `${workspaceDesk}${duplicateMergeReview}${renderReviewFocusChoice(openDuplicateIssues.length, openOtherIssues.length)}`;
     return;
   }
@@ -1688,7 +1707,7 @@ function renderWorkspaceContent() {
         <h2>${activeReviewTitle}</h2>
         <span>${activeGroups.length} record${activeGroups.length === 1 ? '' : 's'} in this review</span>
       </div>
-      <p class="batch-help">${activeReviewDescription} ${isBasicPlan && duplicateIssues.length ? `Your free preview shows up to ${FREE_DUPLICATE_FIX_LIMIT} possible duplicate corrections together. Open any record below to review it carefully before confirming its merge. Upgrade to Family Builder when you are ready to correct more duplicates.` : isBasicPlan ? `Your first ${BASIC_ERROR_REVIEW_LIMIT} manual fixes are included at no charge. Use the review guidance below, then mark each corrected record solved. Upgrade to Family Builder to fix the rest, or choose Pro / Researcher for safe automatic fixes.` : 'Each person includes all of their unresolved errors. Mark an error solved after correcting it in this working tree or completing its recommended fix. The next selected generation opens when this generation is complete.'}</p>
+      <p class="batch-help">${activeReviewDescription} ${isBasicPlan ? `Your free trial covers ${BASIC_ERROR_REVIEW_LIMIT} corrections in total, duplicates included. ${Math.max(BASIC_ERROR_REVIEW_LIMIT - getFreeReviewUsed(progress), 0)} of them are still available. Choose a plan when you are ready to correct the rest of your tree.` : 'Each person includes all of their unresolved errors. Mark an error solved after correcting it in this working tree or completing its recommended fix. The next selected generation opens when this generation is complete.'}</p>
       ${duplicateMergeReview}
       ${encouragement}
       ${pendingResearch}
@@ -1724,7 +1743,7 @@ function renderWorkspaceContent() {
                   const isResolved = isCompleted || isPending;
                   const hasSafeAutomaticFix = Boolean(issue.autoFix) && !isDuplicateIssue(issue);
                   const freeDuplicateLimitReached = isBasicPlan
-                    && progress.completedDuplicateIssueIds.length >= FREE_DUPLICATE_FIX_LIMIT;
+                    && getFreeReviewUsed(progress) >= BASIC_ERROR_REVIEW_LIMIT;
                   const issueActions = `
                     ${isDuplicateIssue(issue) ? `
                     <div class="issue-fix-actions">
@@ -1885,8 +1904,8 @@ workspace.addEventListener('click', (event) => {
   if (mergeButton) {
     const treeData = getTreeData();
     const progress = getProgress();
-    if (getCurrentTier() === 'free' && progress.completedDuplicateIssueIds.length >= FREE_DUPLICATE_FIX_LIMIT) {
-      alert(`Your free preview includes ${FREE_DUPLICATE_FIX_LIMIT} duplicate corrections. Choose a plan to continue reviewing and correcting possible duplicates.`);
+    if (getCurrentTier() === 'free' && getFreeReviewUsed(progress) >= BASIC_ERROR_REVIEW_LIMIT) {
+      alert(`Your free trial covers ${BASIC_ERROR_REVIEW_LIMIT} corrections in total. Choose a plan to keep correcting your tree.`);
       return;
     }
     const fix = JSON.parse(decodeURIComponent(mergeButton.dataset.mergeDuplicates));
