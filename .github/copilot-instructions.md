@@ -107,7 +107,12 @@ appears to require touching finished work, stop and ask first.
     plan button appears, and merging or marking solved is blocked with a plain
     message. All of it is gated behind the free tier; paid tiers are untouched.
     `public/errors.js`, `public/tree.js`, `public/store.js`, `public/script.js`.
-13. **The store never mentions free options.** It speaks only about the plans.
+13. **Never tell the customer who is or is not an ancestor.** No "these records
+    are not ancestors of X", no "not connected to X". Records outside the direct
+    line are described by who they are related to, or simply as being in the
+    working tree. The review text says what to fix, nothing more.
+    `public/errors.js`.
+14. **The store never mentions free options.** It speaks only about the plans.
     `public/store.js`.
 
 **Changing any of the above without being asked for that specific change is a
