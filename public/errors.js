@@ -652,37 +652,77 @@ function formatReviewPlace(place) {
   return parts.join(', ');
 }
 
-function getManualFixSteps(issue, personName) {
-  const who = personName || 'this person';
-  const category = String(issue?.category || '').toLowerCase();
-  const message = String(issue?.message || '').toLowerCase();
-  const steps = [];
+function cleanPersonName(person) {
+  return String(person?.name || '').replace(/\//g, '').trim();
+}
 
-  if (message.includes('birth') && (message.includes('no ') || message.includes('missing'))) {
-    steps.push(`Find a birth record, baptism record or census entry for ${who}.`);
-    steps.push(`Add the birth date to ${who} in your genealogy program, writing it as day month year, for example 3 MAR 1902.`);
-  } else if (message.includes('death') && (message.includes('no ') || message.includes('missing'))) {
-    steps.push(`Look for a death record, burial record or obituary for ${who}.`);
-    steps.push(`Add the death date to ${who}, written as day month year.`);
-  } else if (category.includes('date')) {
-    steps.push(`Open ${who} and compare the dates on the record with the dates in your file.`);
-    steps.push('Correct whichever date is wrong, keeping to the day month year form, for example 3 MAR 1902.');
-  } else if (category.includes('place') || message.includes('place')) {
-    steps.push(`Check where ${who} was born, married or died on the original record.`);
-    steps.push('Write the place from smallest to largest, ending with the country, for example Bayamon, Puerto Rico, United States.');
-  } else if (category.includes('name') || message.includes('name')) {
-    steps.push(`Compare the spelling of ${who}'s name with the original record.`);
-    steps.push('Use the name as it was written at birth, and put any married name in a separate field.');
-  } else if (category.includes('relationship') || message.includes('parent') || message.includes('child') || message.includes('spouse')) {
-    steps.push(`Check who ${who} belongs to on the record: parents, partner and children.`);
-    steps.push('Correct the family link in your genealogy program so each person sits in the right family.');
-  } else {
-    steps.push(`Open ${who} in your genealogy program and compare the record with what your file holds.`);
-    steps.push('Correct whatever does not match the original record.');
+// Everything shown here is read back from the uploaded GEDCOM and the working
+// tree. Nothing is suggested that the file does not already hold.
+function getManualFixSteps(issue, person, peopleById, familiesById) {
+  const family = familiesById?.get(issue?.subject);
+  const familyName = !person && family
+    ? [family.husbandId, family.wifeId].map((id) => cleanPersonName(peopleById?.get(id))).filter(Boolean).join(' and ')
+    : '';
+  const who = cleanPersonName(person) || (familyName ? `the family of ${familyName}` : 'this record');
+  const message = String(issue?.message || '');
+  const lower = message.toLowerCase();
+  const steps = [];
+  const field = (label, value) => `Your file records ${label} for ${who} as ${String(value || '').trim() ? String(value).trim() : 'nothing at all'}.`;
+
+  if (person) {
+    if (lower.includes('birth') && lower.includes('place')) {
+      steps.push(field('the birthplace', formatReviewPlace(person.birthPlace)));
+      steps.push(`Correct the birthplace on ${who} so it matches the record this person was entered from.`);
+    } else if (lower.includes('birth')) {
+      steps.push(field('the birth date', person.birthDate));
+      steps.push(`Correct the birth date on ${who} so it matches the record this person was entered from.`);
+    } else if (lower.includes('death') && lower.includes('place')) {
+      steps.push(field('the death place', formatReviewPlace(person.deathPlace)));
+      steps.push(`Correct the death place on ${who} so it matches the record this person was entered from.`);
+    } else if (lower.includes('death') || lower.includes('buri')) {
+      steps.push(field('the death date', person.deathDate));
+      steps.push(`Correct the death date on ${who} so it matches the record this person was entered from.`);
+    } else if (lower.includes('place')) {
+      steps.push(field('the birthplace', formatReviewPlace(person.birthPlace)));
+      steps.push(field('the death place', formatReviewPlace(person.deathPlace)));
+      steps.push(`Correct the place named above on ${who}.`);
+    } else if (lower.includes('name')) {
+      steps.push(field('the name', cleanPersonName(person)));
+      steps.push(`Correct the name on ${who} so it matches the record this person was entered from.`);
+    } else {
+      steps.push(field('the birth date', person.birthDate));
+      steps.push(field('the death date', person.deathDate));
+      steps.push(`Correct whichever entry above is wrong on ${who}.`);
+    }
   }
 
-  if (issue?.suggestion) steps.push(String(issue.suggestion).replace(/\s+/g, ' ').trim());
-  steps.push('Come back here and choose Mark solved, or Save for Later and Continue if you still need the record.');
+  // Anyone else the check named is shown with their own recorded entries, so the
+  // customer compares real records in their tree rather than guesses.
+  const relatedIds = Array.from(new Set(String(message).match(/@[^@\s]+@/g) || []))
+    .filter((id) => id !== issue?.subject);
+  for (const id of relatedIds) {
+    const other = peopleById?.get(id);
+    if (!other) continue;
+    const otherName = cleanPersonName(other);
+    if (!otherName) continue;
+    const born = String(other.birthDate || '').trim();
+    const died = String(other.deathDate || '').trim();
+    steps.push(`Your file records ${otherName} as born ${born || 'on no recorded date'} and died ${died || 'on no recorded date'}. Compare that entry with ${who}.`);
+  }
+
+  if (!person && family) {
+    const spouses = [family.husbandId, family.wifeId]
+      .map((id) => cleanPersonName(peopleById?.get(id)))
+      .filter(Boolean);
+    const children = (family.childrenIds || [])
+      .map((id) => cleanPersonName(peopleById?.get(id)))
+      .filter(Boolean);
+    steps.push(`Your file records this family as ${spouses.join(' and ') || 'no parents named'}.`);
+    steps.push(`Children recorded in this family: ${children.join(', ') || 'none'}.`);
+    steps.push('Correct the family entry above so each person sits in the family the record puts them in.');
+  }
+
+  steps.push('Come back here and choose Mark solved, or Save for Later and Continue.');
   return steps;
 }
 
@@ -721,7 +761,7 @@ function renderManualReviewGuide(issue, peopleById, familiesById) {
     ]
     : [['Family', familyName]];
 
-  const steps = getManualFixSteps(issue, name || familyName);
+  const steps = getManualFixSteps(issue, person, peopleById, familiesById);
 
   return `
     <div class="manual-review-note" hidden>
