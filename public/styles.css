@@ -3706,3 +3706,9 @@ input[type="file"] {
 .manual-review-steps li {
   margin-bottom: 0.3rem;
 }
+
+.issue-group-relation {
+  color: #4338ca;
+  font-size: 0.9rem;
+  margin: 2px 0 6px;
+}
