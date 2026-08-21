@@ -3597,3 +3597,10 @@ input[type="file"] {
   font-size: 1rem;
   background: #fff;
 }
+
+.person-picker-generation {
+  margin: 1rem 0 0.4rem;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #1f2a44;
+}
