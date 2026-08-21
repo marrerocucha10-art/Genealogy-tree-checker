@@ -239,20 +239,26 @@ function buildFamilyConnections(families, peopleById) {
   return connections;
 }
 
-function renderPersonCard(person, peopleById, familyConnections, isStartingPerson = false, roleLine = '') {
+// Only the relatives the file actually records are listed. A line that would
+// read "Not recorded" is left off, so the card never contradicts the couple it
+// is shown in.
+function renderPersonCard(person, peopleById, familyConnections, isStartingPerson = false, roleLine = '', extraSpouseIds = []) {
   const connections = familyConnections.get(person.id) || { parents: new Set(), spouses: new Set(), children: new Set() };
   const parents = getPeopleNames([...connections.parents], peopleById);
-  const spouses = getPeopleNames([...connections.spouses], peopleById);
+  const spouses = getPeopleNames([...new Set([...connections.spouses, ...extraSpouseIds])], peopleById);
   const children = getPeopleNames([...connections.children], peopleById);
+  const line = (label, names, separator) => (names.length
+    ? `<p><strong>${label}:</strong> ${names.join(separator)}</p>`
+    : '');
 
   return `
     <article class="tree-review-person ${isStartingPerson ? 'selected-tree-person' : ''}">
       <h4>${escapeHtml(person.name || person.id)}</h4>
       ${isStartingPerson ? '<p><strong>Your starting person</strong></p>' : ''}
       ${roleLine ? `<p class="tree-person-role">${roleLine}</p>` : ''}
-      <p><strong>Parents:</strong> ${parents.join(' and ') || 'Not recorded'}</p>
-      <p><strong>Spouse:</strong> ${spouses.join(' and ') || 'Not recorded'}</p>
-      <p><strong>Children:</strong> ${children.join(', ') || 'Not recorded'}</p>
+      ${line('Parents', parents, ' and ')}
+      ${line('Spouse', spouses, ' and ')}
+      ${line('Children', children, ', ')}
     </article>
   `;
 }
@@ -323,6 +329,7 @@ function renderCoupleUnit(unit, peopleById, familyConnections, primaryPersonId) 
           familyConnections,
           person.id === primaryPersonId,
           partnerLabel(person),
+          unit.members.filter((other) => other.id !== person.id).map((other) => other.id),
         )).join('')}
       </div>
     </article>
