@@ -1184,6 +1184,45 @@ function getPlacementRank(placement) {
   return 1000 + placement.generation;
 }
 
+// Names alone do not tell the customer who they are looking at. Every person in
+// the review is described by their place in the selected person's own family.
+function describeRelationToPrimary(subjectId, treeData, placements, peopleById, primaryPersonId) {
+  if (!subjectId || subjectId === primaryPersonId) return 'the person you selected';
+  const placement = placements.get(subjectId);
+  if (!placement) return '';
+  const primaryName = String(peopleById.get(primaryPersonId)?.name || '').replace(/\//g, '').trim();
+  if (!primaryName) return '';
+
+  let slot = '';
+  for (const family of treeData?.families || []) {
+    if (family.husbandId === subjectId) { slot = 'male'; break; }
+    if (family.wifeId === subjectId) { slot = 'female'; break; }
+  }
+
+  if (placement.direct) {
+    const generation = placement.generation;
+    const base = generation === 1
+      ? (slot === 'male' ? 'father' : slot === 'female' ? 'mother' : 'parent')
+      : (slot === 'male' ? 'grandfather' : slot === 'female' ? 'grandmother' : 'grandparent');
+    const greats = generation >= 3 ? `${'great-'.repeat(generation - 2)}` : '';
+    return `${greats}${base} of ${primaryName}`;
+  }
+
+  const anchorName = String(peopleById.get(placement.anchorId)?.name || '').replace(/\//g, '').trim();
+  if (!anchorName) return `related to ${primaryName}`;
+  const marriedToAnchor = (treeData?.families || []).some((family) => (
+    (family.husbandId === subjectId && family.wifeId === placement.anchorId)
+    || (family.wifeId === subjectId && family.husbandId === placement.anchorId)
+  ));
+  if (marriedToAnchor) return `married to ${anchorName}`;
+  const childOfAnchor = (treeData?.families || []).some((family) => (
+    (family.husbandId === placement.anchorId || family.wifeId === placement.anchorId)
+    && (family.childrenIds || []).includes(subjectId)
+  ));
+  if (childOfAnchor) return `child of ${anchorName}`;
+  return `relative of ${anchorName}`;
+}
+
 function getPlacementLabel(placement, peopleById, primaryPersonId) {
   if (!placement) return 'Related family branch';
   if (placement.direct) return getGenerationReviewLabel(placement.generation);
@@ -1657,6 +1696,16 @@ function renderWorkspaceContent() {
           return `
             <li>
               <strong>${escapeHtml(group.label)}</strong>
+              ${(() => {
+                const relation = describeRelationToPrimary(
+                  group.issues[0]?.subject,
+                  treeData,
+                  reviewPlacements,
+                  peopleById,
+                  selectedPrimaryPersonId,
+                );
+                return relation ? `<p class="issue-group-relation">${escapeHtml(relation.charAt(0).toUpperCase() + relation.slice(1))}</p>` : '';
+              })()}
               ${renderFamilyLocationPreview(
                 peopleById.get(group.issues[0]?.subject),
                 peopleById,
