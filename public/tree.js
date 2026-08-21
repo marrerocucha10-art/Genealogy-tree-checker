@@ -239,7 +239,7 @@ function buildFamilyConnections(families, peopleById) {
   return connections;
 }
 
-function renderPersonCard(person, peopleById, familyConnections, isStartingPerson = false) {
+function renderPersonCard(person, peopleById, familyConnections, isStartingPerson = false, roleLine = '') {
   const connections = familyConnections.get(person.id) || { parents: new Set(), spouses: new Set(), children: new Set() };
   const parents = getPeopleNames([...connections.parents], peopleById);
   const spouses = getPeopleNames([...connections.spouses], peopleById);
@@ -249,9 +249,82 @@ function renderPersonCard(person, peopleById, familyConnections, isStartingPerso
     <article class="tree-review-person ${isStartingPerson ? 'selected-tree-person' : ''}">
       <h4>${escapeHtml(person.name || person.id)}</h4>
       ${isStartingPerson ? '<p><strong>Your starting person</strong></p>' : ''}
+      ${roleLine ? `<p class="tree-person-role">${roleLine}</p>` : ''}
       <p><strong>Parents:</strong> ${parents.join(' and ') || 'Not recorded'}</p>
       <p><strong>Spouse:</strong> ${spouses.join(' and ') || 'Not recorded'}</p>
       <p><strong>Children:</strong> ${children.join(', ') || 'Not recorded'}</p>
+    </article>
+  `;
+}
+
+// A generation reads as a list of strangers unless the couples in it are kept
+// together. Each couple is shown side by side and named as the parents of the
+// person below them, so the customer can follow their own line down the page.
+function getGenerationCouples(peopleInGeneration, families, childOrder) {
+  const inGeneration = new Map(peopleInGeneration.map((person) => [person.id, person]));
+  const used = new Set();
+  const units = [];
+
+  for (const family of families) {
+    const husband = inGeneration.get(family.husbandId);
+    const wife = inGeneration.get(family.wifeId);
+    const members = [husband, wife].filter((person) => person && !used.has(person.id));
+    if (!members.length) continue;
+    members.forEach((person) => used.add(person.id));
+    const childRanks = (family.childrenIds || [])
+      .map((childId) => childOrder.get(childId))
+      .filter((rank) => rank !== undefined);
+    units.push({
+      members,
+      husbandId: husband?.id || '',
+      wifeId: wife?.id || '',
+      childIds: (family.childrenIds || []).filter((childId) => childOrder.has(childId)),
+      rank: childRanks.length ? Math.min(...childRanks) : Number.MAX_SAFE_INTEGER,
+    });
+  }
+
+  for (const person of peopleInGeneration) {
+    if (used.has(person.id)) continue;
+    units.push({ members: [person], husbandId: '', wifeId: '', childIds: [], rank: Number.MAX_SAFE_INTEGER });
+  }
+
+  return units.sort((left, right) => left.rank - right.rank);
+}
+
+function renderCoupleUnit(unit, peopleById, familyConnections, primaryPersonId) {
+  const nameOf = (person) => escapeHtml(person?.name || person?.id || '');
+  const coupleName = unit.members.map(nameOf).join(' and ');
+  const childNames = unit.childIds
+    .map((childId) => peopleById.get(childId))
+    .filter(Boolean)
+    .map(nameOf);
+  const relationLine = childNames.length
+    ? `Parents of ${childNames.join(' and ')}`
+    : unit.members.length > 1
+      ? 'Married couple'
+      : '';
+  const partnerLabel = (person) => {
+    const partner = unit.members.find((other) => other.id !== person.id);
+    if (!partner) return unit.members.length === 1 ? 'Spouse not recorded in this generation' : '';
+    const role = person.id === unit.husbandId ? 'Husband' : person.id === unit.wifeId ? 'Wife' : 'Married';
+    return `${role} of ${nameOf(partner)}`;
+  };
+
+  return `
+    <article class="ancestry-couple">
+      <div class="ancestry-couple-heading">
+        <h4>${coupleName}</h4>
+        ${relationLine ? `<p class="muted">${relationLine}</p>` : ''}
+      </div>
+      <div class="ancestry-couple-people">
+        ${unit.members.map((person) => renderPersonCard(
+          person,
+          peopleById,
+          familyConnections,
+          person.id === primaryPersonId,
+          partnerLabel(person),
+        )).join('')}
+      </div>
     </article>
   `;
 }
@@ -271,19 +344,31 @@ function renderGenerations(treeData, peopleById, families) {
   const displayedThrough = Math.min(visibleGenerationCount, maximumGeneration);
   const sections = [];
 
+  // Each generation is ordered by the person below it, so a line of descent
+  // stays together instead of the whole generation arriving in file order.
+  let childOrder = new Map(primaryPerson ? [[primaryPerson.id, 0]] : []);
+
   for (let generation = 1; generation <= displayedThrough; generation += 1) {
     const people = peopleByGeneration.get(generation) || [];
+    const units = generation === 1
+      ? people.map((person) => ({ members: [person], husbandId: '', wifeId: '', childIds: [], rank: 0 }))
+      : getGenerationCouples(people, families, childOrder);
+    const nextOrder = new Map();
+    units.forEach((unit) => unit.members.forEach((person) => nextOrder.set(person.id, nextOrder.size)));
+    childOrder = nextOrder;
 
     sections.push(`
       <section class="tree-review-generation ancestry-generation">
         <div class="ancestry-generation-heading">
-          <h3>${generation === 1 ? 'Starting person' : `Ancestor generation ${generation - 1}`}</h3>
-          <p class="muted">${people.length} person${people.length === 1 ? '' : 's'}</p>
+          <h3>${generation === 1 ? 'Starting person' : generation === 2 ? 'Parents' : `Ancestor generation ${generation - 1}`}</h3>
+          <p class="muted">${people.length} person${people.length === 1 ? '' : 's'}${generation > 1 ? ` \u00b7 ${units.length} famil${units.length === 1 ? 'y' : 'ies'}` : ''}</p>
         </div>
         <div class="ancestry-people">
-          ${people.length
-            ? people.map((person) => renderPersonCard(person, peopleById, familyConnections, person.id === primaryPerson?.id)).join('')
-            : '<p class="muted">No people recorded in this generation.</p>'}
+          ${!units.length
+            ? '<p class="muted">No people recorded in this generation.</p>'
+            : generation === 1
+              ? people.map((person) => renderPersonCard(person, peopleById, familyConnections, person.id === primaryPerson?.id)).join('')
+              : units.map((unit) => renderCoupleUnit(unit, peopleById, familyConnections, primaryPerson?.id)).join('')}
         </div>
       </section>
     `);
