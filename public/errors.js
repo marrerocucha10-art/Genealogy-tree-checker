@@ -642,6 +642,107 @@ function renderDuplicateComparison(issue, peopleById, familiesById) {
   `;
 }
 
+
+// Places are shown with everything recorded, and a place with no country named
+// is marked so a bare town is not read as a full location.
+function formatReviewPlace(place) {
+  const parts = String(place || '').split(',').map((part) => part.trim()).filter(Boolean);
+  if (!parts.length) return '';
+  if (parts.length === 1) return `${parts[0]} (country not recorded)`;
+  return parts.join(', ');
+}
+
+function getManualFixSteps(issue, personName) {
+  const who = personName || 'this person';
+  const category = String(issue?.category || '').toLowerCase();
+  const message = String(issue?.message || '').toLowerCase();
+  const steps = [];
+
+  if (message.includes('birth') && (message.includes('no ') || message.includes('missing'))) {
+    steps.push(`Find a birth record, baptism record or census entry for ${who}.`);
+    steps.push(`Add the birth date to ${who} in your genealogy program, writing it as day month year, for example 3 MAR 1902.`);
+  } else if (message.includes('death') && (message.includes('no ') || message.includes('missing'))) {
+    steps.push(`Look for a death record, burial record or obituary for ${who}.`);
+    steps.push(`Add the death date to ${who}, written as day month year.`);
+  } else if (category.includes('date')) {
+    steps.push(`Open ${who} and compare the dates on the record with the dates in your file.`);
+    steps.push('Correct whichever date is wrong, keeping to the day month year form, for example 3 MAR 1902.');
+  } else if (category.includes('place') || message.includes('place')) {
+    steps.push(`Check where ${who} was born, married or died on the original record.`);
+    steps.push('Write the place from smallest to largest, ending with the country, for example Bayamon, Puerto Rico, United States.');
+  } else if (category.includes('name') || message.includes('name')) {
+    steps.push(`Compare the spelling of ${who}'s name with the original record.`);
+    steps.push('Use the name as it was written at birth, and put any married name in a separate field.');
+  } else if (category.includes('relationship') || message.includes('parent') || message.includes('child') || message.includes('spouse')) {
+    steps.push(`Check who ${who} belongs to on the record: parents, partner and children.`);
+    steps.push('Correct the family link in your genealogy program so each person sits in the right family.');
+  } else {
+    steps.push(`Open ${who} in your genealogy program and compare the record with what your file holds.`);
+    steps.push('Correct whatever does not match the original record.');
+  }
+
+  if (issue?.suggestion) steps.push(String(issue.suggestion).replace(/\s+/g, ' ').trim());
+  steps.push('Come back here and choose Mark solved, or Save for Later and Continue if you still need the record.');
+  return steps;
+}
+
+// The manual review opens with the person the error belongs to, written out in
+// names and full places, followed by plain steps for putting it right.
+function renderManualReviewGuide(issue, peopleById, familiesById) {
+  const person = peopleById?.get(issue?.subject);
+  const name = person ? String(person.name || '').replace(/\//g, '').trim() : '';
+  const family = !person ? familiesById?.get(issue?.subject) : null;
+  const familyName = family
+    ? [family.husbandId, family.wifeId]
+        .map((id) => String(peopleById?.get(id)?.name || '').replace(/\//g, '').trim())
+        .filter(Boolean)
+        .join(' and ')
+    : '';
+  const heading = name || familyName || 'This record';
+
+  const parents = person
+    ? (person.familyAsChild || [])
+        .map((familyId) => familiesById?.get(familyId))
+        .filter(Boolean)
+        .flatMap((record) => [record.husbandId, record.wifeId])
+        .map((parentId) => String(peopleById?.get(parentId)?.name || '').replace(/\//g, '').trim())
+        .filter(Boolean)
+        .join(' and ')
+    : '';
+
+  const rows = person
+    ? [
+      ['Name', name],
+      ['Born', person.birthDate],
+      ['Birthplace', formatReviewPlace(person.birthPlace)],
+      ['Died', person.deathDate],
+      ['Death place', formatReviewPlace(person.deathPlace)],
+      ['Parents', parents],
+    ]
+    : [['Family', familyName]];
+
+  const steps = getManualFixSteps(issue, name || familyName);
+
+  return `
+    <div class="manual-review-note" hidden>
+      <h4>${escapeHtml(heading)}</h4>
+      <table class="manual-review-record">
+        <tbody>
+          ${rows.map(([label, value]) => `<tr>
+            <th scope="row">${escapeHtml(label)}</th>
+            <td>${escapeHtml(String(value || '').trim() || 'Not recorded')}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      <p class="manual-review-problem"><strong>What is wrong:</strong> ${escapeHtml(toReaderFriendlyText(issue?.message || ''))}</p>
+      <p class="manual-review-heading"><strong>How to fix it</strong></p>
+      <ol class="manual-review-steps">
+        ${steps.map((step) => `<li>${escapeHtml(step)}</li>`).join('')}
+      </ol>
+    </div>
+  `;
+}
+
 function renderPendingResearch(errors, progress) {  const pendingIssues = errors.filter((issue) => progress.pendingIssueIds.includes(getIssueId(issue)));
   if (!pendingIssues.length) return '';
 
@@ -1491,7 +1592,7 @@ function renderWorkspaceContent() {
                     ${isResolved ? '' : `<button type="button" class="btn-secondary" data-pending-issue="${encodeURIComponent(issueId)}">Save for Later and Continue</button>`}
                     </div>
                     ${isDuplicateIssue(issue) ? '' : renderRecordReviewOptions(issue, getResearchSubject(issue, peopleById, familiesById))}
-                    <p class="manual-review-note" hidden>Review the source record and suggestion above, then mark this item solved or move it to Fix Later (Pending) without blocking your progress.</p>
+                    ${renderManualReviewGuide(issue, peopleById, familiesById)}
                   `;
                   return `
                     <li data-tree-subject="${encodeURIComponent(issue.subject || '')}">
@@ -1577,7 +1678,11 @@ workspace.addEventListener('click', (event) => {
   const reviewManuallyButton = event.target.closest('[data-review-manually]');
   if (reviewManuallyButton) {
     const note = reviewManuallyButton.closest('.person-error-list li')?.querySelector('.manual-review-note');
-    if (note) note.hidden = !note.hidden;
+    if (note) {
+      note.hidden = !note.hidden;
+      reviewManuallyButton.textContent = note.hidden ? 'Review manually' : 'Hide review steps';
+      if (!note.hidden) note.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
     return;
   }
 
