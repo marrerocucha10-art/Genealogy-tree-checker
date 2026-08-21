@@ -383,7 +383,6 @@ function renderBasicPlanOptions(errors, progress) {
   // customer is never counting two separate totals.
   const used = getFreeReviewUsed(progress);
   const remainingFreeFixes = Math.max(BASIC_ERROR_REVIEW_LIMIT - used, 0);
-  const remainingErrors = Math.max(errors.length - remainingFreeFixes, 0);
   // Finishing the trial is a moment worth marking: say what was achieved, what
   // is left, and exactly what a plan adds.
   if (!remainingFreeFixes) {
@@ -411,15 +410,11 @@ function renderBasicPlanOptions(errors, progress) {
     `;
   }
 
-  const freeReviewMessage = `Your free trial covers ${BASIC_ERROR_REVIEW_LIMIT} corrections in total, duplicates included. You have finished ${used}, so ${remainingFreeFixes} ${remainingFreeFixes === 1 ? 'is' : 'are'} still available.`;
+  const freeReviewMessage = `${remainingFreeFixes} of your ${BASIC_ERROR_REVIEW_LIMIT} free corrections ${remainingFreeFixes === 1 ? 'is' : 'are'} left.`;
 
   return `
-    <section class="assistance-options">
-      <h2>Great news - these details can be fixed.</h2>
-      <p>${freeReviewMessage} An accurate tree is a wonderful way to share your family's story with relatives and friends, while honoring your ancestors and their contributions to society.</p>
-      <p>${remainingErrors ? `Upgrade to Family Builder to fix the remaining ${remainingErrors} error${remainingErrors === 1 ? '' : 's'}, and choose Pro / Researcher when you want safe automatic fixes.` : 'Upgrade to Family Builder whenever you are ready to continue fixing errors and preserving your family history.'}</p>
-      <p>Your resolved work stays in this browser workspace when you upgrade, so you can continue from the same place.</p>
-      <a class="btn-secondary assistance-upgrade-link" href="${SUBSCRIPTION_STORE_URL}">Choose a plan to fix the rest</a>
+    <section class="assistance-options free-trial-remaining">
+      <p>${freeReviewMessage} <a class="assistance-upgrade-link" href="${SUBSCRIPTION_STORE_URL}">Choose a plan</a> when you want to correct the rest.</p>
     </section>
   `;
 }
@@ -1586,7 +1581,9 @@ function renderWorkspaceContent() {
     : '';
   const duplicateMergeReview = renderDuplicateMergeReview();
   const assistanceOptions = renderBasicPlanOptions(visibleGenerationErrors, progress);
-  const encouragement = renderProgressEncouragement(errors, progress);
+  // The free trial is five corrections; the customer wants the family and the
+  // errors, not a page of explanation before them.
+  const encouragement = isBasicPlan ? '' : renderProgressEncouragement(errors, progress);
   const pendingResearch = renderPendingResearch(visibleGenerationErrors, progress);
   const workspaceDesk = SHOW_WORKSPACE_PROGRESS ? renderWorkspaceDesk(visibleGenerationErrors, progress) : '';
 
@@ -1707,7 +1704,7 @@ function renderWorkspaceContent() {
         <h2>${activeReviewTitle}</h2>
         <span>${activeGroups.length} record${activeGroups.length === 1 ? '' : 's'} in this review</span>
       </div>
-      <p class="batch-help">${activeReviewDescription} ${isBasicPlan ? `Your free trial covers ${BASIC_ERROR_REVIEW_LIMIT} corrections in total, duplicates included. ${Math.max(BASIC_ERROR_REVIEW_LIMIT - getFreeReviewUsed(progress), 0)} of them are still available. Choose a plan when you are ready to correct the rest of your tree.` : 'Each person includes all of their unresolved errors. Mark an error solved after correcting it in this working tree or completing its recommended fix. The next selected generation opens when this generation is complete.'}</p>
+      <p class="batch-help">${isBasicPlan ? `${placementDescription}${reviewingDuplicates ? ' These records look like the same person recorded twice, so they are combined first.' : ''}` : `${activeReviewDescription} Each person includes all of their unresolved errors. Mark an error solved after correcting it in this working tree or completing its recommended fix. The next selected generation opens when this generation is complete.`}</p>
       ${duplicateMergeReview}
       ${encouragement}
       ${pendingResearch}
