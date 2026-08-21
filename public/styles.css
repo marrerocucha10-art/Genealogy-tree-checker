@@ -3501,3 +3501,80 @@ input[type="file"] {
   text-decoration: underline;
   cursor: pointer;
 }
+
+.person-picker-search {
+  display: block;
+  margin: 1rem 0 0.75rem;
+}
+
+.person-picker-search span {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.person-picker-search input {
+  width: 100%;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid #cbd5f5;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+.person-picker-count {
+  margin: 0 0 0.75rem;
+  font-weight: 600;
+}
+
+.person-picker-list {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.person-picker-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.4rem 0.75rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid #d7dcf0;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.person-picker-option.is-selected {
+  border-color: #2f6fed;
+  background: #f2f6ff;
+}
+
+.person-picker-option input {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.person-picker-name {
+  font-weight: 600;
+}
+
+.person-picker-detail {
+  grid-column: 2;
+  color: #55607a;
+  font-size: 0.92rem;
+}
+
+.person-picker-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  margin: 0;
+}
+
+.person-picker-progress {
+  color: #55607a;
+  font-size: 0.92rem;
+}
