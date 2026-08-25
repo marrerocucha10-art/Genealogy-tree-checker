@@ -55,7 +55,7 @@ function getFreePreviewErrors(visibleGenerationErrors) {
     ...others.slice(0, BASIC_ERROR_REVIEW_LIMIT),
   ];
 }
-const ERROR_REVIEW_ORDER_VERSION = 10;
+const ERROR_REVIEW_ORDER_VERSION = 11;
 const VISIBLE_REVIEW_GENERATION_COUNT = 5;
 const workspace = document.getElementById('errorWorkspace');
 const workspaceWelcome = document.getElementById('workspaceWelcome');
@@ -243,6 +243,7 @@ function getProgress() {
     pendingIssueIds: Array.isArray(savedProgress.pendingIssueIds) ? savedProgress.pendingIssueIds : [],
     resolvedItems: Array.isArray(savedProgress.resolvedItems) ? savedProgress.resolvedItems : [],
     activeGroupIds: savedProgress.batchMode === 'people' && Array.isArray(savedProgress.activeGroupIds) ? savedProgress.activeGroupIds : [],
+    activeGenerationKey: typeof savedProgress.activeGenerationKey === 'string' ? savedProgress.activeGenerationKey : '',
     batchMode: 'people',
     reviewOrderVersion: Number(savedProgress.reviewOrderVersion) || 0,
     duplicateReviewMode: ['single', 'batch'].includes(savedProgress.duplicateReviewMode) ? savedProgress.duplicateReviewMode : '',
@@ -1363,6 +1364,7 @@ function getOrderedIssueGroups(treeData, errors) {
 function getActiveIssueGroups(treeData, errors, progress) {
   if (progress.reviewOrderVersion !== ERROR_REVIEW_ORDER_VERSION) {
     progress.activeGroupIds = [];
+    progress.activeGenerationKey = '';
     progress.reviewOrderVersion = ERROR_REVIEW_ORDER_VERSION;
   }
   const orderedGroups = getOrderedIssueGroups(treeData, errors);
@@ -1392,20 +1394,33 @@ function getActiveIssueGroups(treeData, errors, progress) {
     return duplicateBatch;
   }
 
-  const activeIds = progress.activeGroupIds.filter((id) => groupsById.has(id));
-  if (activeIds.length) {
-    return activeIds.map((id) => groupsById.get(id));
+  // Keep the client in the generation already being reviewed. Group ids are
+  // temporary (a person can have several issues), while this placement key is
+  // the stable generation selection that survives each individual fix.
+  const placements = getReviewPlacements(treeData);
+  const activeGenerationGroups = progress.activeGenerationKey
+    ? availableGroups.filter((group) => getGroupPlacement(group, placements)?.key === progress.activeGenerationKey)
+    : [];
+  if (activeGenerationGroups.length) {
+    const activeIds = progress.activeGroupIds.filter((id) => activeGenerationGroups.some((group) => group.id === id));
+    const nextGroups = activeIds.length
+      ? activeIds.map((id) => groupsById.get(id))
+      : activeGenerationGroups.slice(0, ERROR_BATCH_SIZE);
+    progress.activeGroupIds = nextGroups.map((group) => group.id);
+    saveProgress(progress);
+    return nextGroups;
   }
 
-  // A review screen only ever holds records that sit in the same place in the
-  // customer's tree, so an in-law is never mixed into an ancestor generation.
-  const placements = getReviewPlacements(treeData);
+  // Advance only after every open error in the current generation has been
+  // completed or saved for later. Duplicates returned above remain their own
+  // first step and never set this non-duplicate generation selection.
   const firstGroup = availableGroups.find((group) => getGroupPlacement(group, placements));
   const currentKey = firstGroup ? getGroupPlacement(firstGroup, placements).key : undefined;
   const generationGroups = currentKey === undefined
     ? availableGroups
     : availableGroups.filter((group) => getGroupPlacement(group, placements)?.key === currentKey);
   const nextGroups = generationGroups.slice(0, ERROR_BATCH_SIZE);
+  progress.activeGenerationKey = currentKey || '';
   progress.activeGroupIds = nextGroups.map((group) => group.id);
   saveProgress(progress);
   return nextGroups;
@@ -1807,6 +1822,7 @@ workspace.addEventListener('click', (event) => {
     progress.reviewFocus = reviewFocusButton.dataset.reviewFocus;
     if (progress.reviewFocus === 'duplicates' && !progress.duplicateReviewMode) progress.duplicateReviewMode = 'single';
     progress.activeGroupIds = [];
+    progress.activeGenerationKey = '';
     saveProgress(progress);
     renderWorkspace();
     return;
@@ -2019,6 +2035,7 @@ workspace.addEventListener('click', (event) => {
   if (event.target.closest('#loadNextBatch')) {
     const progress = getProgress();
     progress.activeGroupIds = [];
+    progress.activeGenerationKey = '';
     saveProgress(progress);
     renderWorkspace();
     return;
