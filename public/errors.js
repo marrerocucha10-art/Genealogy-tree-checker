@@ -1256,6 +1256,10 @@ function describeRelationToPrimary(subjectId, treeData, placements, peopleById, 
 
 function getPlacementLabel(placement, peopleById, primaryPersonId) {
   if (!placement) return 'Related family branch';
+  if (placement.direct && placement.generation >= 2) {
+    const ancestorName = String(peopleById?.get(placement.anchorId)?.name || '').replace(/\//g, '').trim();
+    if (ancestorName) return ancestorName;
+  }
   if (placement.direct) return getGenerationReviewLabel(placement.generation);
   const anchorName = String(peopleById?.get(placement.anchorId)?.name || '').replace(/\//g, '').trim();
   if (anchorName) return `Relatives of ${anchorName}`;
