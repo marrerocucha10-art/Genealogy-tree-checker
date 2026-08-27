@@ -824,19 +824,7 @@ function formatGedcomLoadError(error) {
   return message;
 }
 
-function hasNamedFile(fileName) {
-  const baseName = String(fileName || '').split('/').pop().replace(/\.[^.]+$/, '');
-  return /\p{L}/u.test(baseName) && !/\p{N}/u.test(baseName);
-}
-
-function assertNamedFile(fileName) {
-  if (!hasNamedFile(fileName)) {
-    throw new Error('Choose a family file with a name made of letters. Files with numbers in their names are not accepted.');
-  }
-}
-
 async function readGedcomFile(file) {
-  assertNamedFile(file.name);
   const uploadLimit = getGedcomUploadLimitBytes();
   if (file.size > uploadLimit) {
     throw new Error(`GEDCOM file is too large for your ${SUBSCRIPTION_TIERS[currentTier]?.name || 'Basic'} plan. Maximum size is ${formatGedcomUploadLimit()}.`);
@@ -864,15 +852,10 @@ async function readGedcomFile(file) {
 async function readGedcomFromZip(buffer) {
   const zipBytes = new Uint8Array(buffer);
   const entries = readZipEntries(zipBytes);
-  const gedcomEntries = entries.filter((entry) => /\.(ged|gedcom|ged\.txt|txt)$/i.test(entry.name));
-  const gedcomEntry = gedcomEntries.find((entry) => hasNamedFile(entry.name));
-
-  if (!gedcomEntries.length) {
-    throw new Error('No .ged or .gedcom file was found inside this ZIP file.');
-  }
+  const gedcomEntry = entries.find((entry) => /\.(ged|gedcom|ged\.txt|txt)$/i.test(entry.name));
 
   if (!gedcomEntry) {
-    throw new Error('Choose a ZIP containing a GEDCOM file with a name made of letters. Files with numbers in their names are not accepted.');
+    throw new Error('No .ged or .gedcom file was found inside this ZIP file.');
   }
   const uploadLimit = getGedcomUploadLimitBytes();
   if (gedcomEntry.uncompressedSize > uploadLimit) {
