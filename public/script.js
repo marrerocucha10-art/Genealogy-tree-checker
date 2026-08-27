@@ -857,7 +857,6 @@ async function readGedcomFromZip(buffer) {
   if (!gedcomEntry) {
     throw new Error('No .ged or .gedcom file was found inside this ZIP file.');
   }
-
   const uploadLimit = getGedcomUploadLimitBytes();
   if (gedcomEntry.uncompressedSize > uploadLimit) {
     throw new Error(`The GEDCOM file inside this ZIP is too large for your ${SUBSCRIPTION_TIERS[currentTier]?.name || 'Basic'} plan. Maximum size is ${formatGedcomUploadLimit()}.`);
