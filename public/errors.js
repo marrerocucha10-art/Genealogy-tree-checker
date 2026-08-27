@@ -55,7 +55,7 @@ function getFreePreviewErrors(visibleGenerationErrors) {
     ...others.slice(0, BASIC_ERROR_REVIEW_LIMIT),
   ];
 }
-const ERROR_REVIEW_ORDER_VERSION = 11;
+const ERROR_REVIEW_ORDER_VERSION = 12;
 const VISIBLE_REVIEW_GENERATION_COUNT = 5;
 const workspace = document.getElementById('errorWorkspace');
 const workspaceWelcome = document.getElementById('workspaceWelcome');
@@ -1047,10 +1047,21 @@ function getIssueGroupLabel(subject, peopleById, familiesById) {
   return toReaderFriendlyText(subject, peopleById, familiesById) || 'General validation';
 }
 
+function hasReviewName(issue, peopleById, familiesById) {
+  const personName = String(peopleById?.get(issue?.subject)?.name || '').replace(/\//g, '').trim();
+  if (personName) return true;
+
+  const family = familiesById?.get(issue?.subject);
+  return Boolean(family && [family.husbandId, family.wifeId]
+    .map((personId) => String(peopleById?.get(personId)?.name || '').replace(/\//g, '').trim())
+    .some(Boolean));
+}
+
 function getIssueGroups(errors, peopleById, familiesById) {
   const groups = new Map();
 
   for (const issue of errors) {
+    if (!hasReviewName(issue, peopleById, familiesById)) continue;
     const id = getIssueGroupId(issue);
     if (!groups.has(id)) {
       groups.set(id, {
