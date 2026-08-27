@@ -178,8 +178,8 @@ function recordAdminReviewFailure(key) {
 const SUBSCRIPTION_TIERS = {
   personal: {
     name: 'Family Builder',
-    monthlyPrice: 19.99,
-    annualPrice: 19.99,
+    monthlyPrice: 9.99,
+    annualPrice: 9.99,
     prices: {
       monthly: 'STRIPE_PERSONAL_MONTHLY_PRICE_ID',
       annual: 'STRIPE_PERSONAL_ANNUAL_PRICE_ID',
@@ -187,8 +187,8 @@ const SUBSCRIPTION_TIERS = {
   },
   pro: {
     name: 'Pro / Researcher',
-    monthlyPrice: 29.99,
-    annualPrice: 29.99,
+    monthlyPrice: 19.99,
+    annualPrice: 19.99,
     prices: {
       monthly: 'STRIPE_PRO_MONTHLY_PRICE_ID',
       annual: 'STRIPE_PRO_ANNUAL_PRICE_ID',
@@ -196,8 +196,8 @@ const SUBSCRIPTION_TIERS = {
   },
   business: {
     name: 'Business / Genealogist',
-    monthlyPrice: 39.99,
-    annualPrice: 39.99,
+    monthlyPrice: 29.99,
+    annualPrice: 29.99,
     prices: {
       monthly: 'STRIPE_BUSINESS_MONTHLY_PRICE_ID',
       annual: 'STRIPE_BUSINESS_ANNUAL_PRICE_ID',

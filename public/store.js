@@ -18,19 +18,19 @@ const tiers = {
   personal: {
     name: 'Family Builder',
     description: 'Organize one family tree with unlimited error review, charts, and research worksheets.',
-    prices: { monthly: 19.99, annual: 19.99 },
+    prices: { monthly: 9.99, annual: 9.99 },
     features: ['GEDCOM uploads up to 500 MB', 'Unlimited manual error fixes', 'Family-tree organization', 'Printable tree and exports', 'Research worksheets'],
   },
   pro: {
     name: 'Pro / Researcher',
     description: 'Unlock advanced cleanup, reporting, the Genealogy Pro Package, and up to 10 separately organized family trees.',
-    prices: { monthly: 29.99, annual: 29.99 },
+    prices: { monthly: 19.99, annual: 19.99 },
     features: ['Up to 10 separate family-tree workspaces', 'Surname and generation labels for each workspace', 'GEDCOM uploads up to 500 MB', 'Safe automatic fixes', 'Full correction report', 'Advanced validation workflow', 'Genealogy Pro Package'],
   },
   business: {
     name: 'Business / Genealogist',
     description: 'Support client-facing genealogy workflows.',
-    prices: { monthly: 39.99, annual: 39.99 },
+    prices: { monthly: 29.99, annual: 29.99 },
     features: ['Unlimited separate client workspaces', 'Surname and generation labels for each workspace', 'GEDCOM uploads up to 2 GB', 'Client tree workflow', 'Branded reports roadmap'],
   },
 };
