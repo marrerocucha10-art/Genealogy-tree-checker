@@ -1817,26 +1817,42 @@ function buildAncestorLevels(focusPersonId, peopleById) {
   return levels.reverse();
 }
 
-function buildFamilyTreePoster(family, peopleById, colors) {
-  if (!family) return '<text x="2700" y="2700" text-anchor="middle" fill="#451a03" font-size="56">Choose a family group to create this poster.</text>';
-  const parents = [family.husbandId, family.wifeId].map((id) => peopleById.get(id)).filter(Boolean);
-  const children = (family.childrenIds || []).map((id) => peopleById.get(id)).filter(Boolean).slice(0, 8);
-  const card = (person, x, y) => `
-    <rect x="${x}" y="${y}" width="1400" height="220" rx="30" fill="${colors.card}" stroke="${colors.accent}" stroke-width="8"/>
-    <text x="${x + 55}" y="${y + 88}" fill="${colors.text}" font-family="Arial, sans-serif" font-size="50" font-weight="700">${escapeSvg(shortenPosterText(person.name || person.id))}</text>
-    <text x="${x + 55}" y="${y + 154}" fill="${colors.text}" font-family="Arial, sans-serif" font-size="34">${escapeSvg(shortenPosterText([extractYear(person.birthDate), person.birthPlace].filter(Boolean).join(' · '), 54))}</text>
-  `;
-  const parentCards = parents.map((person, index) => card(person, parents.length === 1 ? 2000 : 650 + index * 2100, 1850)).join('');
-  const childCards = children.map((person, index) => card(person, 350 + (index % 3) * 1700, 3850 + Math.floor(index / 3) * 360)).join('');
-  const childCenter = children.length ? 2700 : 0;
-  return `
-    <text x="2700" y="1350" text-anchor="middle" fill="${colors.accent}" font-family="Arial, sans-serif" font-size="56" font-weight="700">FAMILY TREE</text>
-    ${parentCards}
-    ${parents.length && children.length ? `<line x1="2700" y1="2070" x2="2700" y2="3500" stroke="${colors.accent}" stroke-width="12"/><line x1="700" y1="3500" x2="4700" y2="3500" stroke="${colors.accent}" stroke-width="12"/><line x1="${childCenter}" y1="3500" x2="${childCenter}" y2="3850" stroke="${colors.accent}" stroke-width="12"/>` : ''}
-    ${childCards}
-  `;
+function buildRootedFamilyTreePoster(groups, colors) {
+  const layout = [
+    { label: 'GENERATION 1', title: 'GREAT-GRANDPARENTS', y: 1450, slots: [[1120, 1450], [2600, 1450], [4080, 1450], [2600, 2020]] },
+    { label: 'GENERATION 2', title: 'GRANDPARENTS', y: 2460, slots: [[1500, 2460], [3700, 2460]] },
+    { label: 'GENERATION 3', title: 'PARENTS', y: 3420, slots: [[1500, 3420], [3700, 3420]] },
+    { label: 'GENERATION 4', title: 'CHILDREN', y: 4400, slots: [[760, 4400], [1900, 4400], [3040, 4400], [4180, 4400]] },
+    { label: 'GENERATION 5', title: 'GRANDCHILDREN', y: 5350, slots: [[760, 5350], [1900, 5350], [3040, 5350], [4180, 5350]] },
+  ];
+  const leafClusters = [
+    [760, 1220, 330], [1250, 1750, 300], [4600, 1220, 330], [4150, 1750, 300],
+    [980, 2900, 330], [4400, 2900, 330], [1240, 3900, 250], [4160, 3900, 250],
+  ].map(([x, y, radius]) => `<circle cx="${x}" cy="${y}" r="${radius}" fill="#667424" fill-opacity="0.6"/><circle cx="${x - 90}" cy="${y + 30}" r="${radius * 0.55}" fill="#8c962f" fill-opacity="0.58"/><circle cx="${x + 100}" cy="${y - 20}" r="${radius * 0.48}" fill="#4c601d" fill-opacity="0.55"/>`).join('');
+  const card = (person, x, y) => {
+    const lifeDates = [extractYear(person.birthDate), extractYear(person.deathDate)].filter(Boolean).join(' – ');
+    return `<g>
+      <rect x="${x}" y="${y}" width="1080" height="255" rx="26" fill="#fff9e9" fill-opacity="0.93" stroke="#58461b" stroke-width="13"/>
+      <rect x="${x + 22}" y="${y + 22}" width="1036" height="211" rx="16" fill="none" stroke="#b18a33" stroke-width="4"/>
+      <text x="${x + 540}" y="${y + 108}" text-anchor="middle" fill="#263314" font-family="Arial, sans-serif" font-size="45" font-weight="700">${escapeSvg(shortenPosterText(person.name || person.id, 31))}</text>
+      <text x="${x + 540}" y="${y + 170}" text-anchor="middle" fill="#4b442f" font-family="Arial, sans-serif" font-size="28">${escapeSvg(shortenPosterText([lifeDates, person.birthPlace].filter(Boolean).join(' · '), 50))}</text>
+    </g>`;
+  };
+  return `<g>
+    <path d="M2700 6150 C2540 5360 2520 4710 2650 3970 C2510 3440 2100 3020 1570 2580 M2730 6150 C2910 5100 2880 4500 2780 3910 C3000 3400 3490 2930 4020 2500 M2620 3960 C2200 3620 1640 3240 970 2860 M2820 3920 C3250 3580 3860 3230 4500 2840 M2670 3200 C2350 2650 1900 2020 1200 1450 M2850 3200 C3200 2600 3700 2000 4400 1450" fill="none" stroke="#4d3515" stroke-width="210" stroke-linecap="round"/>
+    <path d="M2700 6150 C2540 5360 2520 4710 2650 3970 C2510 3440 2100 3020 1570 2580 M2730 6150 C2910 5100 2880 4500 2780 3910 C3000 3400 3490 2930 4020 2500 M2620 3960 C2200 3620 1640 3240 970 2860 M2820 3920 C3250 3580 3860 3230 4500 2840 M2670 3200 C2350 2650 1900 2020 1200 1450 M2850 3200 C3200 2600 3700 2000 4400 1450" fill="none" stroke="#755127" stroke-width="76" stroke-linecap="round"/>
+    ${leafClusters}
+    ${layout.map((row, index) => {
+      const people = [...(groups.get(index + 1) || [])].slice(0, row.slots.length);
+      return `<g>
+        <rect x="290" y="${row.y + 24}" width="650" height="190" rx="16" fill="${index % 2 ? '#34584e' : '#586422'}" stroke="#e7d293" stroke-width="5"/>
+        <text x="615" y="${row.y + 95}" text-anchor="middle" fill="#fff9df" font-family="Arial, sans-serif" font-size="28" font-weight="700">${row.label}</text>
+        <text x="615" y="${row.y + 151}" text-anchor="middle" fill="#fff9df" font-family="Arial, sans-serif" font-size="31" font-weight="700">${row.title}</text>
+        ${people.map((person, personIndex) => card(person, ...row.slots[personIndex])).join('')}
+      </g>`;
+    }).join('')}
+  </g>`;
 }
-
 function posterBackgroundMarkup(colors) {
   if (posterBackground !== 'parchment') return `<rect width="100%" height="100%" fill="${colors.background}"/>`;
 
@@ -1912,7 +1928,7 @@ async function downloadPosterArtwork() {
   const maxRows = Math.max(1, Math.floor((bandHeight - 250) / (cardHeight + rowGap)));
   const maxPeoplePerGeneration = columns * maxRows;
   const cards = posterLayout === 'family'
-    ? buildFamilyTreePoster(treeData.families.find((family) => family.id === (posterFamilyId || treeData.families[0]?.id)), peopleById, colors)
+    ? buildRootedFamilyTreePoster(groups, colors)
     : generations.map((generation, index) => {
     const people = groups.get(generation) || [];
     const visiblePeople = people.slice(0, maxPeoplePerGeneration);
@@ -1944,10 +1960,12 @@ async function downloadPosterArtwork() {
     <rect x="150" y="150" width="5100" height="6900" rx="45" fill="none" stroke="${colors.accent}" stroke-width="12"/>
     <rect x="210" y="210" width="4980" height="6780" rx="32" fill="none" stroke="${colors.accent}" stroke-opacity="0.35" stroke-width="4"/>
     <path d="M340 900 C520 720 700 720 880 900 M4520 900 C4700 720 4880 720 5060 900" fill="none" stroke="${colors.accent}" stroke-opacity="0.5" stroke-width="12"/>
-    <text x="2700" y="470" text-anchor="middle" fill="${colors.accent}" font-family="Arial, sans-serif" font-size="132" font-weight="700">${escapeSvg(shortenPosterText(familyTitle, 48))}</text>
-    <text x="2700" y="590" text-anchor="middle" fill="${colors.text}" font-family="Arial, sans-serif" font-size="46">${posterLayout === 'ancestor' ? 'A personalized ancestor chart' : 'A personalized family history chart'}</text>
-    <text x="2700" y="690" text-anchor="middle" fill="${colors.text}" font-family="Arial, sans-serif" font-size="36">${posterLayout === 'ancestor' ? `${generations.length} ancestor levels shown` : `${treeData.people.length} people · ${treeData.families.length} families · ${generations.length} family groups shown`}</text>
+    <text x="2700" y="490" text-anchor="middle" fill="#263314" font-family="Arial, sans-serif" font-size="170" font-weight="800">${escapeSvg(shortenPosterText(familyTitle, 40)).toUpperCase()}</text>
+    <text x="2700" y="655" text-anchor="middle" fill="#4b3820" font-family="Arial, sans-serif" font-size="58">Our roots run deep · Our love runs deeper</text>
+    <path d="M2130 770 C2400 830 3000 830 3270 770" fill="none" stroke="#7a5a24" stroke-width="8"/>
     ${cards}
+    <text x="2700" y="6610" text-anchor="middle" fill="#4b3820" font-family="Arial, sans-serif" font-size="53" font-weight="700">Like branches on a tree, we grow in different directions,</text>
+    <text x="2700" y="6690" text-anchor="middle" fill="#4b3820" font-family="Arial, sans-serif" font-size="53" font-weight="700">yet our roots remain as one.</text>
     <text x="2700" y="6930" text-anchor="middle" fill="${colors.text}" font-family="Arial, sans-serif" font-size="30">Created with Genealogy Tree Checker</text>
   </svg>`;
 
