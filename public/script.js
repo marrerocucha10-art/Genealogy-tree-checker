@@ -19,6 +19,7 @@ const POSTER_LAYOUT_STORAGE_KEY = 'familyTreePosterLayout';
 const POSTER_BACKGROUND_STORAGE_KEY = 'familyTreePosterBackground';
 const POSTER_FOCUS_PERSON_STORAGE_KEY = 'familyTreePosterFocusPerson';
 const POSTER_FAMILY_STORAGE_KEY = 'familyTreePosterFamily';
+const POSTER_TITLE_STORAGE_KEY = 'familyTreePosterTitle';
 const GEDCOM_BACKUP_DATABASE = 'genealogyTreeCheckerBackups';
 const GEDCOM_BACKUP_STORE = 'gedcomFiles';
 const GEDCOM_BACKUP_ID = 'latest';
@@ -37,6 +38,7 @@ let posterLayout = localStorage.getItem(POSTER_LAYOUT_STORAGE_KEY) || 'family';
 let posterBackground = localStorage.getItem(POSTER_BACKGROUND_STORAGE_KEY) || 'parchment';
 let posterFocusPersonId = localStorage.getItem(POSTER_FOCUS_PERSON_STORAGE_KEY) || '';
 let posterFamilyId = localStorage.getItem(POSTER_FAMILY_STORAGE_KEY) || '';
+let posterTitle = localStorage.getItem(POSTER_TITLE_STORAGE_KEY) || '';
 let currentTier = localStorage.getItem(SUBSCRIPTION_STORAGE_KEY) || 'free';
 let billingInterval = localStorage.getItem(BILLING_INTERVAL_STORAGE_KEY) || 'monthly';
 let stripeConfig = null;
@@ -308,11 +310,16 @@ familyTreeDiv.addEventListener('click', (event) => {
 familyTreeDiv.addEventListener('change', (event) => {
   const focusPersonSelect = event.target.closest('[data-poster-focus-person]');
   const startPersonInput = event.target.closest('[data-poster-start-person]');
-  if (!focusPersonSelect && !startPersonInput) return;
+  const posterTitleInput = event.target.closest('[data-poster-title]');
+  if (!focusPersonSelect && !startPersonInput && !posterTitleInput) return;
 
   if (focusPersonSelect) {
     posterFocusPersonId = focusPersonSelect.value;
     localStorage.setItem(POSTER_FOCUS_PERSON_STORAGE_KEY, posterFocusPersonId);
+  }
+  if (posterTitleInput) {
+    posterTitle = posterTitleInput.value.trim().slice(0, 48);
+    localStorage.setItem(POSTER_TITLE_STORAGE_KEY, posterTitle);
   }
   if (startPersonInput) {
     const person = treeData.people.find((item) => (
@@ -1754,7 +1761,9 @@ function renderTreePresentation(generationData, peopleById) {
           <div class="presentation-buttons">
             <button type="button" class="btn-secondary ${posterBackground === 'parchment' ? 'active-presentation' : ''}" data-poster-background="parchment">Vintage Parchment</button>
           </div>
-          <p class="muted">The background is embedded in the downloaded poster image.</p>
+          <label class="poster-focus-label" for="posterTitle">Poster title</label>
+          <input id="posterTitle" type="text" maxlength="48" data-poster-title value="${escapeHtml(posterTitle)}" placeholder="The Smith Family">
+          <p class="muted">Add the family name you want printed. The background is embedded in the downloaded poster image.</p>
         </div>
       </div>
       ${canPrintUpdatedTree
@@ -1814,7 +1823,7 @@ function buildFamilyTreePoster(family, peopleById, colors) {
   const children = (family.childrenIds || []).map((id) => peopleById.get(id)).filter(Boolean).slice(0, 8);
   const card = (person, x, y) => `
     <rect x="${x}" y="${y}" width="1400" height="220" rx="30" fill="${colors.card}" stroke="${colors.accent}" stroke-width="8"/>
-    <text x="${x + 55}" y="${y + 88}" fill="${colors.text}" font-family="Georgia, serif" font-size="50" font-weight="700">${escapeSvg(shortenPosterText(person.name || person.id))}</text>
+    <text x="${x + 55}" y="${y + 88}" fill="${colors.text}" font-family="Arial, sans-serif" font-size="50" font-weight="700">${escapeSvg(shortenPosterText(person.name || person.id))}</text>
     <text x="${x + 55}" y="${y + 154}" fill="${colors.text}" font-family="Arial, sans-serif" font-size="34">${escapeSvg(shortenPosterText([extractYear(person.birthDate), person.birthPlace].filter(Boolean).join(' · '), 54))}</text>
   `;
   const parentCards = parents.map((person, index) => card(person, parents.length === 1 ? 2000 : 650 + index * 2100, 1850)).join('');
@@ -1892,7 +1901,10 @@ async function downloadPosterArtwork() {
   }
 
   const generations = [...groups.keys()].sort((first, second) => first - second).slice(0, posterLayout === 'ancestor' ? 4 : 7);
-  const familyTitle = 'Your Family Tree';
+  const selectedFamily = treeData.families.find((family) => family.id === (posterFamilyId || treeData.families[0]?.id));
+  const selectedPerson = peopleById.get(selectedFamily?.husbandId) || peopleById.get(selectedFamily?.wifeId);
+  const inferredTitle = selectedPerson?.name ? `The ${String(selectedPerson.name).split(/\s+/).slice(-1)[0]} Family` : 'Your Family Tree';
+  const familyTitle = posterTitle || inferredTitle;
   const bandHeight = Math.floor(5400 / Math.max(generations.length, 1));
   const columns = 3;
   const cardHeight = 190;
@@ -1915,7 +1927,7 @@ async function downloadPosterArtwork() {
       const lifeDates = [extractYear(person.birthDate), extractYear(person.deathDate)].filter(Boolean).join(' - ');
       return `
         <rect x="${x}" y="${cardY}" width="${cardWidth}" height="${cardHeight}" rx="28" fill="${colors.card}" stroke="${colors.accent}" stroke-width="7"/>
-        <text x="${x + 55}" y="${cardY + 78}" fill="${colors.text}" font-family="Georgia, serif" font-size="48" font-weight="700">${escapeSvg(shortenPosterText(person.name || person.id))}</text>
+        <text x="${x + 55}" y="${cardY + 78}" fill="${colors.text}" font-family="Arial, sans-serif" font-size="48" font-weight="700">${escapeSvg(shortenPosterText(person.name || person.id))}</text>
         <text x="${x + 55}" y="${cardY + 138}" fill="${colors.text}" font-family="Arial, sans-serif" font-size="34">${escapeSvg(shortenPosterText([lifeDates, person.birthPlace].filter(Boolean).join(' · '), 54))}</text>
       `;
       }).join('');
@@ -1930,7 +1942,9 @@ async function downloadPosterArtwork() {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
     ${posterBackgroundMarkup(colors)}
     <rect x="150" y="150" width="5100" height="6900" rx="45" fill="none" stroke="${colors.accent}" stroke-width="12"/>
-    <text x="2700" y="470" text-anchor="middle" fill="${colors.accent}" font-family="Georgia, serif" font-size="132" font-weight="700">${escapeSvg(shortenPosterText(familyTitle, 48))}</text>
+    <rect x="210" y="210" width="4980" height="6780" rx="32" fill="none" stroke="${colors.accent}" stroke-opacity="0.35" stroke-width="4"/>
+    <path d="M340 900 C520 720 700 720 880 900 M4520 900 C4700 720 4880 720 5060 900" fill="none" stroke="${colors.accent}" stroke-opacity="0.5" stroke-width="12"/>
+    <text x="2700" y="470" text-anchor="middle" fill="${colors.accent}" font-family="Arial, sans-serif" font-size="132" font-weight="700">${escapeSvg(shortenPosterText(familyTitle, 48))}</text>
     <text x="2700" y="590" text-anchor="middle" fill="${colors.text}" font-family="Arial, sans-serif" font-size="46">${posterLayout === 'ancestor' ? 'A personalized ancestor chart' : 'A personalized family history chart'}</text>
     <text x="2700" y="690" text-anchor="middle" fill="${colors.text}" font-family="Arial, sans-serif" font-size="36">${posterLayout === 'ancestor' ? `${generations.length} ancestor levels shown` : `${treeData.people.length} people · ${treeData.families.length} families · ${generations.length} family groups shown`}</text>
     ${cards}
