@@ -3204,7 +3204,23 @@ input[type="file"] {
 
 .keepsake-product-card p {
   color: #4a5568;
+  line-height: 1.5;
   margin-bottom: 14px;
+}
+
+.featured-keepsake-product {
+  background: linear-gradient(145deg, #fffdf7, #fff3dc);
+  border-color: #d97706;
+}
+
+.keepsake-type {
+  color: #9a3412;
+  display: block;
+  font-size: 0.8em;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+  text-transform: uppercase;
 }
 
 @media (max-width: 600px) {
