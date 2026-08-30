@@ -19,6 +19,13 @@ const POSTER_LAYOUT_STORAGE_KEY = 'familyTreePosterLayout';
 const POSTER_BACKGROUND_STORAGE_KEY = 'familyTreePosterBackground';
 const POSTER_FOCUS_PERSON_STORAGE_KEY = 'familyTreePosterFocusPerson';
 const POSTER_FAMILY_STORAGE_KEY = 'familyTreePosterFamily';
+const POSTER_TITLE_STORAGE_KEY = 'familyTreePosterTitle';
+const POSTER_VARIATION_STORAGE_KEY = 'familyTreePosterVariation';
+const POSTER_BACKGROUND_IMAGE_STORAGE_KEY = 'familyTreePosterBackgroundImage';
+const POSTER_BACKGROUND_IMAGES = {
+  heritageTree: { label: 'Heritage Tree Image', file: 'ChatGPT%20Image%20Aug%2027%2C%202026%20at%2009_58_26%20PM.png' },
+  parchment: { label: 'Vintage Parchment', file: '' },
+};
 const GEDCOM_BACKUP_DATABASE = 'genealogyTreeCheckerBackups';
 const GEDCOM_BACKUP_STORE = 'gedcomFiles';
 const GEDCOM_BACKUP_ID = 'latest';
@@ -37,6 +44,10 @@ let posterLayout = localStorage.getItem(POSTER_LAYOUT_STORAGE_KEY) || 'family';
 let posterBackground = localStorage.getItem(POSTER_BACKGROUND_STORAGE_KEY) || 'parchment';
 let posterFocusPersonId = localStorage.getItem(POSTER_FOCUS_PERSON_STORAGE_KEY) || '';
 let posterFamilyId = localStorage.getItem(POSTER_FAMILY_STORAGE_KEY) || '';
+let posterTitle = localStorage.getItem(POSTER_TITLE_STORAGE_KEY) || '';
+let posterVariation = localStorage.getItem(POSTER_VARIATION_STORAGE_KEY) || 'heritage';
+let posterBackgroundImage = localStorage.getItem(POSTER_BACKGROUND_IMAGE_STORAGE_KEY) || 'heritageTree';
+posterLayout = posterVariation === 'ancestor' ? 'ancestor' : posterVariation === 'minimal' ? 'generation' : 'family';
 let currentTier = localStorage.getItem(SUBSCRIPTION_STORAGE_KEY) || 'free';
 let billingInterval = localStorage.getItem(BILLING_INTERVAL_STORAGE_KEY) || 'monthly';
 let stripeConfig = null;
@@ -284,10 +295,28 @@ familyTreeDiv.addEventListener('click', (event) => {
     return;
   }
 
+  const posterVariationButton = event.target.closest('[data-poster-variation]');
+  if (posterVariationButton) {
+    posterVariation = posterVariationButton.dataset.posterVariation;
+    posterLayout = posterVariation === 'ancestor' ? 'ancestor' : posterVariation === 'minimal' ? 'generation' : 'family';
+    localStorage.setItem(POSTER_VARIATION_STORAGE_KEY, posterVariation);
+    localStorage.setItem(POSTER_LAYOUT_STORAGE_KEY, posterLayout);
+    renderFamilyTree();
+    return;
+  }
+
   const posterLayoutButton = event.target.closest('[data-poster-layout]');
   if (posterLayoutButton) {
     posterLayout = posterLayoutButton.dataset.posterLayout;
     localStorage.setItem(POSTER_LAYOUT_STORAGE_KEY, posterLayout);
+    renderFamilyTree();
+    return;
+  }
+
+  const posterBackgroundImageButton = event.target.closest('[data-poster-background-image]');
+  if (posterBackgroundImageButton) {
+    posterBackgroundImage = posterBackgroundImageButton.dataset.posterBackgroundImage;
+    localStorage.setItem(POSTER_BACKGROUND_IMAGE_STORAGE_KEY, posterBackgroundImage);
     renderFamilyTree();
     return;
   }
@@ -302,17 +331,27 @@ familyTreeDiv.addEventListener('click', (event) => {
 
   if (event.target.closest('[data-download-poster-artwork]')) {
     downloadPosterArtwork();
+    return;
+  }
+
+  if (event.target.closest('[data-download-journal-cover]')) {
+    downloadJournalCover();
   }
 });
 
 familyTreeDiv.addEventListener('change', (event) => {
   const focusPersonSelect = event.target.closest('[data-poster-focus-person]');
   const startPersonInput = event.target.closest('[data-poster-start-person]');
-  if (!focusPersonSelect && !startPersonInput) return;
+  const posterTitleInput = event.target.closest('[data-poster-title]');
+  if (!focusPersonSelect && !startPersonInput && !posterTitleInput) return;
 
   if (focusPersonSelect) {
     posterFocusPersonId = focusPersonSelect.value;
     localStorage.setItem(POSTER_FOCUS_PERSON_STORAGE_KEY, posterFocusPersonId);
+  }
+  if (posterTitleInput) {
+    posterTitle = posterTitleInput.value.trim().slice(0, 48);
+    localStorage.setItem(POSTER_TITLE_STORAGE_KEY, posterTitle);
   }
   if (startPersonInput) {
     const person = treeData.people.find((item) => (
@@ -1741,26 +1780,31 @@ function renderTreePresentation(generationData, peopleById) {
           </div>
         </div>
         <div>
-          <h4>Choose a poster layout</h4>
+          <h4>Choose a poster variation</h4>
           <div class="presentation-buttons">
-            <button type="button" class="btn-secondary ${posterLayout === 'family' ? 'active-presentation' : ''}" data-poster-layout="family">Family Tree</button>
-            <button type="button" class="btn-secondary ${posterLayout === 'generation' ? 'active-presentation' : ''}" data-poster-layout="generation">Generation Chart</button>
-            <button type="button" class="btn-secondary ${posterLayout === 'ancestor' ? 'active-presentation' : ''}" data-poster-layout="ancestor">Ancestor Chart</button>
+            <button type="button" class="btn-secondary ${posterVariation === 'heritage' ? 'active-presentation' : ''}" data-poster-variation="heritage">Heritage Tree</button>
+            <button type="button" class="btn-secondary ${posterVariation === 'minimal' ? 'active-presentation' : ''}" data-poster-variation="minimal">Minimal Family Chart</button>
+            <button type="button" class="btn-secondary ${posterVariation === 'ancestor' ? 'active-presentation' : ''}" data-poster-variation="ancestor">Ancestor Portrait</button>
           </div>
+          <p class="muted">Heritage Tree shows five generations. Minimal Family Chart organizes your tree by generation. Ancestor Portrait centers on one person and four direct generations.</p>
           ${focusSelector}${familySelector}
         </div>
         <div>
           <h4>Poster background</h4>
           <div class="presentation-buttons">
-            <button type="button" class="btn-secondary ${posterBackground === 'parchment' ? 'active-presentation' : ''}" data-poster-background="parchment">Vintage Parchment</button>
+            ${Object.entries(POSTER_BACKGROUND_IMAGES).map(([id, background]) => `<button type="button" class="btn-secondary ${posterBackgroundImage === id ? 'active-presentation' : ''}" data-poster-background-image="${id}">${background.label}</button>`).join('')}
           </div>
-          <p class="muted">The background is embedded in the downloaded poster image.</p>
+          <p class="muted">Choose the supplied Heritage Tree image or the parchment-only background. Add more original background images to the poster assets to offer more choices.</p>
+          <label class="poster-focus-label" for="posterTitle">Poster title</label>
+          <input id="posterTitle" type="text" maxlength="48" data-poster-title value="${escapeHtml(posterTitle)}" placeholder="The Smith Family">
+          <p class="muted">Add the family name you want printed. The background is embedded in the downloaded poster image.</p>
         </div>
       </div>
       ${canPrintUpdatedTree
         ? `<div class="presentation-print-actions">
             <button type="button" class="btn-add presentation-print-button" data-print-updated-tree>Print Your Personalized Tree</button>
             <button type="button" class="btn-secondary" data-download-poster-artwork>Download 18x24 Poster PNG</button>
+            <button type="button" class="btn-secondary" data-download-journal-cover>Download Journal Cover PNG</button>
           </div>`
         : '<p class="presentation-upgrade">Family Builder unlocks personalized tree printing, unlimited fixes, and research worksheets. <a href="#subscriptionWorkflows">Upgrade to Family Builder</a>.</p>'}
       <div class="keepsake-offer">
@@ -1808,28 +1852,52 @@ function buildAncestorLevels(focusPersonId, peopleById) {
   return levels.reverse();
 }
 
-function buildFamilyTreePoster(family, peopleById, colors) {
-  if (!family) return '<text x="2700" y="2700" text-anchor="middle" fill="#451a03" font-size="56">Choose a family group to create this poster.</text>';
-  const parents = [family.husbandId, family.wifeId].map((id) => peopleById.get(id)).filter(Boolean);
-  const children = (family.childrenIds || []).map((id) => peopleById.get(id)).filter(Boolean).slice(0, 8);
-  const card = (person, x, y) => `
-    <rect x="${x}" y="${y}" width="1400" height="220" rx="30" fill="${colors.card}" stroke="${colors.accent}" stroke-width="8"/>
-    <text x="${x + 55}" y="${y + 88}" fill="${colors.text}" font-family="Georgia, serif" font-size="50" font-weight="700">${escapeSvg(shortenPosterText(person.name || person.id))}</text>
-    <text x="${x + 55}" y="${y + 154}" fill="${colors.text}" font-family="Arial, sans-serif" font-size="34">${escapeSvg(shortenPosterText([extractYear(person.birthDate), person.birthPlace].filter(Boolean).join(' · '), 54))}</text>
-  `;
-  const parentCards = parents.map((person, index) => card(person, parents.length === 1 ? 2000 : 650 + index * 2100, 1850)).join('');
-  const childCards = children.map((person, index) => card(person, 350 + (index % 3) * 1700, 3850 + Math.floor(index / 3) * 360)).join('');
-  const childCenter = children.length ? 2700 : 0;
-  return `
-    <text x="2700" y="1350" text-anchor="middle" fill="${colors.accent}" font-family="Arial, sans-serif" font-size="56" font-weight="700">FAMILY TREE</text>
-    ${parentCards}
-    ${parents.length && children.length ? `<line x1="2700" y1="2070" x2="2700" y2="3500" stroke="${colors.accent}" stroke-width="12"/><line x1="700" y1="3500" x2="4700" y2="3500" stroke="${colors.accent}" stroke-width="12"/><line x1="${childCenter}" y1="3500" x2="${childCenter}" y2="3850" stroke="${colors.accent}" stroke-width="12"/>` : ''}
-    ${childCards}
-  `;
+function buildRootedFamilyTreePoster(groups, colors) {
+  const layout = [
+    { label: 'GENERATION 1', title: 'GREAT-GRANDPARENTS', y: 1450, slots: [[1120, 1450], [2600, 1450], [4080, 1450], [2600, 2020]] },
+    { label: 'GENERATION 2', title: 'GRANDPARENTS', y: 2460, slots: [[1500, 2460], [3700, 2460]] },
+    { label: 'GENERATION 3', title: 'PARENTS', y: 3420, slots: [[1500, 3420], [3700, 3420]] },
+    { label: 'GENERATION 4', title: 'CHILDREN', y: 4400, slots: [[760, 4400], [1900, 4400], [3040, 4400], [4180, 4400]] },
+    { label: 'GENERATION 5', title: 'GRANDCHILDREN', y: 5350, slots: [[760, 5350], [1900, 5350], [3040, 5350], [4180, 5350]] },
+  ];
+  const leafClusters = [
+    [760, 1220, 330], [1250, 1750, 300], [4600, 1220, 330], [4150, 1750, 300],
+    [980, 2900, 330], [4400, 2900, 330], [1240, 3900, 250], [4160, 3900, 250],
+  ].map(([x, y, radius]) => `<circle cx="${x}" cy="${y}" r="${radius}" fill="#667424" fill-opacity="0.6"/><circle cx="${x - 90}" cy="${y + 30}" r="${radius * 0.55}" fill="#8c962f" fill-opacity="0.58"/><circle cx="${x + 100}" cy="${y - 20}" r="${radius * 0.48}" fill="#4c601d" fill-opacity="0.55"/>`).join('');
+  const card = (person, x, y) => {
+    const lifeDates = [extractYear(person.birthDate), extractYear(person.deathDate)].filter(Boolean).join(' – ');
+    return `<g>
+      <rect x="${x}" y="${y}" width="1080" height="255" rx="26" fill="#fff9e9" fill-opacity="0.93" stroke="#58461b" stroke-width="13"/>
+      <rect x="${x + 22}" y="${y + 22}" width="1036" height="211" rx="16" fill="none" stroke="#b18a33" stroke-width="4"/>
+      <text x="${x + 540}" y="${y + 108}" text-anchor="middle" fill="#263314" font-family="Arial, sans-serif" font-size="45" font-weight="700">${escapeSvg(shortenPosterText(person.name || person.id, 31))}</text>
+      <text x="${x + 540}" y="${y + 170}" text-anchor="middle" fill="#4b442f" font-family="Arial, sans-serif" font-size="28">${escapeSvg(shortenPosterText([lifeDates, person.birthPlace].filter(Boolean).join(' · '), 50))}</text>
+    </g>`;
+  };
+  return `<g>
+    <path d="M2700 6150 C2540 5360 2520 4710 2650 3970 C2510 3440 2100 3020 1570 2580 M2730 6150 C2910 5100 2880 4500 2780 3910 C3000 3400 3490 2930 4020 2500 M2620 3960 C2200 3620 1640 3240 970 2860 M2820 3920 C3250 3580 3860 3230 4500 2840 M2670 3200 C2350 2650 1900 2020 1200 1450 M2850 3200 C3200 2600 3700 2000 4400 1450" fill="none" stroke="#4d3515" stroke-width="210" stroke-linecap="round"/>
+    <path d="M2700 6150 C2540 5360 2520 4710 2650 3970 C2510 3440 2100 3020 1570 2580 M2730 6150 C2910 5100 2880 4500 2780 3910 C3000 3400 3490 2930 4020 2500 M2620 3960 C2200 3620 1640 3240 970 2860 M2820 3920 C3250 3580 3860 3230 4500 2840 M2670 3200 C2350 2650 1900 2020 1200 1450 M2850 3200 C3200 2600 3700 2000 4400 1450" fill="none" stroke="#755127" stroke-width="76" stroke-linecap="round"/>
+    ${leafClusters}
+    ${layout.map((row, index) => {
+      const people = [...(groups.get(index + 1) || [])].slice(0, row.slots.length);
+      return `<g>
+        <rect x="290" y="${row.y + 24}" width="650" height="190" rx="16" fill="${index % 2 ? '#34584e' : '#586422'}" stroke="#e7d293" stroke-width="5"/>
+        <text x="615" y="${row.y + 95}" text-anchor="middle" fill="#fff9df" font-family="Arial, sans-serif" font-size="28" font-weight="700">${row.label}</text>
+        <text x="615" y="${row.y + 151}" text-anchor="middle" fill="#fff9df" font-family="Arial, sans-serif" font-size="31" font-weight="700">${row.title}</text>
+        ${people.map((person, personIndex) => card(person, ...row.slots[personIndex])).join('')}
+      </g>`;
+    }).join('')}
+  </g>`;
 }
-
 function posterBackgroundMarkup(colors) {
-  if (posterBackground !== 'parchment') return `<rect width="100%" height="100%" fill="${colors.background}"/>`;
+  const selectedBackground = POSTER_BACKGROUND_IMAGES[posterBackgroundImage] || POSTER_BACKGROUND_IMAGES.parchment;
+  if (selectedBackground.file) {
+    const imageUrl = new URL(selectedBackground.file, window.location.href).href;
+    return `
+      <rect width="100%" height="100%" fill="#ead4a6"/>
+      <image href="${escapeSvg(imageUrl)}" x="0" y="0" width="5400" height="7200" preserveAspectRatio="xMidYMid slice"/>
+      <rect width="100%" height="100%" fill="#fff7df" fill-opacity="0.16"/>
+    `;
+  }
 
   return `
     <defs>
@@ -1843,8 +1911,13 @@ function posterBackgroundMarkup(colors) {
     <path d="M0 950 C1200 760 2400 1130 5400 850 M0 6250 C1800 6000 3400 6460 5400 6140" fill="none" stroke="#a16207" stroke-opacity="0.16" stroke-width="55"/>
   `;
 }
-
 function posterThemeColors() {
+  if (posterVariation === 'minimal') {
+    return { background: '#f8fafc', accent: '#334155', card: '#ffffff', text: '#0f172a' };
+  }
+  if (posterVariation === 'ancestor') {
+    return { background: '#faf5ff', accent: '#6b21a8', card: '#ffffff', text: '#3b0764' };
+  }
   if (treeTheme === 'heritage') {
     return { background: '#fff8e7', accent: '#92400e', card: '#fffbeb', text: '#451a03' };
   }
@@ -1892,7 +1965,10 @@ async function downloadPosterArtwork() {
   }
 
   const generations = [...groups.keys()].sort((first, second) => first - second).slice(0, posterLayout === 'ancestor' ? 4 : 7);
-  const familyTitle = 'Your Family Tree';
+  const selectedFamily = treeData.families.find((family) => family.id === (posterFamilyId || treeData.families[0]?.id));
+  const selectedPerson = peopleById.get(selectedFamily?.husbandId) || peopleById.get(selectedFamily?.wifeId);
+  const inferredTitle = selectedPerson?.name ? `The ${String(selectedPerson.name).split(/\s+/).slice(-1)[0]} Family` : 'Your Family Tree';
+  const familyTitle = posterTitle || inferredTitle;
   const bandHeight = Math.floor(5400 / Math.max(generations.length, 1));
   const columns = 3;
   const cardHeight = 190;
@@ -1900,7 +1976,7 @@ async function downloadPosterArtwork() {
   const maxRows = Math.max(1, Math.floor((bandHeight - 250) / (cardHeight + rowGap)));
   const maxPeoplePerGeneration = columns * maxRows;
   const cards = posterLayout === 'family'
-    ? buildFamilyTreePoster(treeData.families.find((family) => family.id === (posterFamilyId || treeData.families[0]?.id)), peopleById, colors)
+    ? buildRootedFamilyTreePoster(groups, colors)
     : generations.map((generation, index) => {
     const people = groups.get(generation) || [];
     const visiblePeople = people.slice(0, maxPeoplePerGeneration);
@@ -1915,7 +1991,7 @@ async function downloadPosterArtwork() {
       const lifeDates = [extractYear(person.birthDate), extractYear(person.deathDate)].filter(Boolean).join(' - ');
       return `
         <rect x="${x}" y="${cardY}" width="${cardWidth}" height="${cardHeight}" rx="28" fill="${colors.card}" stroke="${colors.accent}" stroke-width="7"/>
-        <text x="${x + 55}" y="${cardY + 78}" fill="${colors.text}" font-family="Georgia, serif" font-size="48" font-weight="700">${escapeSvg(shortenPosterText(person.name || person.id))}</text>
+        <text x="${x + 55}" y="${cardY + 78}" fill="${colors.text}" font-family="Arial, sans-serif" font-size="48" font-weight="700">${escapeSvg(shortenPosterText(person.name || person.id))}</text>
         <text x="${x + 55}" y="${cardY + 138}" fill="${colors.text}" font-family="Arial, sans-serif" font-size="34">${escapeSvg(shortenPosterText([lifeDates, person.birthPlace].filter(Boolean).join(' · '), 54))}</text>
       `;
       }).join('');
@@ -1930,10 +2006,14 @@ async function downloadPosterArtwork() {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
     ${posterBackgroundMarkup(colors)}
     <rect x="150" y="150" width="5100" height="6900" rx="45" fill="none" stroke="${colors.accent}" stroke-width="12"/>
-    <text x="2700" y="470" text-anchor="middle" fill="${colors.accent}" font-family="Georgia, serif" font-size="132" font-weight="700">${escapeSvg(shortenPosterText(familyTitle, 48))}</text>
-    <text x="2700" y="590" text-anchor="middle" fill="${colors.text}" font-family="Arial, sans-serif" font-size="46">${posterLayout === 'ancestor' ? 'A personalized ancestor chart' : 'A personalized family history chart'}</text>
-    <text x="2700" y="690" text-anchor="middle" fill="${colors.text}" font-family="Arial, sans-serif" font-size="36">${posterLayout === 'ancestor' ? `${generations.length} ancestor levels shown` : `${treeData.people.length} people · ${treeData.families.length} families · ${generations.length} family groups shown`}</text>
+    <rect x="210" y="210" width="4980" height="6780" rx="32" fill="none" stroke="${colors.accent}" stroke-opacity="0.35" stroke-width="4"/>
+    <path d="M340 900 C520 720 700 720 880 900 M4520 900 C4700 720 4880 720 5060 900" fill="none" stroke="${colors.accent}" stroke-opacity="0.5" stroke-width="12"/>
+    <text x="2700" y="490" text-anchor="middle" fill="#263314" font-family="Arial, sans-serif" font-size="170" font-weight="800">${escapeSvg(shortenPosterText(familyTitle, 40)).toUpperCase()}</text>
+    <text x="2700" y="655" text-anchor="middle" fill="${colors.text}" font-family="Arial, sans-serif" font-size="58">${posterVariation === 'ancestor' ? 'A four-generation ancestor portrait' : posterVariation === 'minimal' ? 'A clean record of your family story' : 'Our roots run deep · Our love runs deeper'}</text>
+    ${posterVariation === 'heritage' ? '<path d="M2130 770 C2400 830 3000 830 3270 770" fill="none" stroke="#7a5a24" stroke-width="8"/>' : ''}
     ${cards}
+    <text x="2700" y="6610" text-anchor="middle" fill="${colors.text}" font-family="Arial, sans-serif" font-size="53" font-weight="700">${posterVariation === 'ancestor' ? 'A family story starts with the people who came before us.' : posterVariation === 'minimal' ? 'A timeless record of the people who shape your story.' : 'Like branches on a tree, we grow in different directions,'}</text>
+    ${posterVariation === 'heritage' ? '<text x="2700" y="6690" text-anchor="middle" fill="#4b3820" font-family="Arial, sans-serif" font-size="53" font-weight="700">yet our roots remain as one.</text>' : ''}
     <text x="2700" y="6930" text-anchor="middle" fill="${colors.text}" font-family="Arial, sans-serif" font-size="30">Created with Genealogy Tree Checker</text>
   </svg>`;
 
@@ -1944,6 +2024,41 @@ async function downloadPosterArtwork() {
   } catch (error) {
     setStatus(error.message || 'Could not create the poster PNG. Please try again in a current desktop browser.', 'error');
   }
+}
+
+function downloadJournalCover() {
+  if (!requireTier('print')) return;
+  if (!ensureTreeHasPeople('creating a journal cover')) return;
+
+  const width = 1800;
+  const height = 2700;
+  const title = posterTitle || 'Our Family Story';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+    <defs>
+      <linearGradient id="journalCover" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#f8edcf"/>
+        <stop offset="52%" stop-color="#e6c889"/>
+        <stop offset="100%" stop-color="#f8edcf"/>
+      </linearGradient>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#journalCover)"/>
+    <rect x="72" y="72" width="1656" height="2556" rx="28" fill="none" stroke="#6b4f20" stroke-width="16"/>
+    <rect x="104" y="104" width="1592" height="2492" rx="18" fill="none" stroke="#a77b30" stroke-width="5"/>
+    <path d="M900 1860 C860 1550 865 1290 895 1050 M895 1310 C700 1120 520 980 340 870 M900 1390 C1120 1200 1300 1010 1470 850 M890 1660 C670 1560 480 1480 320 1370 M910 1660 C1140 1550 1320 1470 1490 1360" fill="none" stroke="#5e4820" stroke-width="65" stroke-linecap="round"/>
+    <g fill="#6f7d2b" fill-opacity="0.9"><circle cx="370" cy="850" r="96"/><circle cx="515" cy="975" r="88"/><circle cx="690" cy="1110" r="82"/><circle cx="1430" cy="840" r="94"/><circle cx="1280" cy="980" r="86"/><circle cx="1115" cy="1120" r="78"/><circle cx="370" cy="1370" r="86"/><circle cx="560" cy="1470" r="78"/><circle cx="1440" cy="1360" r="86"/><circle cx="1250" cy="1470" r="78"/></g>
+    <text x="900" y="460" text-anchor="middle" fill="#2f3c16" font-family="Arial, sans-serif" font-size="82" font-weight="800">${escapeSvg(shortenPosterText(title, 30)).toUpperCase()}</text>
+    <text x="900" y="590" text-anchor="middle" fill="#5a4420" font-family="Arial, sans-serif" font-size="42">FAMILY HISTORY JOURNAL</text>
+    <text x="900" y="2110" text-anchor="middle" fill="#5a4420" font-family="Arial, sans-serif" font-size="42">Stories, memories, and discoveries</text>
+    <text x="900" y="2180" text-anchor="middle" fill="#5a4420" font-family="Arial, sans-serif" font-size="42">to pass from one generation to the next</text>
+    <path d="M680 2280 C760 2330 1040 2330 1120 2280" fill="none" stroke="#6b4f20" stroke-width="7"/>
+  </svg>`;
+
+  rasterizePosterSvg(svg, width, height)
+    .then((png) => {
+      downloadFile('family-history-journal-cover.png', png, 'image/png');
+      setStatus('Downloaded personalized journal cover PNG. Upload it to your matching Printify journal product.', 'success');
+    })
+    .catch((error) => setStatus(error.message || 'Could not create the journal cover PNG. Please try again in a current desktop browser.', 'error'));
 }
 
 function rasterizePosterSvg(svg, width, height) {
