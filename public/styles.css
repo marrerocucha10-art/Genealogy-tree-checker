@@ -3900,3 +3900,117 @@ input[type="file"] {
 .free-trial-perks li {
   margin-bottom: 0.25rem;
 }
+
+
+.product-detail-link {
+  color: #9a3412;
+  display: inline-block;
+  font-weight: 800;
+  margin-top: 16px;
+}
+
+.poster-product-hero {
+  background: linear-gradient(135deg, #fff7ed, #fef3c7);
+  border: 1px solid #fdba74;
+  border-radius: 16px;
+  display: grid;
+  gap: 28px;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.6fr);
+  margin-bottom: 28px;
+  padding: 30px;
+}
+
+.poster-product-hero h2,
+.poster-product-section h2 {
+  color: #78350f;
+  margin-bottom: 12px;
+}
+
+.poster-product-hero > div > p:not(.eyebrow),
+.poster-product-section {
+  color: #4b5563;
+  line-height: 1.6;
+}
+
+.poster-product-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 22px 0 14px;
+}
+
+.poster-product-actions .btn-add,
+.poster-product-actions .btn-secondary {
+  width: auto;
+}
+
+.poster-spec-card {
+  align-self: stretch;
+  background: #fffdf7;
+  border: 2px solid #a16207;
+  border-radius: 14px;
+  color: #78350f;
+  padding: 24px;
+}
+
+.poster-spec-card span {
+  display: block;
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.poster-spec-card strong {
+  display: block;
+  font-size: 1.1rem;
+  margin: 6px 0 18px;
+}
+
+.poster-spec-card p {
+  border-top: 1px solid #fde68a;
+  margin: 0;
+  padding: 10px 0;
+}
+
+.poster-product-section {
+  background: #fff;
+  border: 1px solid #fed7aa;
+  border-radius: 14px;
+  margin-bottom: 22px;
+  padding: 26px;
+}
+
+.poster-steps {
+  display: grid;
+  gap: 14px;
+  padding-left: 22px;
+}
+
+.poster-steps strong,
+.poster-includes-grid strong {
+  color: #78350f;
+}
+
+.poster-includes-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.poster-includes-grid p {
+  background: #fff7ed;
+  border-radius: 10px;
+  margin: 0;
+  padding: 16px;
+}
+
+@media (max-width: 600px) {
+  .poster-product-hero,
+  .poster-includes-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .poster-product-actions .btn-add,
+  .poster-product-actions .btn-secondary {
+    width: 100%;
+  }
+}
