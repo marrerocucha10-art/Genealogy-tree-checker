@@ -2695,7 +2695,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Somebody who has already chosen a plan is past being sold to. The
     // introduction, the previews and the plan invitation are put away so the
     // page opens on the one thing they came back for: their file.
-    for (const selector of ['.welcome-panel', '.research-video-preview', '.workflow-preview', '#freeReviewInvitation', '.options-section']) {
+    for (const selector of ['.friendly-hero', '.friendly-intro', '.friendly-services', '.cinematic-feature', '.accuracy-checklist', '.library-section', '.testimonial', '#freeReviewInvitation', '.options-section']) {
       const section = document.querySelector(selector);
       if (section) section.hidden = true;
     }

@@ -4214,3 +4214,32 @@ input[type="file"] {
   .accuracy-checklist ul { grid-template-columns: 1fr; }
   .accuracy-checklist li:nth-child(odd) { margin-right: 0; }
 }
+
+/* Friendly Genealogy marketing homepage */
+.friendly-hero { color: #fffdf9; min-height: 650px; overflow: hidden; position: relative; }
+.friendly-hero-video, .friendly-hero-overlay { height: 100%; inset: 0; object-fit: cover; position: absolute; width: 100%; }
+.friendly-hero-overlay { background: linear-gradient(90deg, rgba(15,42,33,.9) 0%, rgba(15,42,33,.66) 45%, rgba(15,42,33,.15) 100%); }
+.friendly-hero-copy { max-width: 780px; padding: clamp(80px, 12vw, 175px) clamp(24px, 10vw, 150px); position: relative; z-index: 1; }
+.friendly-hero h1 { font-size: clamp(3.4rem, 7vw, 6.8rem); letter-spacing: -.07em; line-height: .87; }
+.friendly-hero-copy > p:not(.hero-kicker) { color: #e8eee7; font-size: 1.16rem; line-height: 1.65; margin: 28px 0 34px; max-width: 570px; }
+.friendly-intro { align-items: center; background: #edb45e; display: grid; gap: 50px; grid-template-columns: 1fr 1fr; padding: clamp(50px, 8vw, 105px); }
+.friendly-intro h2 { color: #18372d; font-size: clamp(2.5rem, 4.5vw, 4.6rem); letter-spacing: -.06em; line-height: .9; }
+.friendly-intro > p { color: #243f32; font-size: 1.1rem; line-height: 1.7; max-width: 510px; }
+.cinematic-feature { background: #18372d; color: #fffdf9; display: grid; gap: clamp(30px, 6vw, 90px); grid-template-columns: minmax(240px, .8fr) minmax(300px, 1.15fr); padding: clamp(55px, 8vw, 120px); }
+.cinematic-copy { align-self: center; }
+.cinematic-copy h2 { font-size: clamp(2.5rem, 4vw, 4.3rem); letter-spacing: -.06em; line-height: .92; }
+.cinematic-copy > p:not(.eyebrow) { color: #d4dfd4; line-height: 1.7; margin-top: 22px; }
+.cinematic-copy .eyebrow { color: #edb45e; }
+.cinematic-copy .text-link { border-color: #fffdf9; color: #fffdf9; }
+.cinematic-video { align-self: center; background: #0c2018; max-height: 475px; width: 100%; }
+.library-section { background: #f8f4ed; padding: clamp(55px, 8vw, 110px); }
+.library-grid { display: grid; gap: 18px; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0 auto; max-width: 1100px; }
+.library-grid article { background: #fffdf9; border-bottom: 4px solid #18372d; min-height: 230px; padding: 28px; }
+.library-grid p { color: #b07120; font-size: .75rem; font-weight: 800; letter-spacing: .12em; }
+.library-grid h3 { color: #18372d; font-size: 1.35rem; line-height: 1.15; margin: 22px 0 30px; }
+.library-grid a { color: #18372d; font-weight: 800; text-decoration: none; }
+.testimonial { background: #dbe8dc; padding: clamp(55px, 8vw, 115px) 22px; text-align: center; }
+.testimonial blockquote { color: #18372d; font-size: clamp(1.8rem, 3.6vw, 3.35rem); font-weight: 700; letter-spacing: -.04em; line-height: 1.15; margin: auto; max-width: 950px; }
+.testimonial p { color: #40574a; font-size: .8rem; font-weight: 800; letter-spacing: .09em; margin-top: 28px; }
+.testimonial span { font-weight: 400; letter-spacing: 0; margin-left: 8px; }
+@media (max-width: 760px) { .friendly-intro, .cinematic-feature { grid-template-columns: 1fr; } .library-grid { grid-template-columns: 1fr; } .friendly-hero { min-height: 590px; } .friendly-hero-overlay { background: rgba(15,42,33,.74); } }
