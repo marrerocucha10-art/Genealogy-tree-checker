@@ -4191,3 +4191,26 @@ input[type="file"] {
   .home-page .research-video { box-shadow: 10px 10px 0 #dbe8dc; }
   .home-page .workflow-preview { padding-left: 24px; padding-right: 24px; }
 }
+
+.home-page .friendly-services { background: #f8f4ed; padding: clamp(58px, 8vw, 110px); }
+.friendly-section-heading { display: grid; gap: 12px; margin: 0 auto 44px; max-width: 700px; text-align: center; }
+.friendly-section-heading h2, .accuracy-checklist h2 { color: #18372d; font-size: clamp(2.2rem, 4vw, 3.75rem); letter-spacing: -.045em; line-height: 1; }
+.friendly-section-heading > p:not(.eyebrow), .accuracy-checklist > div > p:not(.eyebrow) { color: #526358; line-height: 1.65; }
+.friendly-service-grid { display: grid; gap: 18px; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: auto; max-width: 1100px; }
+.friendly-service-grid article { background: #fffdf9; border-top: 4px solid #edb45e; display: flex; flex-direction: column; min-height: 280px; padding: 28px; }
+.friendly-service-grid span { color: #7d9b84; font-size: .8rem; font-weight: 800; letter-spacing: .12em; }
+.friendly-service-grid h3 { color: #18372d; font-size: 1.45rem; margin: 22px 0 12px; }
+.friendly-service-grid p { color: #526358; line-height: 1.55; }
+.friendly-service-grid a { color: #18372d; font-size: .9rem; font-weight: 800; margin-top: auto; padding-top: 24px; text-decoration: none; }
+.friendly-service-grid b { color: #ba7922; font-size: 1.2rem; margin-left: 6px; }
+.accuracy-checklist { background: #fffdf9; display: grid; gap: clamp(35px, 8vw, 110px); grid-template-columns: minmax(260px, .72fr) minmax(320px, 1.15fr); padding: clamp(55px, 8vw, 110px); }
+.accuracy-checklist ul { display: grid; gap: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); list-style: none; }
+.accuracy-checklist li { border-bottom: 1px solid #cfdbd0; display: grid; gap: 7px; padding: 18px 12px 18px 0; }
+.accuracy-checklist li:nth-child(odd) { margin-right: 25px; }
+.accuracy-checklist strong { color: #18372d; }
+.accuracy-checklist span { color: #65756a; font-size: .9rem; line-height: 1.45; }
+@media (max-width: 760px) {
+  .friendly-service-grid, .accuracy-checklist { grid-template-columns: 1fr; }
+  .accuracy-checklist ul { grid-template-columns: 1fr; }
+  .accuracy-checklist li:nth-child(odd) { margin-right: 0; }
+}
