@@ -20,6 +20,12 @@ const POSTER_BACKGROUND_STORAGE_KEY = 'familyTreePosterBackground';
 const POSTER_FOCUS_PERSON_STORAGE_KEY = 'familyTreePosterFocusPerson';
 const POSTER_FAMILY_STORAGE_KEY = 'familyTreePosterFamily';
 const POSTER_TITLE_STORAGE_KEY = 'familyTreePosterTitle';
+const POSTER_VARIATION_STORAGE_KEY = 'familyTreePosterVariation';
+const POSTER_BACKGROUND_IMAGE_STORAGE_KEY = 'familyTreePosterBackgroundImage';
+const POSTER_BACKGROUND_IMAGES = {
+  heritageTree: { label: 'Heritage Tree Image', file: 'ChatGPT%20Image%20Aug%2027%2C%202026%20at%2009_58_26%20PM.png' },
+  parchment: { label: 'Vintage Parchment', file: '' },
+};
 const GEDCOM_BACKUP_DATABASE = 'genealogyTreeCheckerBackups';
 const GEDCOM_BACKUP_STORE = 'gedcomFiles';
 const GEDCOM_BACKUP_ID = 'latest';
@@ -39,6 +45,9 @@ let posterBackground = localStorage.getItem(POSTER_BACKGROUND_STORAGE_KEY) || 'p
 let posterFocusPersonId = localStorage.getItem(POSTER_FOCUS_PERSON_STORAGE_KEY) || '';
 let posterFamilyId = localStorage.getItem(POSTER_FAMILY_STORAGE_KEY) || '';
 let posterTitle = localStorage.getItem(POSTER_TITLE_STORAGE_KEY) || '';
+let posterVariation = localStorage.getItem(POSTER_VARIATION_STORAGE_KEY) || 'heritage';
+let posterBackgroundImage = localStorage.getItem(POSTER_BACKGROUND_IMAGE_STORAGE_KEY) || 'heritageTree';
+posterLayout = posterVariation === 'ancestor' ? 'ancestor' : posterVariation === 'minimal' ? 'generation' : 'family';
 let currentTier = localStorage.getItem(SUBSCRIPTION_STORAGE_KEY) || 'free';
 let billingInterval = localStorage.getItem(BILLING_INTERVAL_STORAGE_KEY) || 'monthly';
 let stripeConfig = null;
@@ -286,10 +295,28 @@ familyTreeDiv.addEventListener('click', (event) => {
     return;
   }
 
+  const posterVariationButton = event.target.closest('[data-poster-variation]');
+  if (posterVariationButton) {
+    posterVariation = posterVariationButton.dataset.posterVariation;
+    posterLayout = posterVariation === 'ancestor' ? 'ancestor' : posterVariation === 'minimal' ? 'generation' : 'family';
+    localStorage.setItem(POSTER_VARIATION_STORAGE_KEY, posterVariation);
+    localStorage.setItem(POSTER_LAYOUT_STORAGE_KEY, posterLayout);
+    renderFamilyTree();
+    return;
+  }
+
   const posterLayoutButton = event.target.closest('[data-poster-layout]');
   if (posterLayoutButton) {
     posterLayout = posterLayoutButton.dataset.posterLayout;
     localStorage.setItem(POSTER_LAYOUT_STORAGE_KEY, posterLayout);
+    renderFamilyTree();
+    return;
+  }
+
+  const posterBackgroundImageButton = event.target.closest('[data-poster-background-image]');
+  if (posterBackgroundImageButton) {
+    posterBackgroundImage = posterBackgroundImageButton.dataset.posterBackgroundImage;
+    localStorage.setItem(POSTER_BACKGROUND_IMAGE_STORAGE_KEY, posterBackgroundImage);
     renderFamilyTree();
     return;
   }
@@ -1748,19 +1775,21 @@ function renderTreePresentation(generationData, peopleById) {
           </div>
         </div>
         <div>
-          <h4>Choose a poster layout</h4>
+          <h4>Choose a poster variation</h4>
           <div class="presentation-buttons">
-            <button type="button" class="btn-secondary ${posterLayout === 'family' ? 'active-presentation' : ''}" data-poster-layout="family">Family Tree</button>
-            <button type="button" class="btn-secondary ${posterLayout === 'generation' ? 'active-presentation' : ''}" data-poster-layout="generation">Generation Chart</button>
-            <button type="button" class="btn-secondary ${posterLayout === 'ancestor' ? 'active-presentation' : ''}" data-poster-layout="ancestor">Ancestor Chart</button>
+            <button type="button" class="btn-secondary ${posterVariation === 'heritage' ? 'active-presentation' : ''}" data-poster-variation="heritage">Heritage Tree</button>
+            <button type="button" class="btn-secondary ${posterVariation === 'minimal' ? 'active-presentation' : ''}" data-poster-variation="minimal">Minimal Family Chart</button>
+            <button type="button" class="btn-secondary ${posterVariation === 'ancestor' ? 'active-presentation' : ''}" data-poster-variation="ancestor">Ancestor Portrait</button>
           </div>
+          <p class="muted">Heritage Tree shows five generations. Minimal Family Chart organizes your tree by generation. Ancestor Portrait centers on one person and four direct generations.</p>
           ${focusSelector}${familySelector}
         </div>
         <div>
           <h4>Poster background</h4>
           <div class="presentation-buttons">
-            <button type="button" class="btn-secondary ${posterBackground === 'parchment' ? 'active-presentation' : ''}" data-poster-background="parchment">Vintage Parchment</button>
+            ${Object.entries(POSTER_BACKGROUND_IMAGES).map(([id, background]) => `<button type="button" class="btn-secondary ${posterBackgroundImage === id ? 'active-presentation' : ''}" data-poster-background-image="${id}">${background.label}</button>`).join('')}
           </div>
+          <p class="muted">Choose the supplied Heritage Tree image or the parchment-only background. Add more original background images to the poster assets to offer more choices.</p>
           <label class="poster-focus-label" for="posterTitle">Poster title</label>
           <input id="posterTitle" type="text" maxlength="48" data-poster-title value="${escapeHtml(posterTitle)}" placeholder="The Smith Family">
           <p class="muted">Add the family name you want printed. The background is embedded in the downloaded poster image.</p>
@@ -1854,7 +1883,15 @@ function buildRootedFamilyTreePoster(groups, colors) {
   </g>`;
 }
 function posterBackgroundMarkup(colors) {
-  if (posterBackground !== 'parchment') return `<rect width="100%" height="100%" fill="${colors.background}"/>`;
+  const selectedBackground = POSTER_BACKGROUND_IMAGES[posterBackgroundImage] || POSTER_BACKGROUND_IMAGES.parchment;
+  if (selectedBackground.file) {
+    const imageUrl = new URL(selectedBackground.file, window.location.href).href;
+    return `
+      <rect width="100%" height="100%" fill="#ead4a6"/>
+      <image href="${escapeSvg(imageUrl)}" x="0" y="0" width="5400" height="7200" preserveAspectRatio="xMidYMid slice"/>
+      <rect width="100%" height="100%" fill="#fff7df" fill-opacity="0.16"/>
+    `;
+  }
 
   return `
     <defs>
@@ -1868,8 +1905,13 @@ function posterBackgroundMarkup(colors) {
     <path d="M0 950 C1200 760 2400 1130 5400 850 M0 6250 C1800 6000 3400 6460 5400 6140" fill="none" stroke="#a16207" stroke-opacity="0.16" stroke-width="55"/>
   `;
 }
-
 function posterThemeColors() {
+  if (posterVariation === 'minimal') {
+    return { background: '#f8fafc', accent: '#334155', card: '#ffffff', text: '#0f172a' };
+  }
+  if (posterVariation === 'ancestor') {
+    return { background: '#faf5ff', accent: '#6b21a8', card: '#ffffff', text: '#3b0764' };
+  }
   if (treeTheme === 'heritage') {
     return { background: '#fff8e7', accent: '#92400e', card: '#fffbeb', text: '#451a03' };
   }
@@ -1961,11 +2003,11 @@ async function downloadPosterArtwork() {
     <rect x="210" y="210" width="4980" height="6780" rx="32" fill="none" stroke="${colors.accent}" stroke-opacity="0.35" stroke-width="4"/>
     <path d="M340 900 C520 720 700 720 880 900 M4520 900 C4700 720 4880 720 5060 900" fill="none" stroke="${colors.accent}" stroke-opacity="0.5" stroke-width="12"/>
     <text x="2700" y="490" text-anchor="middle" fill="#263314" font-family="Arial, sans-serif" font-size="170" font-weight="800">${escapeSvg(shortenPosterText(familyTitle, 40)).toUpperCase()}</text>
-    <text x="2700" y="655" text-anchor="middle" fill="#4b3820" font-family="Arial, sans-serif" font-size="58">Our roots run deep · Our love runs deeper</text>
-    <path d="M2130 770 C2400 830 3000 830 3270 770" fill="none" stroke="#7a5a24" stroke-width="8"/>
+    <text x="2700" y="655" text-anchor="middle" fill="${colors.text}" font-family="Arial, sans-serif" font-size="58">${posterVariation === 'ancestor' ? 'A four-generation ancestor portrait' : posterVariation === 'minimal' ? 'A clean record of your family story' : 'Our roots run deep · Our love runs deeper'}</text>
+    ${posterVariation === 'heritage' ? '<path d="M2130 770 C2400 830 3000 830 3270 770" fill="none" stroke="#7a5a24" stroke-width="8"/>' : ''}
     ${cards}
-    <text x="2700" y="6610" text-anchor="middle" fill="#4b3820" font-family="Arial, sans-serif" font-size="53" font-weight="700">Like branches on a tree, we grow in different directions,</text>
-    <text x="2700" y="6690" text-anchor="middle" fill="#4b3820" font-family="Arial, sans-serif" font-size="53" font-weight="700">yet our roots remain as one.</text>
+    <text x="2700" y="6610" text-anchor="middle" fill="${colors.text}" font-family="Arial, sans-serif" font-size="53" font-weight="700">${posterVariation === 'ancestor' ? 'A family story starts with the people who came before us.' : posterVariation === 'minimal' ? 'A timeless record of the people who shape your story.' : 'Like branches on a tree, we grow in different directions,'}</text>
+    ${posterVariation === 'heritage' ? '<text x="2700" y="6690" text-anchor="middle" fill="#4b3820" font-family="Arial, sans-serif" font-size="53" font-weight="700">yet our roots remain as one.</text>' : ''}
     <text x="2700" y="6930" text-anchor="middle" fill="${colors.text}" font-family="Arial, sans-serif" font-size="30">Created with Genealogy Tree Checker</text>
   </svg>`;
 
