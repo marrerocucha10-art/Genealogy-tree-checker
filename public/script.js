@@ -331,6 +331,11 @@ familyTreeDiv.addEventListener('click', (event) => {
 
   if (event.target.closest('[data-download-poster-artwork]')) {
     downloadPosterArtwork();
+    return;
+  }
+
+  if (event.target.closest('[data-download-journal-cover]')) {
+    downloadJournalCover();
   }
 });
 
@@ -1799,6 +1804,7 @@ function renderTreePresentation(generationData, peopleById) {
         ? `<div class="presentation-print-actions">
             <button type="button" class="btn-add presentation-print-button" data-print-updated-tree>Print Your Personalized Tree</button>
             <button type="button" class="btn-secondary" data-download-poster-artwork>Download 18x24 Poster PNG</button>
+            <button type="button" class="btn-secondary" data-download-journal-cover>Download Journal Cover PNG</button>
           </div>`
         : '<p class="presentation-upgrade">Family Builder unlocks personalized tree printing, unlimited fixes, and research worksheets. <a href="#subscriptionWorkflows">Upgrade to Family Builder</a>.</p>'}
       <div class="keepsake-offer">
@@ -2018,6 +2024,41 @@ async function downloadPosterArtwork() {
   } catch (error) {
     setStatus(error.message || 'Could not create the poster PNG. Please try again in a current desktop browser.', 'error');
   }
+}
+
+function downloadJournalCover() {
+  if (!requireTier('print')) return;
+  if (!ensureTreeHasPeople('creating a journal cover')) return;
+
+  const width = 1800;
+  const height = 2700;
+  const title = posterTitle || 'Our Family Story';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+    <defs>
+      <linearGradient id="journalCover" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#f8edcf"/>
+        <stop offset="52%" stop-color="#e6c889"/>
+        <stop offset="100%" stop-color="#f8edcf"/>
+      </linearGradient>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#journalCover)"/>
+    <rect x="72" y="72" width="1656" height="2556" rx="28" fill="none" stroke="#6b4f20" stroke-width="16"/>
+    <rect x="104" y="104" width="1592" height="2492" rx="18" fill="none" stroke="#a77b30" stroke-width="5"/>
+    <path d="M900 1860 C860 1550 865 1290 895 1050 M895 1310 C700 1120 520 980 340 870 M900 1390 C1120 1200 1300 1010 1470 850 M890 1660 C670 1560 480 1480 320 1370 M910 1660 C1140 1550 1320 1470 1490 1360" fill="none" stroke="#5e4820" stroke-width="65" stroke-linecap="round"/>
+    <g fill="#6f7d2b" fill-opacity="0.9"><circle cx="370" cy="850" r="96"/><circle cx="515" cy="975" r="88"/><circle cx="690" cy="1110" r="82"/><circle cx="1430" cy="840" r="94"/><circle cx="1280" cy="980" r="86"/><circle cx="1115" cy="1120" r="78"/><circle cx="370" cy="1370" r="86"/><circle cx="560" cy="1470" r="78"/><circle cx="1440" cy="1360" r="86"/><circle cx="1250" cy="1470" r="78"/></g>
+    <text x="900" y="460" text-anchor="middle" fill="#2f3c16" font-family="Arial, sans-serif" font-size="82" font-weight="800">${escapeSvg(shortenPosterText(title, 30)).toUpperCase()}</text>
+    <text x="900" y="590" text-anchor="middle" fill="#5a4420" font-family="Arial, sans-serif" font-size="42">FAMILY HISTORY JOURNAL</text>
+    <text x="900" y="2110" text-anchor="middle" fill="#5a4420" font-family="Arial, sans-serif" font-size="42">Stories, memories, and discoveries</text>
+    <text x="900" y="2180" text-anchor="middle" fill="#5a4420" font-family="Arial, sans-serif" font-size="42">to pass from one generation to the next</text>
+    <path d="M680 2280 C760 2330 1040 2330 1120 2280" fill="none" stroke="#6b4f20" stroke-width="7"/>
+  </svg>`;
+
+  rasterizePosterSvg(svg, width, height)
+    .then((png) => {
+      downloadFile('family-history-journal-cover.png', png, 'image/png');
+      setStatus('Downloaded personalized journal cover PNG. Upload it to your matching Printify journal product.', 'success');
+    })
+    .catch((error) => setStatus(error.message || 'Could not create the journal cover PNG. Please try again in a current desktop browser.', 'error'));
 }
 
 function rasterizePosterSvg(svg, width, height) {
