@@ -4014,3 +4014,92 @@ input[type="file"] {
     width: 100%;
   }
 }
+
+
+.featured-memorial-product {
+  background: linear-gradient(145deg, #f8fafc, #e2e8f0);
+  border-color: #64748b;
+}
+
+.memorial-product-hero {
+  background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+  border: 1px solid #94a3b8;
+  border-radius: 16px;
+  display: grid;
+  gap: 28px;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.6fr);
+  margin-bottom: 28px;
+  padding: 30px;
+}
+
+.memorial-product-hero h2,
+.memorial-privacy-note h2 {
+  color: #334155;
+  margin-bottom: 12px;
+}
+
+.memorial-product-hero > div > p:not(.eyebrow),
+.memorial-privacy-note {
+  color: #475569;
+  line-height: 1.6;
+}
+
+.memorial-qr-card {
+  align-items: center;
+  background: #fff;
+  border: 2px solid #475569;
+  border-radius: 14px;
+  color: #334155;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 290px;
+  padding: 24px;
+  text-align: center;
+}
+
+.memorial-qr-card strong {
+  font-size: 1.25rem;
+  margin-top: 18px;
+}
+
+.memorial-qr-card span {
+  margin-top: 6px;
+}
+
+.memorial-qr-pattern {
+  background: repeating-linear-gradient(90deg, #1e293b 0 12px, transparent 12px 24px), repeating-linear-gradient(#1e293b 0 12px, transparent 12px 24px);
+  height: 150px;
+  position: relative;
+  width: 150px;
+}
+
+.memorial-qr-pattern i {
+  background: #fff;
+  border: 12px solid #1e293b;
+  height: 42px;
+  position: absolute;
+  width: 42px;
+}
+
+.memorial-qr-pattern i:nth-child(1) { left: 0; top: 0; }
+.memorial-qr-pattern i:nth-child(2) { right: 0; top: 0; }
+.memorial-qr-pattern i:nth-child(3) { bottom: 0; left: 0; }
+.memorial-qr-pattern b { background: #fff; height: 10px; position: absolute; width: 10px; }
+.memorial-qr-pattern b:nth-of-type(1) { left: 70px; top: 65px; }
+.memorial-qr-pattern b:nth-of-type(2) { left: 105px; top: 82px; }
+.memorial-qr-pattern b:nth-of-type(3) { left: 68px; top: 112px; }
+.memorial-qr-pattern b:nth-of-type(4) { left: 104px; top: 122px; }
+.memorial-qr-pattern b:nth-of-type(5) { left: 80px; top: 92px; }
+
+.memorial-privacy-note {
+  background: #eff6ff;
+  border: 1px solid #93c5fd;
+  border-radius: 14px;
+  margin-bottom: 24px;
+  padding: 24px;
+}
+
+@media (max-width: 600px) {
+  .memorial-product-hero { grid-template-columns: 1fr; }
+}
