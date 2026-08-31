@@ -2686,7 +2686,8 @@ document.addEventListener('DOMContentLoaded', () => {
   updateGedcomUploadLimit();
   loadSubscriptionConfig();
   loadSubscriptionStatusFromCustomer();
-  renderFamilyTree();
+  const isUploadFlow = startupParams.get('start') === 'upload';
+  if (isUploadFlow) renderFamilyTree();
   if (localStorage.getItem(PLAN_SELECTION_STORAGE_KEY)) {
     welcomeStartAction.href = '/?start=upload';
     welcomeStartAction.textContent = 'Upload Your Family File';
