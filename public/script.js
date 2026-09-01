@@ -15,6 +15,7 @@ const TREE_REVIEW_URL = IS_ADMINISTRATION_WORKSPACE ? 'tree.html?admin_review=tr
 const ERROR_REVIEW_URL = IS_ADMINISTRATION_WORKSPACE ? 'errors.html?admin_review=true' : 'errors.html';
 const ERROR_PROGRESS_STORAGE_KEY = `${STORAGE_KEY}:errorProgress`;
 const TREE_THEME_STORAGE_KEY = 'familyTreePresentationTheme';
+const FREE_PRINT_PREVIEW_STORAGE_KEY = `${STORAGE_KEY}:freePrintPreviewUsed`;
 const POSTER_LAYOUT_STORAGE_KEY = 'familyTreePosterLayout';
 const POSTER_BACKGROUND_STORAGE_KEY = 'familyTreePosterBackground';
 const POSTER_FOCUS_PERSON_STORAGE_KEY = 'familyTreePosterFocusPerson';
@@ -60,10 +61,10 @@ const SUBSCRIPTION_TIERS = {
   free: {
     name: 'Basic',
     rank: 0,
-    description: 'Upload a GEDCOM file and fix five duplicate records and five other errors at no charge.',
+    description: 'Upload a GEDCOM file, print one preview, and review up to five possible errors at no charge.',
     monthlyPrice: 0,
     annualPrice: 0,
-    features: ['GEDCOM uploads up to 150 MB', 'Fix 5 duplicates and 5 other errors', 'Choose a plan to fix the rest'],
+    features: ['GEDCOM uploads up to 150 MB', 'Review up to 5 possible errors', 'One printable tree preview', 'Choose a plan to fix the rest'],
   },
   personal: {
     name: 'Family Builder',
@@ -591,12 +592,14 @@ familyForm?.addEventListener('submit', (event) => {
 });
 
 printTreeButton?.addEventListener('click', () => {
-  if (!requireTier('print')) return;
+  const isFreePrintPreview = currentTier === 'free' && !localStorage.getItem(FREE_PRINT_PREVIEW_STORAGE_KEY);
+  if (!isFreePrintPreview && !requireTier('print')) return;
   if (!treeData.people.length) {
     setStatus('Upload or add family members before printing the tree.', 'error');
     return;
   }
 
+  if (isFreePrintPreview) localStorage.setItem(FREE_PRINT_PREVIEW_STORAGE_KEY, 'true');
   window.print();
 });
 

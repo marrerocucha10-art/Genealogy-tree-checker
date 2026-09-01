@@ -18,30 +18,28 @@ const SUBSCRIPTION_STORAGE_KEY = IS_ADMINISTRATION_WORKSPACE ? 'familyTreeAdmini
 const PLAN_SELECTION_STORAGE_KEY = IS_ADMINISTRATION_WORKSPACE ? 'familyTreeAdministrationReviewPlanSelected' : 'familyTreePlanSelected';
 const SUBSCRIPTION_STORE_URL = IS_ADMINISTRATION_WORKSPACE ? 'store.html?admin_review=true#subscriptions' : 'store.html#subscriptions';
 const ERROR_BATCH_SIZE = 10;
-// The free preview is five duplicate corrections and five other corrections.
-// They are separate allowances so combining duplicates never uses up the
-// chance to fix dates, places or relationships.
+// The free preview includes up to five real corrections, with possible duplicates shown first.
 const BASIC_ERROR_REVIEW_LIMIT = 5;
 const FREE_DUPLICATE_FIX_LIMIT = 5;
 
 function getFreeDuplicatesUsed(progress) {
-  const others = new Set(progress?.completedNonDuplicateIssueIds || []);
-  return new Set([
-    ...(progress?.completedDuplicateIssueIds || []),
-    ...(progress?.completedIssueIds || []).filter((id) => !others.has(id)),
-  ]).size;
+  return new Set(progress?.completedDuplicateIssueIds || []).size;
 }
 
 function getFreeOtherUsed(progress) {
   return new Set(progress?.completedNonDuplicateIssueIds || []).size;
 }
 
+function getFreeReviewsUsed(progress) {
+  return getFreeDuplicatesUsed(progress) + getFreeOtherUsed(progress);
+}
+
 function getFreeDuplicatesLeft(progress) {
-  return Math.max(FREE_DUPLICATE_FIX_LIMIT - getFreeDuplicatesUsed(progress), 0);
+  return Math.max(BASIC_ERROR_REVIEW_LIMIT - getFreeReviewsUsed(progress), 0);
 }
 
 function getFreeOtherLeft(progress) {
-  return Math.max(BASIC_ERROR_REVIEW_LIMIT - getFreeOtherUsed(progress), 0);
+  return Math.max(BASIC_ERROR_REVIEW_LIMIT - getFreeReviewsUsed(progress), 0);
 }
 
 // The whole free preview is the five duplicates and five other errors the
@@ -50,10 +48,7 @@ function getFreeOtherLeft(progress) {
 function getFreePreviewErrors(visibleGenerationErrors) {
   const duplicates = visibleGenerationErrors.filter(isDuplicateIssue);
   const others = visibleGenerationErrors.filter((issue) => !isDuplicateIssue(issue));
-  return [
-    ...duplicates.slice(0, FREE_DUPLICATE_FIX_LIMIT),
-    ...others.slice(0, BASIC_ERROR_REVIEW_LIMIT),
-  ];
+  return [...duplicates, ...others].slice(0, BASIC_ERROR_REVIEW_LIMIT);
 }
 const ERROR_REVIEW_ORDER_VERSION = 10;
 const VISIBLE_REVIEW_GENERATION_COUNT = 5;
@@ -412,7 +407,7 @@ function renderBasicPlanOptions(errors, progress) {
   if (!duplicatesLeft && !othersLeft) {
     return `
       <section class="assistance-options free-trial-complete">
-        <h2>You finished all ${FREE_DUPLICATE_FIX_LIMIT + BASIC_ERROR_REVIEW_LIMIT} free corrections</h2>
+        <h2>You finished all ${BASIC_ERROR_REVIEW_LIMIT} free corrections</h2>
         <p>That is real progress on your family history. Choose a plan to keep going through the rest of your tree, and your finished work stays exactly where it is.</p>
         <ul class="free-trial-perks">
           <li>Unlimited error corrections, duplicates included</li>
@@ -426,7 +421,7 @@ function renderBasicPlanOptions(errors, progress) {
     `;
   }
 
-  const freeReviewMessage = `Your free preview covers ${FREE_DUPLICATE_FIX_LIMIT} duplicate corrections and ${BASIC_ERROR_REVIEW_LIMIT} other corrections. ${duplicatesLeft} duplicate${duplicatesLeft === 1 ? '' : 's'} and ${othersLeft} other error${othersLeft === 1 ? '' : 's'} left.`;
+  const freeReviewMessage = `Your free preview includes up to ${BASIC_ERROR_REVIEW_LIMIT} corrections. ${Math.max(BASIC_ERROR_REVIEW_LIMIT - getFreeReviewsUsed(progress), 0)} correction${Math.max(BASIC_ERROR_REVIEW_LIMIT - getFreeReviewsUsed(progress), 0) === 1 ? '' : 's'} left.`;
 
   return `
     <section class="assistance-options free-trial-remaining">
@@ -1467,7 +1462,7 @@ function applySafeBatchFixes(treeData, groups, progress) {
 function completeDuplicateMerge(treeData, fix) {
   const progress = getProgress();
   if (getCurrentTier() === 'free' && !getFreeDuplicatesLeft(progress)) {
-    throw new Error(`Your free preview covers ${FREE_DUPLICATE_FIX_LIMIT} duplicate corrections. Choose a plan to keep combining duplicate records.`);
+    throw new Error(`Your free preview includes ${BASIC_ERROR_REVIEW_LIMIT} corrections. Choose a plan to keep correcting your tree.`);
   }
 
   const survivor = treeData?.people?.find((person) => person.id === fix.survivorId);
@@ -1915,7 +1910,7 @@ workspace.addEventListener('click', (event) => {
     const treeData = getTreeData();
     const progress = getProgress();
     if (getCurrentTier() === 'free' && !getFreeDuplicatesLeft(progress)) {
-      alert(`Your free preview covers ${FREE_DUPLICATE_FIX_LIMIT} duplicate corrections. Choose a plan to keep combining duplicate records.`);
+      alert(`Your free preview includes ${BASIC_ERROR_REVIEW_LIMIT} corrections. Choose a plan to keep correcting your tree.`);
       return;
     }
     const fix = JSON.parse(decodeURIComponent(mergeButton.dataset.mergeDuplicates));
@@ -1970,8 +1965,8 @@ workspace.addEventListener('click', (event) => {
       // count can never be walked past by marking records solved.
       if (getCurrentTier() === 'free' && (isDuplicate ? !getFreeDuplicatesLeft(progress) : !getFreeOtherLeft(progress))) {
         alert(isDuplicate
-          ? `Your free preview covers ${FREE_DUPLICATE_FIX_LIMIT} duplicate corrections. Choose a plan to keep combining duplicate records.`
-          : `Your free preview covers ${BASIC_ERROR_REVIEW_LIMIT} other corrections. Choose a plan to keep correcting your tree.`);
+          ? `Your free preview includes ${BASIC_ERROR_REVIEW_LIMIT} corrections. Choose a plan to keep correcting your tree.`
+          : `Your free preview includes ${BASIC_ERROR_REVIEW_LIMIT} corrections. Choose a plan to keep correcting your tree.`);
         return;
       }
       progress.completedIssueIds.push(issueId);
