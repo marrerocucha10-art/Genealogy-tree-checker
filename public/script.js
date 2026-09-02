@@ -11,8 +11,8 @@ const SUBSCRIPTION_STORAGE_KEY = IS_ADMINISTRATION_WORKSPACE ? 'familyTreeAdmini
 const BILLING_INTERVAL_STORAGE_KEY = 'familyTreeBillingInterval';
 const STRIPE_CUSTOMER_STORAGE_KEY = 'familyTreeStripeCustomerId';
 const PLAN_SELECTION_STORAGE_KEY = IS_ADMINISTRATION_WORKSPACE ? 'familyTreeAdministrationReviewPlanSelected' : 'familyTreePlanSelected';
-const TREE_REVIEW_URL = IS_ADMINISTRATION_WORKSPACE ? 'tree.html?admin_review=true' : 'tree.html';
-const ERROR_REVIEW_URL = IS_ADMINISTRATION_WORKSPACE ? 'errors.html?admin_review=true' : 'errors.html';
+const TREE_REVIEW_URL = IS_ADMINISTRATION_WORKSPACE ? '/tree.html?admin_review=true' : '/tree.html';
+const ERROR_REVIEW_URL = IS_ADMINISTRATION_WORKSPACE ? '/errors.html?admin_review=true' : '/errors.html';
 const ERROR_PROGRESS_STORAGE_KEY = `${STORAGE_KEY}:errorProgress`;
 const TREE_THEME_STORAGE_KEY = 'familyTreePresentationTheme';
 const POSTER_LAYOUT_STORAGE_KEY = 'familyTreePosterLayout';
@@ -2694,7 +2694,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const isUploadFlow = IS_EXPLICIT_UPLOAD_FLOW;
   if (isUploadFlow) renderFamilyTree();
   if (localStorage.getItem(PLAN_SELECTION_STORAGE_KEY)) {
-    welcomeStartAction.href = '/?start=upload';
+    welcomeStartAction.href = '/?start=upload&free_review=true';
     welcomeStartAction.textContent = 'Upload Your Family File';
   }
   if (startupParams.get('start') === 'upload') {
