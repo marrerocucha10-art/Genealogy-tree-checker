@@ -36,6 +36,7 @@ const GEDCOM_UPLOAD_LIMITS = {
   business: 2 * 1024 * 1024 * 1024,
 };
 const treeOverviewSection = document.getElementById('treeOverviewSection');
+const IS_EXPLICIT_UPLOAD_FLOW = new URLSearchParams(window.location.search).get('start') === 'upload';
 
 let treeData = loadTreeData();
 let treeLayout = localStorage.getItem(LAYOUT_STORAGE_KEY) || 'vertical';
@@ -1679,6 +1680,12 @@ function showManualFixes() {
 }
 
 function renderFamilyTree() {
+  // The saved tree belongs to the workspace, never the marketing landing page.
+  // Keep it hidden unless the visitor explicitly entered the upload flow.
+  if (!IS_EXPLICIT_UPLOAD_FLOW) {
+    treeOverviewSection.hidden = true;
+    return;
+  }
   if (treeData.people.length === 0) {
     treeOverviewSection.hidden = true;
     return;
@@ -2725,7 +2732,7 @@ document.addEventListener('DOMContentLoaded', () => {
   updateGedcomUploadLimit();
   loadSubscriptionConfig();
   loadSubscriptionStatusFromCustomer();
-  const isUploadFlow = startupParams.get('start') === 'upload';
+  const isUploadFlow = IS_EXPLICIT_UPLOAD_FLOW;
   if (isUploadFlow) renderFamilyTree();
   if (localStorage.getItem(PLAN_SELECTION_STORAGE_KEY)) {
     welcomeStartAction.href = '/?start=upload';
