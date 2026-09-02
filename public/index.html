@@ -4,84 +4,69 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Genealogy Tree Checker</title>
-  <link rel="stylesheet" href="styles.css?v=no-ancestor-note-1">
+  <link rel="stylesheet" href="styles.css?v=friendly-marketing-3">
 </head>
-<body>
+<body class="home-page">
   <div class="container">
-    <header>
-      <h1>Genealogy Tree Checker</h1>
-      <p>Explore, clean, and understand your family history</p>
+    <header class="home-header">
+      <a class="brand" href="index.html" aria-label="Genealogy Tree Checker home">FRIENDLY <span>GENEALOGY</span></a>
+      <a class="header-link" href="store.html#subscriptions">Explore plans</a>
     </header>
+    <div class="page-print-control"><button type="button" class="btn-secondary" data-print-page>Print this page</button><span>Print or save this page as a PDF.</span></div>
 
     <main>
-      <section class="welcome-panel">
-        <div>
-          <p class="eyebrow">Welcome to your family history workspace</p>
-          <h2>Your family story is waiting to be rediscovered.</h2>
-          <p>Bring together the names, memories, and connections that make your family unique. Whether you upload a GEDCOM file or begin a new tree, we will be beside you as each branch comes into focus.</p>
-        </div>
-        <aside class="welcome-preview" aria-label="What the app includes">
-          <h3>Your family story starts here</h3>
-          <ul>
-            <li><strong>Bring your family file to life</strong><span>Upload your GEDCOM and begin exploring the people and connections within it.</span></li>
-            <li><strong>Follow the branches that connect you</strong><span>Start with a person and discover the generations that came before.</span></li>
-            <li><strong>Care for every important detail</strong><span>Find clear guidance to help your family story feel complete and ready to share.</span></li>
-          </ul>
-        </aside>
-      </section>
-
-      <section class="research-video-preview" aria-labelledby="researchVideoTitle">
-        <div class="research-video-copy">
-          <p class="eyebrow">A story to share</p>
-          <h2 id="researchVideoTitle">From family records to a keepsake you can treasure.</h2>
-          <p>As you work through each branch, your discoveries can become a living family story to revisit, share, and preserve.</p>
-        </div>
-        <video class="research-video" autoplay loop muted playsinline controls aria-label="Family members revisiting treasured photographs">
-          <source src="family-memory-documentary-preview.mp4#t=0,15" type="video/mp4">
-          Your browser does not support the video tag.
+      <section class="friendly-hero" aria-labelledby="friendlyHeroTitle">
+        <video class="friendly-hero-video" autoplay loop muted playsinline poster="ChatGPT%20Image%20Aug%2027%2C%202026%20at%2009_58_26%20PM.png" aria-label="People preserving family memories">
+          <source src="genealogy-research-preview.mp4" type="video/mp4">
         </video>
-        <p class="video-credit">Preview video by cottonbro studio on Pexels.</p>
-      </section>
-
-      <section class="workflow-preview" aria-label="Animated preview of the genealogy workflow">
-        <div class="workflow-preview-heading">
-          <p class="eyebrow">A gentle guide</p>
-          <h2>See your story take shape</h2>
-          <p>A welcoming look at the journey from a family file to a clearer, shareable tree.</p>
-        </div>
-        <div class="workflow-animation" aria-hidden="true">
-          <article class="workflow-animation-step upload-preview">
-            <span>1</span>
-            <strong>Upload</strong>
-            <small>Read your GEDCOM</small>
-          </article>
-          <i></i>
-          <article class="workflow-animation-step tree-preview">
-            <span>2</span>
-            <strong>Family Tree</strong>
-            <small>Review ancestry</small>
-          </article>
-          <i></i>
-          <article class="workflow-animation-step fix-preview">
-            <span>3</span>
-            <strong>Fix Errors</strong>
-            <small>Follow each suggestion, correct the record, then mark it solved or save it for later research.</small>
-          </article>
+        <div class="friendly-hero-overlay"></div>
+        <div class="friendly-hero-copy">
+          <p class="hero-kicker">Friendly Genealogy</p>
+          <h1 id="friendlyHeroTitle">Fix your family tree with confidence.</h1>
+          <p>Helpful genealogy resources designed to support better family-history research, clearer records, and the stories worth keeping.</p>
+          <a id="heroStartAction" href="/?start=upload&free_review=true" class="hero-primary">Preview the Application for Free <span aria-hidden="true">→</span></a>
         </div>
       </section>
 
-      <section id="freeReviewInvitation" class="welcome-continue">
-        <p class="eyebrow">Your next family discovery begins here</p>
-        <h2>Great news - your first five family-tree fixes are our gift to you!</h2>
-        <p>Take your time, upload your GEDCOM file, and begin bringing your first five details into clearer focus at no charge. When you are ready for more help, you can choose the support that feels right for your family’s journey.</p>
-        <p class="experience-promise">You are creating something meaningful: a family story that can be understood, treasured, and shared for generations to come.</p>
-        <div class="welcome-actions">
-          <a id="welcomeStartAction" href="index.html?start=upload&free_review=true" class="btn-add welcome-action">Begin Your Family Tree Review</a>
-          <a id="exploreWaysAction" href="store.html#subscriptions" class="btn-secondary welcome-action">Explore Your Family Tree Options with a Subscription</a>
+      <section class="friendly-intro">
+        <div><p class="eyebrow">Ensure your family tree is accurate</p><h2>Every family has a story worth preserving.</h2></div>
+        <p>Friendly Genealogy makes it easier to review possible errors, organize research, and turn names, records, and photographs into a legacy your family can share.</p>
+      </section>
+
+      <section class="friendly-services" aria-labelledby="servicesTitle">
+        <div class="friendly-section-heading"><p class="eyebrow">Our services</p><h2 id="servicesTitle">Genealogy guidance &amp; research support.</h2><p>Support for genealogy enthusiasts, researchers, and curious families alike.</p></div>
+        <div class="friendly-service-grid">
+          <article><span>01</span><h3>Family tree review</h3><p>Identify possible inconsistencies, duplicate people, and confusing records in your genealogy information.</p><a href="https://fixyourtree.com/store.html#subscriptions">Start a review <b>→</b></a></article>
+          <article><span>02</span><h3>Research guidance</h3><p>Learn practical ways to organize your family history, compare sources, and move your research forward.</p><a href="research-resources.html">Explore resources <b>→</b></a></article>
+          <article><span>03</span><h3>Ancestor story development</h3><p>Turn family records and historical research into narratives that preserve your family’s unique legacy.</p><a href="store.html">Share your story <b>→</b></a></article>
         </div>
       </section>
 
-      <section id="selectedPlanSteps" class="guided-upload selected-plan-steps" hidden>
+      <section class="cinematic-feature" aria-labelledby="cinematicTitle">
+        <div class="cinematic-copy"><p class="eyebrow">Cinematic family history</p><h2 id="cinematicTitle">A family story feels different when you can see it.</h2><p>Bring milestones, photographs, and the people behind your research closer through a family-history keepsake.</p><a href="store.html" class="text-link">Explore keepsake moments <span aria-hidden="true">→</span></a></div>
+        <video class="cinematic-video" autoplay loop muted playsinline controls aria-label="Family members sharing a keepsake moment"><source src="family-memory-documentary-preview.mp4#t=0,15" type="video/mp4"></video>
+      </section>
+
+      <section class="keepsake-promo" aria-labelledby="keepsakePromoTitle">
+        <div class="keepsake-promo-video"><video autoplay loop muted playsinline controls aria-label="A family keepsake moment"><source src="memory-keepsakes-promo.mp4" type="video/mp4">Your browser does not support video.</video></div>
+        <div><p class="eyebrow">Family keepsakes</p><h2 id="keepsakePromoTitle">Give the stories a place to live beyond the screen.</h2><p>Turn the people, photographs, and discoveries in your tree into a family poster, journal, or personal keepsake made for sharing.</p><a class="text-link" href="store.html">Explore the keepsake store <span aria-hidden="true">→</span></a></div>
+      </section>
+
+      <section class="memorial-preview" aria-labelledby="memorialPreviewTitle">
+        <div><p class="eyebrow">A lasting remembrance</p><h2 id="memorialPreviewTitle">A scan can open a life story.</h2><p>Create a private memorial page with a biography, selected photographs, and voice memories. When your family approves it, the page can be linked from a QR marker for a headstone or memorial location.</p><a class="hero-primary" href="qr-memorial-story-marker.html">Preview the memorial marker <span aria-hidden="true">→</span></a></div>
+        <div class="memorial-marker-demo" aria-label="Illustration of a QR memorial marker"><span>IN LOVING MEMORY</span><div class="memorial-qr" aria-hidden="true"><i></i><i></i><i></i><b></b><b></b><b></b><b></b></div><strong>Scan to remember</strong><small>Private family story</small></div>
+      </section>
+
+      <section class="accuracy-checklist" aria-labelledby="checklistTitle">
+        <div><p class="eyebrow">Family tree accuracy checklist</p><h2 id="checklistTitle">Check the details that matter most.</h2><p>Review common genealogy mistakes and improve your research with simple, helpful checkpoints.</p><a href="index.html?start=upload&free_review=true" class="text-link">Get research support <span aria-hidden="true">→</span></a></div>
+        <ul><li><strong>Duplicate names</strong><span>Check whether one person appears in more than one record.</span></li><li><strong>Incorrect dates</strong><span>Review birth, marriage, and death dates for timeline inconsistencies.</span></li><li><strong>Location mismatches</strong><span>Confirm historical places match the correct time period.</span></li><li><strong>Missing sources</strong><span>Look for records that need documents or citations.</span></li><li><strong>Conflicting relationships</strong><span>Review parent, spouse, and sibling connections.</span></li><li><strong>Incomplete information</strong><span>Identify missing names, dates, and family details.</span></li></ul>
+      </section>
+
+      <section class="library-section" aria-labelledby="libraryTitle">
+        <div class="friendly-section-heading"><p class="eyebrow">Library</p><h2 id="libraryTitle">Practical guidance for every discovery.</h2><p>Simple articles and research ideas to help you build a more trustworthy, organized family tree.</p></div>
+        <div class="library-grid"><article><p>GUIDE</p><h3>Correcting mistakes in your genealogy tree</h3><a href="errors.html">Read the guide →</a></article><article><p>RESEARCH</p><h3>Cross-checking sources for reliable family history</h3><a href="ancestor.html">Explore research ideas →</a></article><article><p>START HERE</p><h3>How to identify common errors in your family tree</h3><a href="index.html?start=upload&free_review=true">Review your tree →</a></article></div>
+      </section>
+<section id="selectedPlanSteps" class="guided-upload selected-plan-steps" hidden>
         <h2 id="selectedPlanTitle">Welcome to your family-story journey!</h2>
         <p id="selectedPlanWelcome" class="guided-celebration">Wonderful choice - your plan is ready, and your family-story journey can begin.</p>
         <p>Your plan includes:</p>
@@ -117,6 +102,9 @@
       <section id="uploadSection" class="form-section" hidden>
         <h2>Step 1: Upload Your Family File</h2>
         <div class="guided-upload">
+          <p class="eyebrow">Your free family-tree preview</p>
+          <h3>Start with five free corrections.</h3>
+          <p class="upload-preview-intro">Upload your GEDCOM to view your working tree, print one comparison copy, and review up to five possible duplicates, dates, places, or relationship details at no charge.</p>
           <p id="selectedPlanGuidance" class="guided-celebration">Wonderful - your plan is ready, and your family-story journey can begin.</p>
           <ol class="guided-steps">
             <li><strong>Upload your GEDCOM file.</strong> Choose your family file below and we will read it automatically.</li>
@@ -166,5 +154,6 @@
   <script src="admin-review-gate.js?v=review-always-on-2"></script>
   <script src="client-storage.js?v=administration-tree-1"></script>
   <script src="script.js?v=journal-cover-1"></script>
+<script src="page-print.js"></script><script type="module" src="/speed-insights-init.js"></script>
 </body>
 </html>

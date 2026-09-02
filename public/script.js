@@ -11,8 +11,8 @@ const SUBSCRIPTION_STORAGE_KEY = IS_ADMINISTRATION_WORKSPACE ? 'familyTreeAdmini
 const BILLING_INTERVAL_STORAGE_KEY = 'familyTreeBillingInterval';
 const STRIPE_CUSTOMER_STORAGE_KEY = 'familyTreeStripeCustomerId';
 const PLAN_SELECTION_STORAGE_KEY = IS_ADMINISTRATION_WORKSPACE ? 'familyTreeAdministrationReviewPlanSelected' : 'familyTreePlanSelected';
-const TREE_REVIEW_URL = IS_ADMINISTRATION_WORKSPACE ? 'tree.html?admin_review=true' : 'tree.html';
-const ERROR_REVIEW_URL = IS_ADMINISTRATION_WORKSPACE ? 'errors.html?admin_review=true' : 'errors.html';
+const TREE_REVIEW_URL = IS_ADMINISTRATION_WORKSPACE ? '/tree.html?admin_review=true' : '/tree.html';
+const ERROR_REVIEW_URL = IS_ADMINISTRATION_WORKSPACE ? '/errors.html?admin_review=true' : '/errors.html';
 const ERROR_PROGRESS_STORAGE_KEY = `${STORAGE_KEY}:errorProgress`;
 const TREE_THEME_STORAGE_KEY = 'familyTreePresentationTheme';
 const POSTER_LAYOUT_STORAGE_KEY = 'familyTreePosterLayout';
@@ -36,6 +36,7 @@ const GEDCOM_UPLOAD_LIMITS = {
   business: 2 * 1024 * 1024 * 1024,
 };
 const treeOverviewSection = document.getElementById('treeOverviewSection');
+const IS_EXPLICIT_UPLOAD_FLOW = new URLSearchParams(window.location.search).get('start') === 'upload';
 
 let treeData = loadTreeData();
 let treeLayout = localStorage.getItem(LAYOUT_STORAGE_KEY) || 'vertical';
@@ -1674,6 +1675,10 @@ function showManualFixes() {
 }
 
 function renderFamilyTree() {
+  if (!IS_EXPLICIT_UPLOAD_FLOW) {
+    treeOverviewSection.hidden = true;
+    return;
+  }
   if (treeData.people.length === 0) {
     treeOverviewSection.hidden = true;
     return;
@@ -2686,16 +2691,17 @@ document.addEventListener('DOMContentLoaded', () => {
   updateGedcomUploadLimit();
   loadSubscriptionConfig();
   loadSubscriptionStatusFromCustomer();
-  renderFamilyTree();
+  const isUploadFlow = IS_EXPLICIT_UPLOAD_FLOW;
+  if (isUploadFlow) renderFamilyTree();
   if (localStorage.getItem(PLAN_SELECTION_STORAGE_KEY)) {
-    welcomeStartAction.href = '/?start=upload';
+    welcomeStartAction.href = '/?start=upload&free_review=true';
     welcomeStartAction.textContent = 'Upload Your Family File';
   }
   if (startupParams.get('start') === 'upload') {
     // Somebody who has already chosen a plan is past being sold to. The
     // introduction, the previews and the plan invitation are put away so the
     // page opens on the one thing they came back for: their file.
-    for (const selector of ['.welcome-panel', '.research-video-preview', '.workflow-preview', '#freeReviewInvitation', '.options-section']) {
+    for (const selector of ['.friendly-hero', '.friendly-intro', '.friendly-services', '.cinematic-feature', '.accuracy-checklist', '.library-section', '.testimonial', '#freeReviewInvitation', '.options-section']) {
       const section = document.querySelector(selector);
       if (section) section.hidden = true;
     }
