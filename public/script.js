@@ -36,6 +36,7 @@ const GEDCOM_UPLOAD_LIMITS = {
   business: 2 * 1024 * 1024 * 1024,
 };
 const treeOverviewSection = document.getElementById('treeOverviewSection');
+const IS_EXPLICIT_UPLOAD_FLOW = new URLSearchParams(window.location.search).get('start') === 'upload';
 
 let treeData = loadTreeData();
 let treeLayout = localStorage.getItem(LAYOUT_STORAGE_KEY) || 'vertical';
@@ -1674,6 +1675,10 @@ function showManualFixes() {
 }
 
 function renderFamilyTree() {
+  if (!IS_EXPLICIT_UPLOAD_FLOW) {
+    treeOverviewSection.hidden = true;
+    return;
+  }
   if (treeData.people.length === 0) {
     treeOverviewSection.hidden = true;
     return;
@@ -2686,7 +2691,8 @@ document.addEventListener('DOMContentLoaded', () => {
   updateGedcomUploadLimit();
   loadSubscriptionConfig();
   loadSubscriptionStatusFromCustomer();
-  renderFamilyTree();
+  const isUploadFlow = IS_EXPLICIT_UPLOAD_FLOW;
+  if (isUploadFlow) renderFamilyTree();
   if (localStorage.getItem(PLAN_SELECTION_STORAGE_KEY)) {
     welcomeStartAction.href = '/?start=upload';
     welcomeStartAction.textContent = 'Upload Your Family File';
@@ -2695,7 +2701,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Somebody who has already chosen a plan is past being sold to. The
     // introduction, the previews and the plan invitation are put away so the
     // page opens on the one thing they came back for: their file.
-    for (const selector of ['.welcome-panel', '.research-video-preview', '.workflow-preview', '#freeReviewInvitation', '.options-section']) {
+    for (const selector of ['.friendly-hero', '.friendly-intro', '.friendly-services', '.cinematic-feature', '.accuracy-checklist', '.library-section', '.testimonial', '#freeReviewInvitation', '.options-section']) {
       const section = document.querySelector(selector);
       if (section) section.hidden = true;
     }
