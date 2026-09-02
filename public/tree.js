@@ -529,7 +529,7 @@ function renderGenerations(treeData, peopleById, families) {
       <p class="muted">This working view starts with five generations. Add more only when you need them, or choose a different direct line.</p>
       <div class="tree-next-step">
         ${loadMore}
-        <a class="btn-add" href="${errorWorkspaceUrl}" data-continue-to-errors>Continue to Fix Errors</a>
+        <a class="btn-add" href="${errorWorkspaceUrl}" data-continue-to-errors>Continue to Review Errors and Fix Them</a>
         <a class="btn-secondary" href="${workspaceProgressUrl}">Review Work Space Progress</a>
       </div>
       ${renderFamilyView(primaryPerson, peopleById, familyConnections)}
@@ -562,7 +562,7 @@ function renderTreeReviewRecovery(error) {
       <p class="fix-suggestion">${escapeHtml(detail)}</p>
       <div class="workflow-actions">
         <button type="button" class="btn-add" onclick="window.location.reload()">Try This Screen Again</button>
-        <a class="btn-secondary" href="${errorWorkspaceUrl}">Continue to Fix Errors</a>
+        <a class="btn-secondary" href="${errorWorkspaceUrl}">Continue to Review Errors and Fix Them</a>
         <a class="btn-secondary" href="workplace.html">Open Your Work Place</a>
       </div>
     </section>
