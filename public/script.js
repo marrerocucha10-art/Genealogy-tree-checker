@@ -36,6 +36,7 @@ const GEDCOM_UPLOAD_LIMITS = {
   business: 2 * 1024 * 1024 * 1024,
 };
 const treeOverviewSection = document.getElementById('treeOverviewSection');
+const IS_EXPLICIT_UPLOAD_FLOW = new URLSearchParams(window.location.search).get('start') === 'upload';
 
 let treeData = loadTreeData();
 let treeLayout = localStorage.getItem(LAYOUT_STORAGE_KEY) || 'vertical';
@@ -336,6 +337,11 @@ familyTreeDiv.addEventListener('click', (event) => {
 
   if (event.target.closest('[data-download-journal-cover]')) {
     downloadJournalCover();
+    return;
+  }
+
+  if (event.target.closest('[data-open-family-booklet]')) {
+    openFamilyStoryBooklet();
   }
 });
 
@@ -1674,6 +1680,12 @@ function showManualFixes() {
 }
 
 function renderFamilyTree() {
+  // The saved tree belongs to the workspace, never the marketing landing page.
+  // Keep it hidden unless the visitor explicitly entered the upload flow.
+  if (!IS_EXPLICIT_UPLOAD_FLOW) {
+    treeOverviewSection.hidden = true;
+    return;
+  }
   if (treeData.people.length === 0) {
     treeOverviewSection.hidden = true;
     return;
@@ -1807,6 +1819,7 @@ function renderTreePresentation(generationData, peopleById) {
             <button type="button" class="btn-secondary" data-download-journal-cover>Download Journal Cover PNG</button>
           </div>`
         : '<p class="presentation-upgrade">Family Builder unlocks personalized tree printing, unlimited fixes, and research worksheets. <a href="#subscriptionWorkflows">Upgrade to Family Builder</a>.</p>'}
+      <div class="family-booklet-action"><button type="button" class="btn-secondary" data-open-family-booklet>Open Free Family Story Booklet</button><p>Make a printable “This is me” page and one writable story page for every person in your uploaded tree.</p></div>
       <div class="keepsake-offer">
         <h4>Turn your updated tree into a keepsake</h4>
         <p>Explore personalized posters, family-history diaries, phone covers, journals, booklets, and memory keepsakes made from your new tree.</p>
@@ -2059,6 +2072,39 @@ function downloadJournalCover() {
       setStatus('Downloaded personalized journal cover PNG. Upload it to your matching Printify journal product.', 'success');
     })
     .catch((error) => setStatus(error.message || 'Could not create the journal cover PNG. Please try again in a current desktop browser.', 'error'));
+}
+
+function openFamilyStoryBooklet() {
+  if (!ensureTreeHasPeople('creating your family story booklet')) return;
+
+  const booklet = window.open('', '_blank', 'noopener');
+  if (!booklet) {
+    setStatus('Your browser blocked the booklet window. Allow pop-ups for this site, then try again.', 'error');
+    return;
+  }
+
+  const people = [...treeData.people].sort((first, second) => String(first.name || first.id).localeCompare(String(second.name || second.id)));
+  const treePreview = people.map((person) => `<li><strong>${escapeHtml(person.name || person.id)}</strong><span>${escapeHtml([person.birthDate, person.birthPlace].filter(Boolean).join(' · ') || 'Add dates and places as you discover them')}</span></li>`).join('');
+  const personPages = people.map((person, index) => `
+    <section class="person-page page-break">
+      <p class="page-number">${index + 2} · OUR FAMILY STORY</p>
+      <h2>${escapeHtml(person.name || person.id)}</h2>
+      <p class="person-detail">${escapeHtml([person.birthDate, person.birthPlace, person.deathDate, person.deathPlace].filter(Boolean).join(' · ') || 'Add the details you know about this person.')}</p>
+      <div class="photo-space">Add a photograph, drawing, or memento here</div>
+      <div class="writing-block"><h3>Biography</h3><p>What do you want people to remember about them?</p><div class="lines"></div></div>
+      <div class="writing-block"><h3>Hobbies, interests, traditions &amp; favorite songs</h3><div class="lines short"></div></div>
+      <div class="writing-block"><h3>Stories our family can share</h3><div class="lines short"></div></div>
+    </section>`).join('');
+
+  booklet.document.write(`<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Our Family Story</title><style>
+    *{box-sizing:border-box} body{color:#23362d;font-family:Arial,sans-serif;margin:0}.page{min-height:10.5in;padding:.72in}.cover{background:#e7d59a;display:flex;flex-direction:column;justify-content:center;text-align:center}.cover h1{font-size:48px;margin:18px 0}.cover h2{font-size:28px}.cover .line{border-bottom:2px solid #48523c;margin:20px auto 0;width:70%}.cover p{line-height:1.6}.tree-preview{background:#f7f4ed}.tree-preview h2,.person-page h2{font-size:30px;margin:0 0 12px}.tree-preview ul{columns:2;gap:30px;list-style:none;padding:0}.tree-preview li{break-inside:avoid;border-bottom:1px solid #cdd3c9;padding:10px 0}.tree-preview li span{color:#56665c;display:block;font-size:13px;margin-top:3px}.page-number{color:#887030;font-size:11px;font-weight:bold;letter-spacing:1px}.person-detail{color:#56665c;min-height:22px}.photo-space{align-items:center;border:2px dashed #879b89;color:#56665c;display:flex;height:2.1in;justify-content:center;margin:25px 0;text-align:center}.writing-block{margin-top:21px}.writing-block h3{font-size:18px;margin:0 0 5px}.writing-block p{font-size:13px;margin:0 0 8px}.lines{background:repeating-linear-gradient(transparent 0 26px,#9aa59c 27px 28px);height:1.45in}.lines.short{height:.85in}@media print{.page-break{break-before:page}}@page{size:letter;margin:0}
+  </style></head><body>
+  <section class="page cover"><p>FRIENDLY GENEALOGY</p><h1>Our Family Story</h1><h2>This is me</h2><p><strong>My name:</strong></p><div class="line"></div><div class="writing-block"><h3>Biography</h3><p>I want people to remember me by:</p><div class="lines short"></div></div><div class="writing-block"><h3>My hobbies, interests, traditions &amp; favorite songs</h3><div class="lines short"></div></div><p>Make room for photographs, stories, and the people who shaped us.</p></section>
+  <section class="page tree-preview page-break"><p class="page-number">YOUR FAMILY TREE</p><h2>People in this booklet</h2><p>Use these pages to add the memories that belong beside the names in your family tree.</p><ul>${treePreview}</ul></section>${personPages}
+  </body></html>`);
+  booklet.document.close();
+  booklet.focus();
+  setStatus('Your family story booklet opened in a new tab. Print it or save it as a PDF when you are ready.', 'success');
 }
 
 function rasterizePosterSvg(svg, width, height) {
@@ -2686,7 +2732,8 @@ document.addEventListener('DOMContentLoaded', () => {
   updateGedcomUploadLimit();
   loadSubscriptionConfig();
   loadSubscriptionStatusFromCustomer();
-  renderFamilyTree();
+  const isUploadFlow = IS_EXPLICIT_UPLOAD_FLOW;
+  if (isUploadFlow) renderFamilyTree();
   if (localStorage.getItem(PLAN_SELECTION_STORAGE_KEY)) {
     welcomeStartAction.href = '/?start=upload';
     welcomeStartAction.textContent = 'Upload Your Family File';
@@ -2695,7 +2742,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Somebody who has already chosen a plan is past being sold to. The
     // introduction, the previews and the plan invitation are put away so the
     // page opens on the one thing they came back for: their file.
-    for (const selector of ['.welcome-panel', '.research-video-preview', '.workflow-preview', '#freeReviewInvitation', '.options-section']) {
+    for (const selector of ['.friendly-hero', '.friendly-intro', '.friendly-services', '.cinematic-feature', '.keepsake-promo', '.memorial-preview', '.accuracy-checklist', '.library-section', '.options-section']) {
       const section = document.querySelector(selector);
       if (section) section.hidden = true;
     }
