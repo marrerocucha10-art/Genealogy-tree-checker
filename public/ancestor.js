@@ -169,7 +169,7 @@ function renderDiscovery() {
       <section class="ancestor-discovery">
         <h2>Start your ancestor research</h2>
         <p class="ancestor-discovery-intro">Upload a GEDCOM file first. Then choose a starting person here and work back one generation at a time, opening Census, vital, church, immigration, Ancestry, MyHeritage, FamilySearch and archive research options.</p>
-        <a class="btn-add" href="/?start=upload">Upload Your GEDCOM</a>
+        <div class="ancestor-upload-action"><a class="btn-add" href="/?start=upload">Upload Your GEDCOM</a></div>
       </section>
     `;
     return;
