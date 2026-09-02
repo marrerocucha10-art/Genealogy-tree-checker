@@ -4217,7 +4217,7 @@ input[type="file"] {
 
 /* Friendly Genealogy marketing homepage */
 .friendly-hero { color: #fffdf9; min-height: 650px; overflow: hidden; position: relative; }
-.friendly-hero-video, .friendly-hero-overlay { height: 100%; inset: 0; object-fit: cover; position: absolute; width: 100%; }
+.friendly-hero-image, .friendly-hero-overlay { height: 100%; inset: 0; object-fit: cover; position: absolute; width: 100%; }
 .friendly-hero-overlay { background: linear-gradient(90deg, rgba(15,42,33,.9) 0%, rgba(15,42,33,.66) 45%, rgba(15,42,33,.15) 100%); }
 .friendly-hero-copy { max-width: 780px; padding: clamp(80px, 12vw, 175px) clamp(24px, 10vw, 150px); position: relative; z-index: 1; }
 .friendly-hero h1 { font-size: clamp(3.4rem, 7vw, 6.8rem); letter-spacing: -.07em; line-height: .87; }
