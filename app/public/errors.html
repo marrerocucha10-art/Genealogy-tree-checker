@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Error Workspace | Genealogy Tree Checker</title>
+  <link rel="stylesheet" href="styles.css?v=no-ancestor-note-1">
+</head>
+<body>
+  <div class="container error-workspace">
+    <nav class="step-nav" aria-label="Page navigation">
+      <button type="button" class="step-nav-back" onclick="if (history.length > 1) { history.back(); } else { location.href = 'index.html'; }">← Back</button>
+      <a class="step-nav-link" href="tree.html">Working tree</a>
+      <a class="step-nav-link" href="index.html">Start page</a>
+    </nav>
+    <header id="workspaceWelcome" class="workspace-welcome">
+      <p class="eyebrow">Your saved review area</p>
+      <h1>Welcome to Your Error Workspace</h1>
+      <p>Use this one clean place to review records, save research for later, and see every correction you have completed.</p>
+      <nav class="workspace-welcome-flow" aria-label="Error Workspace flow">
+        <a data-workspace-tree-preview href="tree.html"><span>1</span><strong>View working tree</strong><small>See the small branch you are correcting.</small></a>
+        <a href="#activeReview"><span>2</span><strong>Review errors</strong><small>Follow each recommended correction.</small></a>
+        <a href="#researchShelf"><span>3</span><strong>Save research</strong><small>Return when you find more information.</small></a>
+        <a href="#progressReports"><span>4</span><strong>Charts and reports</strong><small>Print progress or check your next step.</small></a>
+      </nav>
+      <p id="planErrorWorkspaceMessage" class="workspace-plan-message"></p>
+      <p class="workspace-storage-note"><strong>Your work stays here:</strong> confirmed merges, safe fixes, completed review records, and items saved for later are kept with this browser family tree. Your original GEDCOM is never overwritten.</p>
+    </header>
+    <main id="errorWorkspace" aria-live="polite"></main>
+    <footer>
+      <a id="returnToTree" href="tree.html">Return to family tree</a>
+    </footer>
+  </div>
+  <script src="admin-review-gate.js?v=review-always-on-2"></script>
+  <script src="client-storage.js?v=both-parents-1"></script>
+  <script src="errors.js?v=no-ancestor-note-1"></script>
+</body>
+</html>

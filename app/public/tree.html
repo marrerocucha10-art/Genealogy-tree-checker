@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Family Tree Review | Genealogy Tree Checker</title>
+  <link rel="stylesheet" href="styles.css?v=no-ancestor-note-1">
+</head>
+<body>
+  <div class="container">
+    <nav class="step-nav" aria-label="Page navigation">
+      <button type="button" class="step-nav-back" onclick="if (history.length > 1) { history.back(); } else { location.href = 'index.html'; }">← Back</button>
+      <a class="step-nav-link" href="index.html">Start page</a>
+      <a class="step-nav-link" href="errors.html">Fix errors</a>
+    </nav>
+    <header>
+      <h1>Your Working Tree Preview</h1>
+      <p><strong>Step 2:</strong> Review five ancestry generations around the record you are working on. Add more only when you need them, then continue to the Error Workspace.</p>
+    </header>
+    <main id="treeReview" aria-live="polite"></main>
+  </div>
+  <script src="admin-review-gate.js?v=review-always-on-2"></script>
+  <script src="client-storage.js?v=both-parents-1"></script>
+  <script src="tree.js?v=no-ancestor-note-1"></script>
+</body>
+</html>
