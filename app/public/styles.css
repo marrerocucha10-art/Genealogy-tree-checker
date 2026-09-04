@@ -4244,3 +4244,7 @@ input[type="file"] {
 
 .app-language-picker{align-items:center;color:#fff7e9;display:inline-flex;font-size:.72rem;font-weight:700;gap:5px;letter-spacing:.04em;text-transform:uppercase}.app-language-picker select{background:#fffdf9;border:0;border-radius:3px;color:#18372d;font:inherit;padding:5px}.presentation-print-actions{flex-wrap:wrap}
 .ancestor-upload-action{margin-top:22px}.ancestor-upload-action .btn-add{display:inline-block;width:auto}.guided-upload h3{color:#312e81;font-size:1.35rem;margin:4px 0 8px}.upload-preview-intro{color:#4b5563;line-height:1.55;margin-bottom:14px}
+
+.friendly-hero .options-section h2 {
+  color: #ffffff;
+}
