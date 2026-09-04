@@ -2691,7 +2691,6 @@ document.addEventListener('DOMContentLoaded', () => {
   else treeOverviewSection.hidden = true;
   if (localStorage.getItem(PLAN_SELECTION_STORAGE_KEY)) {
     welcomeStartAction.href = '/?start=upload';
-    welcomeStartAction.textContent = 'Upload Your Family File';
   }
   if (startsUploadJourney) {
     // Somebody who has already chosen a plan is past being sold to. The
