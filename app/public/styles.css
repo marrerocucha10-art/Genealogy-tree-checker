@@ -3357,10 +3357,8 @@ input[type="file"] {
 }
 
 .options-section h2 {
-  border-bottom: 3px solid #667eea;
   color: #333;
   margin-bottom: 16px;
-  padding-bottom: 10px;
 }
 
 .option-grid {
