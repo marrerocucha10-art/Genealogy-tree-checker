@@ -4248,3 +4248,20 @@ input[type="file"] {
 .friendly-hero .options-section h2 {
   color: #ffffff;
 }
+
+.ava-guided-layout { align-items: start; display: grid; gap: clamp(28px, 5vw, 72px); grid-template-columns: minmax(150px, .32fr) minmax(0, 1fr); margin: 0 auto; max-width: 1080px; }
+.ava-guide { align-items: center; background: linear-gradient(145deg, #18372d, #2e6655); border-radius: 28px; display: flex; flex-direction: column; margin-top: 16px; min-height: 250px; padding: 42px 20px 24px; position: relative; }
+.ava-antenna { background: #edb45e; height: 30px; position: relative; width: 4px; }
+.ava-antenna::before { background: #edb45e; border-radius: 50%; content: ''; height: 12px; left: -4px; position: absolute; top: -10px; width: 12px; }
+.ava-head { background: #f7f0dd; border: 5px solid #edb45e; border-radius: 22px; display: flex; gap: 20px; justify-content: center; padding: 24px 22px; }
+.ava-head i { background: #18372d; border-radius: 50%; height: 11px; width: 11px; }
+.ava-body { background: #edb45e; border-radius: 15px 15px 7px 7px; color: #18372d; font-size: .78rem; font-weight: 900; letter-spacing: .1em; margin-top: 12px; padding: 17px 23px; }
+.ava-heading { margin: 0 0 26px; text-align: left; }
+.ava-steps { counter-reset: ava; list-style: none; margin: 0 0 24px; padding: 0; }
+.ava-steps li { border-left: 2px solid #c7d9ce; color: #284b42; counter-increment: ava; display: grid; gap: 5px; margin: 0; padding: 0 0 18px 27px; position: relative; }
+.ava-steps li::before { align-items: center; background: #18372d; border-radius: 50%; color: #fff7e9; content: counter(ava); display: flex; font-size: .74rem; font-weight: 800; height: 24px; justify-content: center; left: -13px; position: absolute; top: 0; width: 24px; }
+.ava-steps li:last-child { border-left-color: transparent; padding-bottom: 0; }
+.ava-steps strong { color: #18372d; font-size: 1.05rem; }
+.ava-steps span { line-height: 1.55; }
+.ava-closing { color: #18372d; font-size: 1.1rem; font-weight: 800; margin: 26px 0 14px; }
+@media (max-width: 700px) { .ava-guided-layout { grid-template-columns: 1fr; } .ava-guide { margin: 0; min-height: 0; padding: 22px; } .ava-antenna { display: none; } .ava-heading { text-align: center; } }
