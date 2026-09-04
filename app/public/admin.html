@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Administration Review | Fix Your Tree</title>
+  <link rel="stylesheet" href="styles.css?v=merge-confirm-1">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Administration Review</h1>
+      <p>Enter the administration passphrase to review each subscription at no charge.</p>
+    </header>
+
+    <main>
+      <section class="subscription-section">
+        <h2>Unlock administration review</h2>
+        <p class="section-subtitle">This unlock lasts for the current browser tab only. Close the tab to lock it again.</p>
+
+        <form id="adminUnlockForm">
+          <div class="form-group">
+            <label for="adminPassphrase">Administration passphrase</label>
+            <input type="password" id="adminPassphrase" name="adminPassphrase" autocomplete="current-password" required>
+          </div>
+          <button type="submit" class="btn-add">Unlock administration review</button>
+        </form>
+
+        <p id="adminStatus" class="status-message" role="status"></p>
+
+        <p><a href="index.html">Return to the family tree checker</a></p>
+      </section>
+    </main>
+  </div>
+
+  <!--
+    No passphrase is required unless the server sets one. Set
+    ADMIN_REVIEW_PASSPHRASE (or ADMIN_REVIEW_PASSPHRASE_HASH for the SHA-256 hex
+    of the normalized passphrase: lowercased, non-alphanumerics removed) to make
+    it mandatory, plus ADMIN_REVIEW_SESSION_SECRET so sessions stay valid across
+    instances. With neither set, this page forwards straight through.
+  -->
+  <script src="admin-review-gate.js?v=review-always-on-2"></script>
+  <script src="admin.js?v=administration-optional-gate-3"></script>
+</body>
+</html>

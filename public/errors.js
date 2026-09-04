@@ -18,42 +18,33 @@ const SUBSCRIPTION_STORAGE_KEY = IS_ADMINISTRATION_WORKSPACE ? 'familyTreeAdmini
 const PLAN_SELECTION_STORAGE_KEY = IS_ADMINISTRATION_WORKSPACE ? 'familyTreeAdministrationReviewPlanSelected' : 'familyTreePlanSelected';
 const SUBSCRIPTION_STORE_URL = IS_ADMINISTRATION_WORKSPACE ? 'store.html?admin_review=true#subscriptions' : 'store.html#subscriptions';
 const ERROR_BATCH_SIZE = 10;
-// The free preview is five duplicate corrections and five other corrections.
-// They are separate allowances so combining duplicates never uses up the
-// chance to fix dates, places or relationships.
-const BASIC_ERROR_REVIEW_LIMIT = 5;
-const FREE_DUPLICATE_FIX_LIMIT = 5;
+// The free preview is limited by the five people selected on the tree page, not by an arbitrary number of issues.
+const BASIC_ERROR_REVIEW_LIMIT = Number.MAX_SAFE_INTEGER;
+const FREE_DUPLICATE_FIX_LIMIT = Number.MAX_SAFE_INTEGER;
 
 function getFreeDuplicatesUsed(progress) {
-  const others = new Set(progress?.completedNonDuplicateIssueIds || []);
-  return new Set([
-    ...(progress?.completedDuplicateIssueIds || []),
-    ...(progress?.completedIssueIds || []).filter((id) => !others.has(id)),
-  ]).size;
+  return new Set(progress?.completedDuplicateIssueIds || []).size;
 }
 
 function getFreeOtherUsed(progress) {
   return new Set(progress?.completedNonDuplicateIssueIds || []).size;
 }
 
+function getFreeReviewsUsed(progress) {
+  return getFreeDuplicatesUsed(progress) + getFreeOtherUsed(progress);
+}
+
 function getFreeDuplicatesLeft(progress) {
-  return Math.max(FREE_DUPLICATE_FIX_LIMIT - getFreeDuplicatesUsed(progress), 0);
+  return Math.max(BASIC_ERROR_REVIEW_LIMIT - getFreeReviewsUsed(progress), 0);
 }
 
 function getFreeOtherLeft(progress) {
-  return Math.max(BASIC_ERROR_REVIEW_LIMIT - getFreeOtherUsed(progress), 0);
+  return Math.max(BASIC_ERROR_REVIEW_LIMIT - getFreeReviewsUsed(progress), 0);
 }
 
-// The whole free preview is the five duplicates and five other errors the
-// customer is actually allowed to fix. Every count on the page reads from this
-// list, so nothing ever reports the size of the untouched tree.
+// The preview tree already contains only five people, so every detected issue here belongs to that free preview.
 function getFreePreviewErrors(visibleGenerationErrors) {
-  const duplicates = visibleGenerationErrors.filter(isDuplicateIssue);
-  const others = visibleGenerationErrors.filter((issue) => !isDuplicateIssue(issue));
-  return [
-    ...duplicates.slice(0, FREE_DUPLICATE_FIX_LIMIT),
-    ...others.slice(0, BASIC_ERROR_REVIEW_LIMIT),
-  ];
+  return visibleGenerationErrors;
 }
 const ERROR_REVIEW_ORDER_VERSION = 10;
 const VISIBLE_REVIEW_GENERATION_COUNT = 5;
@@ -75,11 +66,10 @@ function getTreeData() {
     const reviewTreeData = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
     if (reviewTreeData?.people?.length) return normalize(reviewTreeData);
 
-    // Only the tree page writes the five-generation subset, so arriving here any
+    // Only the tree page writes the five-person subset, so arriving here any
     // other way — "Continue to fix errors" from the upload page or the workplace,
     // a bookmark, a reopened tab — used to show an empty workspace. Fall back to
-    // the full tree; the review is limited to the first five generations further
-    // down regardless of which tree it started from.
+    // the full tree; the review is limited to the selected five people regardless of which tree it started from.
     return normalize(JSON.parse(localStorage.getItem(TREE_STORAGE_KEY) || 'null'));
   } catch (error) {
     return null;
@@ -404,37 +394,12 @@ function getCompletedNonDuplicateIssueCount(errors, progress) {
 
 function renderBasicPlanOptions(errors, progress) {
   if (getCurrentTier() !== 'free') return '';
-
-  const duplicatesLeft = getFreeDuplicatesLeft(progress);
-  const othersLeft = getFreeOtherLeft(progress);
-  // Finishing the preview is a moment worth marking: say what was achieved and
-  // exactly what a plan adds.
-  if (!duplicatesLeft && !othersLeft) {
-    return `
-      <section class="assistance-options free-trial-complete">
-        <h2>You finished all ${FREE_DUPLICATE_FIX_LIMIT + BASIC_ERROR_REVIEW_LIMIT} free corrections</h2>
-        <p>That is real progress on your family history. Choose a plan to keep going through the rest of your tree, and your finished work stays exactly where it is.</p>
-        <ul class="free-trial-perks">
-          <li>Unlimited error corrections, duplicates included</li>
-          <li>GEDCOM uploads up to 500 MB</li>
-          <li>Printable family tree and chart exports</li>
-          <li>Research worksheets and Ancestor Discovery prompts</li>
-          <li>Safe automatic fixes and a full correction report on Pro / Researcher</li>
-        </ul>
-        <a class="btn-add assistance-upgrade-link" href="${SUBSCRIPTION_STORE_URL}">Choose a plan and keep correcting</a>
-      </section>
-    `;
-  }
-
-  const freeReviewMessage = `Your free preview covers ${FREE_DUPLICATE_FIX_LIMIT} duplicate corrections and ${BASIC_ERROR_REVIEW_LIMIT} other corrections. ${duplicatesLeft} duplicate${duplicatesLeft === 1 ? '' : 's'} and ${othersLeft} other error${othersLeft === 1 ? '' : 's'} left.`;
-
   return `
     <section class="assistance-options free-trial-remaining">
-      <p>${freeReviewMessage} <a class="assistance-upgrade-link" href="${SUBSCRIPTION_STORE_URL}">Choose a plan</a> when you want to correct the rest.</p>
+      <p>Your free preview covers the first five people in your family tree, including possible duplicates and other errors found for them. <a class="assistance-upgrade-link" href="${SUBSCRIPTION_STORE_URL}">Choose a plan</a> to review more people and the rest of their errors.</p>
     </section>
   `;
 }
-
 function renderProgressEncouragement(errors, progress) {
   const completed = new Set(progress.completedIssueIds);
   const total = errors.length;
@@ -537,8 +502,8 @@ function renderPendingDuplicateMergeReview(treeData) {
     return `
       <section class="duplicate-merge-review">
         <h2>These duplicate records are not in your working tree</h2>
-        <p>The matching records sit outside the five generations you are reviewing, so they cannot be compared here yet. Open your Working Tree Preview again to rebuild the review with every record this duplicate refers to, then return and combine them.</p>
-        <a class="btn-add" href="${escapeHtml(returnToTreeLink?.href || 'tree.html')}">Rebuild Your Five-Generation Working Tree</a>
+        <p>The matching records sit outside the five-person preview you are reviewing, so they cannot be compared here yet. Open your Working Tree Preview again to rebuild the review with every record this duplicate refers to, then return and combine them.</p>
+        <a class="btn-add" href="${escapeHtml(returnToTreeLink?.href || 'tree.html')}">Rebuild Your Five-Person Working Tree</a>
       </section>
     `;
   }
@@ -667,7 +632,7 @@ function renderDuplicateComparison(issue, peopleById, familiesById) {
           `).join('')}
         </tbody>
       </table>
-      ${missing ? `<p class="fix-suggestion">${missing} matching record${missing === 1 ? ' is' : 's are'} not in your working tree yet. Rebuild your five-generation working tree to compare ${missing === 1 ? 'it' : 'them'} here.</p>` : ''}
+      ${missing ? `<p class="fix-suggestion">${missing} matching record${missing === 1 ? ' is' : 's are'} not in your working tree yet. Rebuild your five-person working tree to compare ${missing === 1 ? 'it' : 'them'} here.</p>` : ''}
     </div>
   `;
 }
@@ -845,9 +810,9 @@ function renderProgressTools(progress, errors = []) {
   return `
     <section class="progress-tools">
       <h2>Choose how to review your progress</h2>
-      <p>Use a printable chart for handwritten research notes, or open a computer report for a clear summary and your next step.</p>
+      <p>Print this five-person error review for your records, or open a computer report for a clear summary and your next step. Subscribe to continue reviewing additional people in your family tree.</p>
       <div class="issue-fix-actions">
-        <button id="printProgressChart" type="button" class="btn-secondary">Print a Chart for Manual Review</button>
+        <button id="printProgressChart" type="button" class="btn-secondary">Print Your Five-Person Error Review</button>
         <button id="openProgressReport" type="button" class="btn-secondary">Open Your Computer Progress Report</button>
       </div>
       <section id="computerProgressReport" class="corrected-items-preview" hidden>
@@ -1467,7 +1432,7 @@ function applySafeBatchFixes(treeData, groups, progress) {
 function completeDuplicateMerge(treeData, fix) {
   const progress = getProgress();
   if (getCurrentTier() === 'free' && !getFreeDuplicatesLeft(progress)) {
-    throw new Error(`Your free preview covers ${FREE_DUPLICATE_FIX_LIMIT} duplicate corrections. Choose a plan to keep combining duplicate records.`);
+    throw new Error(`Your free preview includes ${BASIC_ERROR_REVIEW_LIMIT} corrections. Choose a plan to keep correcting your tree.`);
   }
 
   const survivor = treeData?.people?.find((person) => person.id === fix.survivorId);
@@ -1531,7 +1496,7 @@ function renderWorkspaceRecovery(error) {
       <p class="fix-suggestion">${escapeHtml(detail)}</p>
       <div class="workflow-actions">
         <button type="button" class="btn-add" onclick="window.location.reload()">Try This Screen Again</button>
-        <a class="btn-secondary" href="${escapeHtml(returnToTreeLink?.href || 'tree.html')}">Return to Your Five-Generation Working Tree</a>
+        <a class="btn-secondary" href="${escapeHtml(returnToTreeLink?.href || 'tree.html')}">Return to Your Five-Person Working Tree</a>
         <a class="btn-secondary" href="workplace.html">Open Your Work Place</a>
       </div>
     </section>
@@ -1598,8 +1563,7 @@ function renderWorkspaceContent() {
     : '';
   const duplicateMergeReview = renderDuplicateMergeReview();
   const assistanceOptions = renderBasicPlanOptions(countedErrors, progress);
-  // The free preview is ten corrections; the customer wants the family and the
-  // errors, not a page of explanation before them.
+  // The free preview focuses on the selected five people and their detected errors.
   const encouragement = isBasicPlan ? '' : renderProgressEncouragement(errors, progress);
   const pendingResearch = renderPendingResearch(countedErrors, progress);
   const workspaceDesk = SHOW_WORKSPACE_PROGRESS ? renderWorkspaceDesk(countedErrors, progress) : '';
@@ -1608,9 +1572,9 @@ function renderWorkspaceContent() {
     workspace.innerHTML = `
       ${workspaceDesk}
       <section id="activeReview" class="batch-complete">
-        <h2>Your five-generation working tree is not available yet</h2>
-        <p>Return to your Working Tree Preview to continue with the five generations you selected. This review does not reopen or require the original GEDCOM.</p>
-        <a class="btn-add" href="${escapeHtml(returnToTreeLink.href)}">Return to Your Five-Generation Working Tree</a>
+        <h2>Your five-person working tree is not available yet</h2>
+        <p>Return to your Working Tree Preview to continue with the five people in your free preview. This review does not reopen or require the original GEDCOM.</p>
+        <a class="btn-add" href="${escapeHtml(returnToTreeLink.href)}">Return to Your Five-Person Working Tree</a>
       </section>
     `;
     return;
@@ -1647,7 +1611,7 @@ function renderWorkspaceContent() {
   }
 
   if (!errors.length) {
-    workspace.innerHTML = `${workspaceDesk}${reviewFocusSwitch}${duplicateMergeReview}${encouragement}${pendingResearch}<p id="activeReview" class="empty-message">There are no open errors in the five generations currently shown in your working tree. Return to the tree to choose another direct line or add more generations when you are ready.</p>${renderUpdatedTreeOffer()}${undoButton}${assistanceOptions}`;
+    workspace.innerHTML = `${workspaceDesk}${reviewFocusSwitch}${duplicateMergeReview}${encouragement}${pendingResearch}<p id="activeReview" class="empty-message">There are no open errors for the five people in your free preview. Choose a subscription to review more people in your family tree.</p>${renderUpdatedTreeOffer()}${undoButton}${assistanceOptions}`;
     return;
   }
 
@@ -1915,7 +1879,7 @@ workspace.addEventListener('click', (event) => {
     const treeData = getTreeData();
     const progress = getProgress();
     if (getCurrentTier() === 'free' && !getFreeDuplicatesLeft(progress)) {
-      alert(`Your free preview covers ${FREE_DUPLICATE_FIX_LIMIT} duplicate corrections. Choose a plan to keep combining duplicate records.`);
+      alert(`Your free preview includes ${BASIC_ERROR_REVIEW_LIMIT} corrections. Choose a plan to keep correcting your tree.`);
       return;
     }
     const fix = JSON.parse(decodeURIComponent(mergeButton.dataset.mergeDuplicates));
@@ -1970,8 +1934,8 @@ workspace.addEventListener('click', (event) => {
       // count can never be walked past by marking records solved.
       if (getCurrentTier() === 'free' && (isDuplicate ? !getFreeDuplicatesLeft(progress) : !getFreeOtherLeft(progress))) {
         alert(isDuplicate
-          ? `Your free preview covers ${FREE_DUPLICATE_FIX_LIMIT} duplicate corrections. Choose a plan to keep combining duplicate records.`
-          : `Your free preview covers ${BASIC_ERROR_REVIEW_LIMIT} other corrections. Choose a plan to keep correcting your tree.`);
+          ? `Your free preview includes ${BASIC_ERROR_REVIEW_LIMIT} corrections. Choose a plan to keep correcting your tree.`
+          : `Your free preview includes ${BASIC_ERROR_REVIEW_LIMIT} corrections. Choose a plan to keep correcting your tree.`);
         return;
       }
       progress.completedIssueIds.push(issueId);

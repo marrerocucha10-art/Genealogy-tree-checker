@@ -1,0 +1,184 @@
+const administrationReview = isAdministrationReview();
+const SUBSCRIPTION_STORAGE_KEY = administrationReview ? 'familyTreeAdministrationReviewTier' : 'familyTreeSubscriptionTier';
+const BILLING_INTERVAL_STORAGE_KEY = 'familyTreeBillingInterval';
+const STRIPE_CUSTOMER_STORAGE_KEY = 'familyTreeStripeCustomerId';
+const PLAN_SELECTION_STORAGE_KEY = administrationReview ? 'familyTreeAdministrationReviewPlanSelected' : 'familyTreePlanSelected';
+const subscriptionPlans = document.getElementById('subscriptionPlans');
+const subscriptionStatus = document.getElementById('subscriptionStatus');
+const manageBillingButton = document.getElementById('manageBilling');
+const billingButtons = document.querySelectorAll('[data-billing-interval]');
+
+const tiers = {
+  free: {
+    name: 'Basic',
+    description: 'Upload a GEDCOM file and fix five duplicate records and five other errors at no charge.',
+    prices: { monthly: 0, annual: 0 },
+    features: ['GEDCOM uploads up to 150 MB', 'Fix 5 duplicates and 5 other errors', 'Choose a plan to fix the rest'],
+  },
+  personal: {
+    name: 'Family Builder',
+    description: 'Organize one family tree with unlimited error review, charts, and research worksheets.',
+    prices: { monthly: 19.99, annual: 19.99 },
+    features: ['GEDCOM uploads up to 500 MB', 'Unlimited manual error fixes', 'Family-tree organization', 'Printable tree and exports', 'Research worksheets'],
+  },
+  pro: {
+    name: 'Pro / Researcher',
+    description: 'Unlock advanced cleanup, reporting, the Genealogy Pro Package, and up to 10 separately organized family trees.',
+    prices: { monthly: 29.99, annual: 29.99 },
+    features: ['Up to 10 separate family-tree workspaces', 'Surname and generation labels for each workspace', 'GEDCOM uploads up to 500 MB', 'Safe automatic fixes', 'Full correction report', 'Advanced validation workflow', 'Genealogy Pro Package'],
+  },
+  business: {
+    name: 'Business / Genealogist',
+    description: 'Support client-facing genealogy workflows.',
+    prices: { monthly: 39.99, annual: 39.99 },
+    features: ['Unlimited separate client workspaces', 'Surname and generation labels for each workspace', 'GEDCOM uploads up to 2 GB', 'Client tree workflow', 'Branded reports roadmap'],
+  },
+};
+
+let currentTier = localStorage.getItem(SUBSCRIPTION_STORAGE_KEY) || 'free';
+let billingInterval = localStorage.getItem(BILLING_INTERVAL_STORAGE_KEY) || 'monthly';
+let stripeCustomerId = localStorage.getItem(STRIPE_CUSTOMER_STORAGE_KEY) || '';
+let stripeConfig = null;
+
+function escapeHtml(value = '') {
+  return String(value).replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;',
+  }[character]));
+}
+
+function updateBillingButtons() {
+  billingButtons.forEach((button) => button.classList.toggle('active', button.dataset.billingInterval === billingInterval));
+}
+
+function renderPlans() {
+  const current = tiers[currentTier] || tiers.free;
+  manageBillingButton.hidden = !stripeCustomerId;
+  subscriptionStatus.textContent = currentTier === 'free'
+    ? 'Choose the plan that fits the family tree you are working on.'
+    : `Current plan: ${current.name} · ${billingInterval === 'annual' ? 'Annual billing' : 'Monthly billing'}`;
+  subscriptionPlans.innerHTML = Object.entries(tiers).filter(([id]) => id !== 'free').map(([id, tier]) => {
+    const isCurrent = id === currentTier;
+    const checkoutReady = stripeConfig?.configured && stripeConfig.tiers?.[id]?.[billingInterval]?.configured;
+    const price = tier.prices[billingInterval];
+    const priceLabel = `$${price.toFixed(2)} / month${billingInterval === 'annual' ? ' billed annually' : ''}`;
+    const testButton = stripeConfig?.testSubscriptionsEnabled || administrationReview
+      ? `<button class="btn-secondary" type="button" data-test-tier="${id}">${administrationReview ? `Review ${escapeHtml(tier.name)} at No Charge` : `Test ${escapeHtml(tier.name)} flow`}</button>`
+      : '';
+    const proPackage = id === 'pro' ? `
+      <aside class="pro-package-highlight">
+        <strong>Genealogy Pro Package included</strong>
+        <p>Digital products, print products, research services, and research journals are included with this plan.</p>
+      </aside>` : '';
+    return `
+      <article class="subscription-card ${isCurrent ? 'current' : ''}">
+        <h3>${escapeHtml(tier.name)}</h3>
+        <p class="plan-price">${escapeHtml(priceLabel)}</p>
+        <p>${escapeHtml(tier.description)}</p>
+        <ul>${tier.features.map((feature) => `<li>${escapeHtml(feature)}</li>`).join('')}</ul>
+        ${proPackage}
+        ${isCurrent ? '<span class="plan-badge">Current</span>' : ''}
+        ${!administrationReview && !isCurrent ? `<button class="btn-add" type="button" data-upgrade-tier="${id}" ${checkoutReady ? '' : 'disabled'}>${checkoutReady ? `Choose ${escapeHtml(tier.name)}` : 'Checkout unavailable'}</button>` : ''}
+        ${testButton}
+      </article>
+    `;
+  }).join('');
+}
+
+async function startCheckout(tier) {
+  const response = await fetch('/api/create-checkout-session', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tier, interval: billingInterval }),
+  });
+  const result = await response.json();
+  if (!response.ok || !result.success) throw new Error(result.error || 'Could not start checkout.');
+  window.location.href = result.url;
+}
+
+async function applyCheckoutReturn() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('checkout') !== 'success' || !params.get('session_id')) return;
+  const response = await fetch(`/api/subscription/status?session_id=${encodeURIComponent(params.get('session_id'))}`);
+  const result = await response.json();
+  if (!response.ok || !result.success) throw new Error(result.error || 'Could not confirm Stripe subscription.');
+  const subscription = result.subscription;
+  currentTier = subscription.active ? subscription.tier : 'free';
+  billingInterval = subscription.interval || billingInterval;
+  stripeCustomerId = subscription.customerId || '';
+  localStorage.setItem(SUBSCRIPTION_STORAGE_KEY, currentTier);
+  localStorage.setItem(BILLING_INTERVAL_STORAGE_KEY, billingInterval);
+  localStorage.setItem(PLAN_SELECTION_STORAGE_KEY, 'true');
+  if (stripeCustomerId) localStorage.setItem(STRIPE_CUSTOMER_STORAGE_KEY, stripeCustomerId);
+  window.location.href = '/?start=upload';
+}
+
+subscriptionPlans.addEventListener('click', async (event) => {
+  const testButton = event.target.closest('[data-test-tier]');
+  if (testButton) {
+    currentTier = testButton.dataset.testTier;
+    localStorage.setItem(SUBSCRIPTION_STORAGE_KEY, currentTier);
+    localStorage.setItem(PLAN_SELECTION_STORAGE_KEY, 'true');
+    window.location.href = `index.html?start=upload&test_plan=true&admin_review=true&review_tier=${encodeURIComponent(currentTier)}`;
+    return;
+  }
+
+  const button = event.target.closest('[data-upgrade-tier]');
+  if (!button) return;
+  button.disabled = true;
+  try {
+    await startCheckout(button.dataset.upgradeTier);
+  } catch (error) {
+    button.disabled = false;
+    alert(error.message);
+  }
+});
+
+document.querySelector('[data-toggle-coming-soon]')?.addEventListener('click', (event) => {
+  const content = document.getElementById('comingSoonKeepsakes');
+  const isOpen = content.hidden;
+  content.hidden = !isOpen;
+  event.currentTarget.setAttribute('aria-expanded', String(isOpen));
+  event.currentTarget.textContent = isOpen
+    ? 'Hide Personalized Keepsakes'
+    : 'Coming Soon: Explore Personalized Keepsakes';
+});
+
+billingButtons.forEach((button) => button.addEventListener('click', () => {
+  billingInterval = button.dataset.billingInterval;
+  localStorage.setItem(BILLING_INTERVAL_STORAGE_KEY, billingInterval);
+  updateBillingButtons();
+  renderPlans();
+}));
+
+manageBillingButton.addEventListener('click', async () => {
+  if (!stripeCustomerId) {
+    alert('Manage billing after completing a Stripe checkout.');
+    return;
+  }
+  const response = await fetch('/api/create-portal-session', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ customerId: stripeCustomerId }),
+  });
+  const result = await response.json();
+  if (!response.ok || !result.success) {
+    alert(result.error || 'Could not open the billing portal.');
+    return;
+  }
+  window.location.href = result.url;
+});
+
+async function initializeStore() {
+  try {
+    await applyCheckoutReturn();
+    const response = await fetch('/api/subscription/config');
+    const result = await response.json();
+    stripeConfig = result.stripe || null;
+  } catch (error) {
+    stripeConfig = null;
+  }
+  updateBillingButtons();
+  renderPlans();
+}
+
+initializeStore();

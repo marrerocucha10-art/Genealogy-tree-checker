@@ -138,49 +138,32 @@ function buildGenerationData(treeData, peopleById, primaryPerson) {
 function createFiveGenerationReviewTree(treeData) {
   const primaryPerson = getPrimaryPerson(treeData);
   const peopleById = new Map((treeData.people || []).map((person) => [person.id, person]));
-  const generationByPerson = buildGenerationData(treeData, peopleById, primaryPerson);
-  const includedPersonIds = new Set(
-    [...generationByPerson.entries()]
-      .filter(([, generation]) => generation <= GENERATIONS_PER_PAGE)
-      .map(([personId]) => personId),
-  );
-
-  // Generations are counted upward through parents, so a spouse, child or
-  // sibling of someone in these five generations was left out and their errors
-  // disappeared from the review. Keep each included person's immediate family.
+  const parentByChild = new Map();
   for (const family of treeData.families || []) {
-    const memberIds = [family.husbandId, family.wifeId, ...(family.childrenIds || [])]
-      .filter((id) => id && peopleById.has(id));
-    if (!memberIds.some((id) => includedPersonIds.has(id))) continue;
-    memberIds.forEach((id) => includedPersonIds.add(id));
+    const parents = [family.husbandId, family.wifeId].filter((id) => peopleById.has(id));
+    for (const childId of family.childrenIds || []) {
+      if (!parentByChild.has(childId)) parentByChild.set(childId, []);
+      parentByChild.get(childId).push(...parents);
+    }
   }
 
-  // Records with no family links at all, such as unmatched duplicates, still
-  // carry errors the customer needs to see.
-  const linkedPersonIds = new Set(
-    (treeData.families || []).flatMap((family) => [family.husbandId, family.wifeId, ...(family.childrenIds || [])])
-      .filter(Boolean),
-  );
-  for (const person of treeData.people || []) {
-    if (!linkedPersonIds.has(person.id)) includedPersonIds.add(person.id);
+  // The free experience is deliberately a five-person preview. Prioritize the
+  // selected person and their direct ancestors, then fill any remaining spaces
+  // from the uploaded tree so every customer sees a useful, stable preview.
+  const includedPersonIds = new Set();
+  const addPerson = (personId) => {
+    if (personId && peopleById.has(personId) && includedPersonIds.size < 5) includedPersonIds.add(personId);
+  };
+  const queue = [primaryPerson?.id].filter(Boolean);
+  while (queue.length && includedPersonIds.size < 5) {
+    const personId = queue.shift();
+    if (includedPersonIds.has(personId)) continue;
+    addPerson(personId);
+    (parentByChild.get(personId) || []).forEach((parentId) => queue.push(parentId));
   }
+  for (const person of treeData.people || []) addPerson(person.id);
 
   const includesPerson = (personId) => personId && includedPersonIds.has(personId);
-
-  // A duplicate names two or three records at once. If any of them fell outside
-  // these five generations the merge had nothing to compare and its button did
-  // nothing at all, so every record a retained duplicate refers to is kept.
-  const duplicateIssues = [
-    ...(treeData.validationReport?.errors || []),
-    ...(treeData.validationReport?.warnings || []),
-  ].filter((issue) => issue.autoFix?.type === 'mergeDuplicatePeople');
-  for (const issue of duplicateIssues) {
-    const memberIds = [issue.subject, issue.autoFix.survivorId, ...(issue.autoFix.duplicateIds || [])]
-      .filter((id) => id && peopleById.has(id));
-    if (!memberIds.some((id) => includedPersonIds.has(id))) continue;
-    memberIds.forEach((id) => includedPersonIds.add(id));
-  }
-
   const families = (treeData.families || [])
     .filter((family) => [family.husbandId, family.wifeId, ...(family.childrenIds || [])].some(includesPerson))
     .map((family) => ({
@@ -189,7 +172,6 @@ function createFiveGenerationReviewTree(treeData) {
       wifeId: includesPerson(family.wifeId) ? family.wifeId : null,
       childrenIds: (family.childrenIds || []).filter(includesPerson),
     }));
-
   const includedFamilyIds = new Set(families.map((family) => family.id).filter(Boolean));
   const includesSubject = (subject) => includesPerson(subject) || Boolean(subject && includedFamilyIds.has(subject));
   const reviewIssues = (issues = []) => issues.filter((issue) => includesSubject(issue.subject));
@@ -207,7 +189,6 @@ function createFiveGenerationReviewTree(treeData) {
     },
   };
 }
-
 function getPeopleNames(ids, peopleById) {
   return ids
     .map((id) => peopleById.get(id))
@@ -525,10 +506,11 @@ function renderGenerations(treeData, peopleById, families) {
         <div id="primaryPersonMatches" class="primary-person-matches" aria-live="polite"></div>
         <button class="btn-add" type="button" data-confirm-primary-person>Use This Person as the Starting Point</button>
       </div>
-      <p>Showing ${displayedThrough} of ${maximumGeneration} ancestry generations around ${escapeHtml(primaryPerson?.name || 'the main person')}, so you can stay focused on the records you are correcting.</p>
-      <p class="muted">This working view starts with five generations. Add more only when you need them, or choose a different direct line.</p>
+      <p>Showing up to five people from your uploaded tree, starting with ${escapeHtml(primaryPerson?.name || 'the main person')}.</p>
+      <p class="muted">This free preview includes only five people. Subscribe when you are ready to review more of your family tree.</p>
       <div class="tree-next-step">
         ${loadMore}
+        <button type="button" class="btn-secondary" onclick="window.print()">Print Five-Person Tree</button>
         <a class="btn-add" href="${errorWorkspaceUrl}" data-continue-to-errors>Continue to Fix Errors</a>
         <a class="btn-secondary" href="${workspaceProgressUrl}">Review Work Space Progress</a>
       </div>
@@ -586,15 +568,11 @@ function renderTreeReviewContent(treeData = loadedTreeData || getTreeData()) {
   const duplicateWarnings = (treeData.validationReport?.warnings || []).filter((issue) => issue.autoFix?.type === 'mergeDuplicatePeople');
   const allDuplicates = errors.filter((issue) => issue.autoFix?.type === 'mergeDuplicatePeople').length + duplicateWarnings.length;
   const allOther = errors.length - errors.filter((issue) => issue.autoFix?.type === 'mergeDuplicatePeople').length;
-  // On the free preview the customer can only fix five duplicates and five
-  // other errors, so this heading promises exactly that and never the size of
-  // the whole tree.
+  // The free preview shows errors only for its five selected people.
   const isFreePreview = (localStorage.getItem('familyTreeSubscriptionTier') || 'free') === 'free';
-  const issueCount = isFreePreview
-    ? Math.min(allDuplicates, 5) + Math.min(allOther, 5)
-    : errors.length + duplicateWarnings.length;
+  const issueCount = errors.length + duplicateWarnings.length;
   const issueHeading = isFreePreview
-    ? `${issueCount} error${issueCount === 1 ? '' : 's'} to fix in your free preview`
+    ? `${issueCount} error${issueCount === 1 ? '' : 's'} found for your five-person free preview`
     : `${issueCount} error${issueCount === 1 ? '' : 's'} to fix`;
   const peopleById = new Map(treeData.people.map((person) => [person.id, person]));
   const families = treeData.families || [];
@@ -607,9 +585,10 @@ function renderTreeReviewContent(treeData = loadedTreeData || getTreeData()) {
         <span><strong>${treeData.relationships?.length || 0}</strong> relationships</span>
       </div>
       <h2>${issueHeading}</h2>
-      <p>Fixing these items helps make your family tree more complete and reliable.</p>
+      <p>Your free preview includes these five people, their possible duplicates, and other detected errors. Print this view or continue fixing errors; choose a subscription to review more of your family tree.</p>
       <div class="tree-summary-actions">
-        <a class="btn-secondary" href="${errorWorkspaceUrl}" data-continue-to-errors>Return to Error Workspace</a>
+        <button type="button" class="btn-secondary" onclick="window.print()">Print Five-Person Tree</button>
+        <a class="btn-secondary" href="${errorWorkspaceUrl}" data-continue-to-errors>Continue to Fix Errors</a>
       </div>
     </section>
     ${renderGenerations(treeData, peopleById, families)}
@@ -725,11 +704,11 @@ review.addEventListener('search', updatePrimaryPersonMatches);
 
 const storedTreeData = getTreeData();
 if (storedTreeData?.people?.length) {
-  renderTreeReview(storedTreeData);
+  renderTreeReview((localStorage.getItem('familyTreeSubscriptionTier') || 'free') === 'free' ? createFiveGenerationReviewTree(storedTreeData) : storedTreeData);
 } else if (window.familyTreeClientStorage?.loadTreeFromDatabase) {
   review.innerHTML = '<p class="empty-message">Opening your family tree...</p>';
   window.familyTreeClientStorage.loadTreeFromDatabase(STORAGE_KEY)
-    .then((treeData) => renderTreeReview(treeData))
+    .then((treeData) => renderTreeReview((localStorage.getItem('familyTreeSubscriptionTier') || 'free') === 'free' ? createFiveGenerationReviewTree(treeData) : treeData))
     .catch(() => renderTreeReview());
 } else {
   renderTreeReview();

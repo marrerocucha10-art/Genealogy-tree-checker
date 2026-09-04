@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Genealogy Store | Fix Your Tree</title>
+  <link rel="stylesheet" href="styles.css?v=memorial-marker-1">
+</head>
+<body>
+  <div class="container">
+    <nav class="step-nav" aria-label="Page navigation">
+      <button type="button" class="step-nav-back" onclick="if (history.length > 1) { history.back(); } else { location.href = 'index.html'; }">← Back</button>
+      <a class="step-nav-link" href="index.html">Start page</a>
+      <a class="step-nav-link" href="errors.html">Error workspace</a>
+    </nav>
+    <header>
+      <h1>Genealogy Store</h1>
+      <p>Digital products, print keepsakes, research tools, and memory packages for your family tree.</p>
+    </header>
+
+    <main>
+      <section id="subscriptions" class="subscription-section">
+        <div class="subscription-header">
+          <div>
+            <h2>Choose a Subscription</h2>
+            <p>Choose the tools that fit your family-tree project, then continue to the products below.</p>
+          </div>
+          <button id="manageBilling" type="button" class="btn-secondary" hidden>Update payment, plan, or invoices</button>
+        </div>
+        <div class="billing-toggle" aria-label="Billing interval">
+          <button id="monthlyBilling" type="button" class="layout-button active" data-billing-interval="monthly">Monthly</button>
+          <button id="annualBilling" type="button" class="layout-button" data-billing-interval="annual">Annual</button>
+        </div>
+        <div id="subscriptionStatus" class="subscription-status">Current plan: Basic</div>
+        <div id="subscriptionPlans" class="subscription-plans" aria-live="polite"></div>
+        <aside class="upload-capacity-addon" aria-label="Coming soon extra-large upload add-on">
+          <div>
+            <p class="eyebrow">Coming soon for Business customers</p>
+            <h3>Extra-Large GEDCOM Upload</h3>
+            <p>Need more room for a commercial-scale family tree? Add one upload up to 5 GB for a one-time $9.99. This add-on will be available once secure large-file processing is ready.</p>
+          </div>
+          <div>
+            <strong>$9.99</strong>
+            <span class="coming-soon-badge">Coming soon</span>
+          </div>
+        </aside>
+      </section>
+
+      <section id="customKeepsakes" class="keepsake-catalog coming-soon-catalog">
+        <div class="keepsake-catalog-heading">
+          <div>
+            <h2>Personalized Tree Keepsakes</h2>
+            <p>Celebrate completed research with products designed around your updated family tree.</p>
+          </div>
+          <span>Coming Soon</span>
+        </div>
+        <button class="coming-soon-button" type="button" data-toggle-coming-soon aria-expanded="false">Coming Soon: Explore Personalized Keepsakes</button>
+        <div id="comingSoonKeepsakes" hidden>
+          <p class="keepsake-catalog-note">These products are being prepared for fulfillment through Printify. Ordering will open after each design is published in your storefront.</p>
+          <div class="keepsake-product-grid">
+            <article class="keepsake-product-card featured-keepsake-product">
+              <span class="keepsake-type">Print keepsake</span>
+              <h3>Personalized Family Tree Poster</h3>
+              <p>An 18×24 portrait poster with your family title, selected generations, and a rooted-tree design.</p>
+              <span class="coming-soon-badge">Printify launch in progress</span>
+              <a class="product-detail-link" href="family-tree-poster.html">View poster details</a>
+            </article>
+            <article class="keepsake-product-card">
+              <span class="keepsake-type">Print keepsake</span>
+              <h3>Ancestor Chart Poster</h3>
+              <p>A person-focused four-generation chart that makes a meaningful gift for a parent or grandparent.</p>
+              <span class="coming-soon-badge">Coming soon</span>
+            </article>
+            <article class="keepsake-product-card">
+              <span class="keepsake-type">Print keepsake</span>
+              <h3>Family History Journal</h3>
+              <p>A guided journal for stories, photographs, interview notes, and discoveries worth passing down.</p>
+              <span class="coming-soon-badge">Coming soon</span>
+              <a class="product-detail-link" href="family-history-journal.html">View journal details</a>
+            </article>
+            <article class="keepsake-product-card">
+              <span class="keepsake-type">Digital download</span>
+              <h3>Surname Research Workbook</h3>
+              <p>A printable set of source logs, interview prompts, research plans, and family-group worksheets.</p>
+              <span class="coming-soon-badge">Coming soon</span>
+            </article>
+            <article class="keepsake-product-card">
+              <span class="keepsake-type">Print keepsake</span>
+              <h3>Family Reunion Welcome Sign</h3>
+              <p>A personalized welcome sign with the family name, reunion date, and heritage-inspired design.</p>
+              <span class="coming-soon-badge">Coming soon</span>
+            </article>
+            <article class="keepsake-product-card featured-memorial-product">
+              <span class="keepsake-type">Engraved memorial marker</span>
+              <h3>QR Memorial Story Marker</h3>
+              <p>A small engraved QR marker that connects visitors to a private remembrance with a loved one’s story, photos, and voice recordings.</p>
+              <span class="coming-soon-badge">Memorial experience in development</span>
+              <a class="product-detail-link" href="qr-memorial-story-marker.html">View memorial marker details</a>
+            </article>
+            <article class="keepsake-product-card">
+              <span class="keepsake-type">Digital download</span>
+              <h3>Digital Family History Booklet</h3>
+              <p>A shareable PDF booklet that brings together your selected family records, dates, and memories.</p>
+              <span class="coming-soon-badge">Coming soon</span>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>© 2026 Genealogy Tree Checker</p>
+    </footer>
+  </div>
+  <script src="admin-review-gate.js?v=review-always-on-2"></script>
+  <script src="store.js?v=memorial-marker-1"></script>
+  <script src="supabase-auth.js"></script>
+</body>
+</html>
