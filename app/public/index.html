@@ -43,11 +43,15 @@
 
       <section class="friendly-services" aria-labelledby="servicesTitle">
         <div class="ava-guided-layout">
-          <div class="ava-guide" aria-hidden="true"><div class="ava-antenna"></div><div class="ava-head"><i></i><i></i></div><div class="ava-body"><span>AVA</span></div></div>
+          <div class="ava-guide" data-ava-guide>
+            <video class="ava-guide-video" autoplay loop muted playsinline aria-label="Ava, your research guide, reviewing family history records"><source src="genealogy-research-preview.mp4" type="video/mp4"></video>
+            <div class="ava-guide-caption"><strong>Ava</strong><span id="avaExpression">Ready to help</span></div>
+          </div>
           <div>
             <div class="friendly-section-heading ava-heading"><p class="eyebrow">Ask Ava · your research guide</p><h2 id="servicesTitle">Your family story has more to reveal.</h2><p>Follow five clear steps to turn an uncertain tree into a story you can trust and share.</p></div>
             <div class="ava-conversation" aria-live="polite">
               <p id="avaMessage">Hi, I’m Ava. Pick a step and I’ll show you what we can do together.</p>
+              <button id="avaSpeak" class="ava-speak" type="button" aria-pressed="false">Hear Ava’s guidance</button>
             </div>
             <div class="ava-step-actions" role="group" aria-label="Ask Ava about your research journey">
               <button type="button" data-ava-step="spot">1. Spot errors</button>

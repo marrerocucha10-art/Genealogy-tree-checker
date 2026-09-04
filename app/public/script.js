@@ -2751,18 +2751,35 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 const AVA_GUIDANCE = {
-  spot: 'I’ll help you start with the details that change the whole story: duplicate people, conflicting dates, missing places, and relationships that need a closer look.',
-  evidence: 'Compare what your tree says with the records you find. Keep only details you can support, then save the source with your correction.',
-  organize: 'Turn each confirmed clue into a clear next step. A tidy record today makes the next branch much easier to understand.',
-  share: 'Invite family and friends to look at your discoveries. A memory, photograph, or different spelling can open the next lead.',
-  preserve: 'When your research is ready, turn it into something your family can keep: a poster, a scannable memorial marker, or a cinematic family documentary.',
+  spot: { expression: 'Looking closely', text: 'I’ll help you start with the details that change the whole story: duplicate people, conflicting dates, missing places, and relationships that need a closer look.' },
+  evidence: { expression: 'Checking the evidence', text: 'Compare what your tree says with the records you find. Keep only details you can support, then save the source with your correction.' },
+  organize: { expression: 'Putting clues together', text: 'Turn each confirmed clue into a clear next step. A tidy record today makes the next branch much easier to understand.' },
+  share: { expression: 'Inviting new ideas', text: 'Invite family and friends to look at your discoveries. A memory, photograph, or different spelling can open the next lead.' },
+  preserve: { expression: 'Celebrating the story', text: 'When your research is ready, turn it into something your family can keep: a poster, a scannable memorial marker, or a cinematic family documentary.' },
 };
 
+function speakAvaGuidance() {
+  const message = document.getElementById('avaMessage');
+  const button = document.getElementById('avaSpeak');
+  if (!message || !button || !('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(message.textContent);
+  utterance.rate = 0.96;
+  utterance.onstart = () => { button.textContent = 'Ava is speaking…'; button.setAttribute('aria-pressed', 'true'); };
+  utterance.onend = utterance.onerror = () => { button.textContent = 'Hear Ava’s guidance'; button.setAttribute('aria-pressed', 'false'); };
+  window.speechSynthesis.speak(utterance);
+}
+
 document.addEventListener('click', (event) => {
+  const speakButton = event.target.closest('#avaSpeak');
+  if (speakButton) { speakAvaGuidance(); return; }
   const button = event.target.closest('[data-ava-step]');
   if (!button) return;
+  const guidance = AVA_GUIDANCE[button.dataset.avaStep];
   const message = document.getElementById('avaMessage');
-  if (!message) return;
-  message.textContent = AVA_GUIDANCE[button.dataset.avaStep] || 'Choose a step and I’ll guide you.';
+  const expression = document.getElementById('avaExpression');
+  if (!message || !guidance) return;
+  message.textContent = guidance.text;
+  if (expression) expression.textContent = guidance.expression;
   document.querySelectorAll('[data-ava-step]').forEach((item) => item.classList.toggle('active', item === button));
 });
