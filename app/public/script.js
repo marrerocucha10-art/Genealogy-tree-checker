@@ -2749,3 +2749,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 });
+
+const AVA_GUIDANCE = {
+  spot: 'I’ll help you start with the details that change the whole story: duplicate people, conflicting dates, missing places, and relationships that need a closer look.',
+  evidence: 'Compare what your tree says with the records you find. Keep only details you can support, then save the source with your correction.',
+  organize: 'Turn each confirmed clue into a clear next step. A tidy record today makes the next branch much easier to understand.',
+  share: 'Invite family and friends to look at your discoveries. A memory, photograph, or different spelling can open the next lead.',
+  preserve: 'When your research is ready, turn it into something your family can keep: a poster, a scannable memorial marker, or a cinematic family documentary.',
+};
+
+document.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-ava-step]');
+  if (!button) return;
+  const message = document.getElementById('avaMessage');
+  if (!message) return;
+  message.textContent = AVA_GUIDANCE[button.dataset.avaStep] || 'Choose a step and I’ll guide you.';
+  document.querySelectorAll('[data-ava-step]').forEach((item) => item.classList.toggle('active', item === button));
+});

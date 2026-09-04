@@ -46,13 +46,16 @@
           <div class="ava-guide" aria-hidden="true"><div class="ava-antenna"></div><div class="ava-head"><i></i><i></i></div><div class="ava-body"><span>AVA</span></div></div>
           <div>
             <div class="friendly-section-heading ava-heading"><p class="eyebrow">Ask Ava · your research guide</p><h2 id="servicesTitle">Your family story has more to reveal.</h2><p>Follow five clear steps to turn an uncertain tree into a story you can trust and share.</p></div>
-            <ol class="guided-steps subscription-guided-steps ava-steps">
-              <li><strong>Spot what needs attention.</strong><span>Find duplicates, timeline conflicts, missing places, and relationship details that deserve a closer look.</span></li>
-              <li><strong>Follow the evidence.</strong><span>Compare your tree with historical records from Ancestry, FamilySearch, MyHeritage, and other research sources.</span></li>
-              <li><strong>Turn clues into confidence.</strong><span>Organize what you confirm so every correction makes the next discovery easier.</span></li>
-              <li><strong>Bring your family into the search.</strong><span>Share your research with relatives and friends to gather feedback, memories, and fresh leads.</span></li>
-              <li><strong>Make the story last.</strong><span>Preserve the journey with family tree posters, scannable memorial markers, and a guided family documentary.</span></li>
-            </ol>
+            <div class="ava-conversation" aria-live="polite">
+              <p id="avaMessage">Hi, I’m Ava. Pick a step and I’ll show you what we can do together.</p>
+            </div>
+            <div class="ava-step-actions" role="group" aria-label="Ask Ava about your research journey">
+              <button type="button" data-ava-step="spot">1. Spot errors</button>
+              <button type="button" data-ava-step="evidence">2. Find evidence</button>
+              <button type="button" data-ava-step="organize">3. Organize</button>
+              <button type="button" data-ava-step="share">4. Share</button>
+              <button type="button" data-ava-step="preserve">5. Preserve</button>
+            </div>
             <p class="ava-closing">Ready to uncover what your tree is hiding?</p>
             <a class="btn-add" href="store.html#subscriptions">Explore Genealogy Subscriptions</a>
           </div>
