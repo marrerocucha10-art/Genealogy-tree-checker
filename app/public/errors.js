@@ -18,9 +18,9 @@ const SUBSCRIPTION_STORAGE_KEY = IS_ADMINISTRATION_WORKSPACE ? 'familyTreeAdmini
 const PLAN_SELECTION_STORAGE_KEY = IS_ADMINISTRATION_WORKSPACE ? 'familyTreeAdministrationReviewPlanSelected' : 'familyTreePlanSelected';
 const SUBSCRIPTION_STORE_URL = IS_ADMINISTRATION_WORKSPACE ? 'store.html?admin_review=true#subscriptions' : 'store.html#subscriptions';
 const ERROR_BATCH_SIZE = 10;
-// The free preview is limited by the five people selected on the tree page, not by an arbitrary number of issues.
-const BASIC_ERROR_REVIEW_LIMIT = Number.MAX_SAFE_INTEGER;
-const FREE_DUPLICATE_FIX_LIMIT = Number.MAX_SAFE_INTEGER;
+// The free preview includes five detected corrections in total.
+const BASIC_ERROR_REVIEW_LIMIT = 5;
+const FREE_DUPLICATE_FIX_LIMIT = 5;
 
 function getFreeDuplicatesUsed(progress) {
   return new Set(progress?.completedDuplicateIssueIds || []).size;
@@ -42,9 +42,9 @@ function getFreeOtherLeft(progress) {
   return Math.max(BASIC_ERROR_REVIEW_LIMIT - getFreeReviewsUsed(progress), 0);
 }
 
-// The preview tree already contains only five people, so every detected issue here belongs to that free preview.
+// Show the first five detected errors in the selected free-preview tree.
 function getFreePreviewErrors(visibleGenerationErrors) {
-  return visibleGenerationErrors;
+  return visibleGenerationErrors.slice(0, BASIC_ERROR_REVIEW_LIMIT);
 }
 const ERROR_REVIEW_ORDER_VERSION = 10;
 const VISIBLE_REVIEW_GENERATION_COUNT = 5;
@@ -396,7 +396,7 @@ function renderBasicPlanOptions(errors, progress) {
   if (getCurrentTier() !== 'free') return '';
   return `
     <section class="assistance-options free-trial-remaining">
-      <p>Your free preview covers the first five people in your family tree, including possible duplicates and other errors found for them. <a class="assistance-upgrade-link" href="${SUBSCRIPTION_STORE_URL}">Choose a plan</a> to review more people and the rest of their errors.</p>
+      <p>You can fix the first five detected errors at no charge. <a class="assistance-upgrade-link" href="${SUBSCRIPTION_STORE_URL}">Choose a plan</a> to review more of your family tree.</p>
     </section>
   `;
 }
@@ -1464,14 +1464,12 @@ function completeDuplicateMerge(treeData, fix) {
     subject: survivor.id,
   });
   if (!progress.completedIssueIds.includes(mergedIssueId)) progress.completedIssueIds.push(mergedIssueId);
+  if (!progress.completedDuplicateIssueIds.includes(mergedIssueId)) progress.completedDuplicateIssueIds.push(mergedIssueId);
   recordResolvedItem(progress, {
     category: 'Possible duplicate',
     message: `${duplicates.length + 1} people were reviewed and merged into ${survivor.name || survivor.id}.`,
     subject: survivor.id,
   }, 'Confirmed duplicate merge');
-  if (!progress.completedDuplicateIssueIds.includes(mergedIssueId)) {
-    progress.completedDuplicateIssueIds.push(mergedIssueId);
-  }
   saveTreeData(treeData);
   saveProgress(progress);
 }
@@ -1610,8 +1608,15 @@ function renderWorkspaceContent() {
     return;
   }
 
+  const freeFixTarget = Math.min(BASIC_ERROR_REVIEW_LIMIT, errors.length);
+  const freeFixesCompleted = getFreeReviewsUsed(progress);
+  if (isBasicPlan && freeFixTarget && freeFixesCompleted >= freeFixTarget) {
+    workspace.innerHTML = `${workspaceDesk}<section id="activeReview" class="batch-complete"><h2>${freeFixTarget === BASIC_ERROR_REVIEW_LIMIT ? 'Wonderful work — your first five errors are fixed' : 'Wonderful work — your free error review is complete'}</h2><p>You have made your family tree clearer by completing the free review. Continue improving your tree with a subscription whenever you are ready.</p><a class="btn-add" href="${SUBSCRIPTION_STORE_URL}">View Subscription Plans</a></section>${pendingResearch}`;
+    return;
+  }
+
   if (!errors.length) {
-    workspace.innerHTML = `${workspaceDesk}${reviewFocusSwitch}${duplicateMergeReview}${encouragement}${pendingResearch}<p id="activeReview" class="empty-message">There are no open errors for the five people in your free preview. Choose a subscription to review more people in your family tree.</p>${renderUpdatedTreeOffer()}${undoButton}${assistanceOptions}`;
+    workspace.innerHTML = `${workspaceDesk}${reviewFocusSwitch}${duplicateMergeReview}${encouragement}${pendingResearch}<p id="activeReview" class="empty-message">There are no detected errors in this free preview.</p>${renderUpdatedTreeOffer()}${undoButton}${assistanceOptions}`;
     return;
   }
 
@@ -1682,7 +1687,7 @@ function renderWorkspaceContent() {
         <h2>${activeReviewTitle}</h2>
         <span>${activeGroups.length} record${activeGroups.length === 1 ? '' : 's'} in this review</span>
       </div>
-      <p class="batch-help">${isBasicPlan ? `${placementDescription}${reviewingDuplicates ? ' These records look like the same person recorded twice, so they are combined first.' : ''}` : `${activeReviewDescription} Each person includes all of their unresolved errors. Mark an error solved after correcting it in this working tree or completing its recommended fix. The next selected generation opens when this generation is complete.`}</p>
+      <p class="batch-help">${isBasicPlan ? `We detected ${errors.length} error${errors.length === 1 ? '' : 's'} in this free preview. ${placementDescription}${reviewingDuplicates ? ' These records look like the same person recorded twice, so they are combined first.' : ''} You can fix the first five errors at no charge.` : `${activeReviewDescription} Each person includes all of their unresolved errors. Mark an error solved after correcting it in this working tree or completing its recommended fix. The next selected generation opens when this generation is complete.`}</p>
       ${duplicateMergeReview}
       ${encouragement}
       ${pendingResearch}
