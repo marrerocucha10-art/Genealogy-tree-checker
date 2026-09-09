@@ -4,6 +4,7 @@ const BILLING_INTERVAL_STORAGE_KEY = 'familyTreeBillingInterval';
 const STRIPE_CUSTOMER_STORAGE_KEY = 'familyTreeStripeCustomerId';
 const PLAN_SELECTION_STORAGE_KEY = administrationReview ? 'familyTreeAdministrationReviewPlanSelected' : 'familyTreePlanSelected';
 const PRODUCT_VISIBILITY_STORAGE_KEY = 'familyTreeStoreProductVisibility';
+const PRODUCT_READINESS_STORAGE_KEY = 'familyTreeStoreProductReadiness';
 const ACTIVE_FAMILY_TREE_CLIENT_KEY = 'activeFamilyTreeClientId';
 const PRINTIFY_STOREFRONT_URL = 'https://friendly-genealogy-store.printify.me';
 
@@ -49,13 +50,16 @@ const keepsakeProducts = {
     printifyUrl: PRINTIFY_STOREFRONT_URL,
     requiresTreeData: true,
     defaultVisibility: 'public',
+    readinessDefault: 'ready_to_design',
   },
   'ancestor-chart-poster': {
     id: 'ancestor-chart-poster',
     name: 'Ancestor Chart Poster',
+    detailsUrl: '/ancestor-chart-poster.html',
     printifyUrl: PRINTIFY_STOREFRONT_URL,
     requiresTreeData: true,
     defaultVisibility: 'public',
+    readinessDefault: 'draft',
   },
   'family-history-journal': {
     id: 'family-history-journal',
@@ -64,6 +68,7 @@ const keepsakeProducts = {
     printifyUrl: PRINTIFY_STOREFRONT_URL,
     requiresTreeData: true,
     defaultVisibility: 'public',
+    readinessDefault: 'ready_to_design',
   },
   'surname-research-workbook': {
     id: 'surname-research-workbook',
@@ -72,13 +77,16 @@ const keepsakeProducts = {
     printifyUrl: PRINTIFY_STOREFRONT_URL,
     requiresTreeData: true,
     defaultVisibility: 'public',
+    readinessDefault: 'ready_to_design',
   },
   'family-reunion-sign': {
     id: 'family-reunion-sign',
     name: 'Family Reunion Welcome Sign',
+    detailsUrl: '/family-reunion-sign.html',
     printifyUrl: PRINTIFY_STOREFRONT_URL,
     requiresTreeData: true,
     defaultVisibility: 'public',
+    readinessDefault: 'draft',
   },
   'qr-memorial-story-marker': {
     id: 'qr-memorial-story-marker',
@@ -87,6 +95,7 @@ const keepsakeProducts = {
     printifyUrl: PRINTIFY_STOREFRONT_URL,
     requiresTreeData: false,
     defaultVisibility: 'public',
+    readinessDefault: 'draft',
   },
   'digital-family-history-booklet': {
     id: 'digital-family-history-booklet',
@@ -95,6 +104,7 @@ const keepsakeProducts = {
     printifyUrl: PRINTIFY_STOREFRONT_URL,
     requiresTreeData: true,
     defaultVisibility: 'public',
+    readinessDefault: 'ready_to_design',
   },
 };
 
@@ -132,6 +142,35 @@ function getProductVisibilityState() {
 
 function saveProductVisibilityState(state) {
   localStorage.setItem(PRODUCT_VISIBILITY_STORAGE_KEY, JSON.stringify(state));
+}
+
+function getReadinessState() {
+  const defaults = Object.fromEntries(
+    Object.values(keepsakeProducts).map((product) => [product.id, product.readinessDefault || 'draft']),
+  );
+  try {
+    const stored = JSON.parse(localStorage.getItem(PRODUCT_READINESS_STORAGE_KEY) || '{}');
+    if (!stored || typeof stored !== 'object') return defaults;
+    return { ...defaults, ...stored };
+  } catch (error) {
+    return defaults;
+  }
+}
+
+function saveReadinessState(state) {
+  localStorage.setItem(PRODUCT_READINESS_STORAGE_KEY, JSON.stringify(state));
+}
+
+function getReadinessLabel(code) {
+  if (code === 'ready_to_order') return 'Ready to Order';
+  if (code === 'ready_to_design') return 'Ready to Design';
+  return 'Draft';
+}
+
+function getNextReadiness(code) {
+  if (code === 'draft') return 'ready_to_design';
+  if (code === 'ready_to_design') return 'ready_to_order';
+  return 'draft';
 }
 
 function updateBillingButtons() {
@@ -253,11 +292,12 @@ function openGedRequiredPanel(product) {
   gedRequiredProductPanel.dataset.productUrl = product.detailsUrl || '';
   gedRequiredProductPanel.innerHTML = `
     <h3>${escapeHtml(product.name)} needs a family tree first</h3>
-    <p>To continue, upload and parse a GED file, or choose a previously saved family tree.</p>
+    <p>To continue, choose one path first: upload your GED file, or use a saved family tree from this browser.</p>
     <div class="tree-summary-actions">
       <a class="btn-add" href="/index.html?start=upload" target="_blank" rel="noopener">Upload Family Tree</a>
       <button class="btn-secondary" type="button" data-open-saved-tree-selector>Use Previously Saved Family Tree</button>
     </div>
+    <p id="treeSelectionStatus" class="muted">Select a path above to continue.</p>
     <div id="savedTreeSelector" hidden>
       <label for="savedTreeList">Choose a saved family tree</label>
       <select id="savedTreeList">
@@ -291,13 +331,24 @@ function createProductAction(product) {
 
 function renderKeepsakeCatalog() {
   const visibilityState = getProductVisibilityState();
+  const readinessState = getReadinessState();
   keepsakeCards.forEach((card) => {
     const productId = card.dataset.productId;
     const product = keepsakeProducts[productId];
     if (!product) return;
     const visibility = visibilityState[productId] === 'public' ? 'public' : 'pending';
+    const readiness = readinessState[productId] || 'draft';
     const showCard = administrationReview || visibility === 'public';
     card.hidden = !showCard;
+
+    let readinessBadge = card.querySelector('[data-product-readiness]');
+    if (!readinessBadge) {
+      readinessBadge = document.createElement('span');
+      readinessBadge.dataset.productReadiness = 'true';
+      readinessBadge.className = 'coming-soon-badge';
+      card.appendChild(readinessBadge);
+    }
+    readinessBadge.textContent = getReadinessLabel(readiness);
 
     let actions = card.querySelector('[data-product-actions]');
     if (!actions) {
@@ -318,6 +369,9 @@ function renderKeepsakeCatalog() {
     if (administrationReview) {
       review.hidden = false;
       review.innerHTML = `
+        <button class="btn-secondary" type="button" data-cycle-product-readiness="${escapeHtml(productId)}">
+          Set ${getReadinessLabel(getNextReadiness(readiness))}
+        </button>
         <button class="btn-secondary" type="button" data-toggle-product-visibility="${escapeHtml(productId)}">
           ${visibility === 'public' ? 'Mark as Pending Review' : 'Publish to Public Store'}
         </button>
@@ -372,6 +426,17 @@ document.getElementById('comingSoonKeepsakes')?.addEventListener('click', async 
     return;
   }
 
+  const readinessButton = event.target.closest('[data-cycle-product-readiness]');
+  if (readinessButton) {
+    const productId = readinessButton.dataset.cycleProductReadiness;
+    if (!keepsakeProducts[productId]) return;
+    const state = getReadinessState();
+    state[productId] = getNextReadiness(state[productId] || 'draft');
+    saveReadinessState(state);
+    renderKeepsakeCatalog();
+    return;
+  }
+
   const requiresTreeButton = event.target.closest('[data-select-ged-required-product]');
   if (requiresTreeButton) {
     const product = keepsakeProducts[requiresTreeButton.dataset.selectGedRequiredProduct];
@@ -386,6 +451,7 @@ gedRequiredProductPanel?.addEventListener('click', async (event) => {
     const selectorPanel = document.getElementById('savedTreeSelector');
     const select = document.getElementById('savedTreeList');
     const notice = document.getElementById('savedTreeNotice');
+    const status = document.getElementById('treeSelectionStatus');
     const continueButton = gedRequiredProductPanel.querySelector('[data-use-selected-tree]');
     selectorPanel.hidden = false;
     select.innerHTML = '<option value="">Select a saved family tree</option>';
@@ -403,12 +469,18 @@ gedRequiredProductPanel?.addEventListener('click', async (event) => {
       select.appendChild(option);
     }
     notice.textContent = trees.length ? 'Select one saved tree, then continue to this product.' : 'No saved family tree was found in this browser yet.';
+    if (status) {
+      status.textContent = trees.length
+        ? 'Saved trees are ready. Choose one and open the product page.'
+        : 'No saved tree found yet. Upload a family tree first.';
+    }
     return;
   }
 
   if (event.target.closest('[data-use-selected-tree]')) {
     const selected = document.getElementById('savedTreeList')?.value;
     const productUrl = gedRequiredProductPanel.dataset.productUrl;
+    const status = document.getElementById('treeSelectionStatus');
     if (!selected || !productUrl) return;
     const choice = JSON.parse(selected);
     if (choice.isLegacy) {
@@ -416,6 +488,7 @@ gedRequiredProductPanel?.addEventListener('click', async (event) => {
     } else if (choice.clientId) {
       window.familyTreeClientStorage?.setActiveClient?.(choice.clientId);
     }
+    if (status) status.textContent = 'Saved tree selected. Opening product page now.';
     window.open(productUrl, '_blank', 'noopener');
   }
 });
@@ -424,6 +497,8 @@ gedRequiredProductPanel?.addEventListener('change', (event) => {
   if (event.target.id !== 'savedTreeList') return;
   const continueButton = gedRequiredProductPanel.querySelector('[data-use-selected-tree]');
   if (continueButton) continueButton.disabled = !event.target.value;
+  const status = document.getElementById('treeSelectionStatus');
+  if (status && event.target.value) status.textContent = 'Tree selected. You can now open the product page.';
 });
 
 billingButtons.forEach((button) => button.addEventListener('click', () => {
