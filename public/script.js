@@ -372,11 +372,6 @@ familyTreeDiv.addEventListener('change', (event) => {
 
 async function importSelectedGedcom() {
   if (isImportingGedcom) return;
-  if (!localStorage.getItem(PLAN_SELECTION_STORAGE_KEY)) {
-    window.location.href = '/store#subscriptions';
-    return;
-  }
-
   const file = gedcomFileInput.files[0];
   if (!file) return;
 
