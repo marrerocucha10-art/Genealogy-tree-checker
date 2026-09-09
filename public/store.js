@@ -46,7 +46,7 @@ const keepsakeProducts = {
     name: 'Personalized Family Tree Poster',
     detailsUrl: 'family-tree-poster.html',
     requiresTreeData: true,
-    defaultVisibility: 'pending',
+    defaultVisibility: 'public',
   },
   'ancestor-chart-poster': {
     id: 'ancestor-chart-poster',
