@@ -5,6 +5,7 @@ const STRIPE_CUSTOMER_STORAGE_KEY = 'familyTreeStripeCustomerId';
 const PLAN_SELECTION_STORAGE_KEY = administrationReview ? 'familyTreeAdministrationReviewPlanSelected' : 'familyTreePlanSelected';
 const PRODUCT_VISIBILITY_STORAGE_KEY = 'familyTreeStoreProductVisibility';
 const ACTIVE_FAMILY_TREE_CLIENT_KEY = 'activeFamilyTreeClientId';
+const PRINTIFY_STOREFRONT_URL = 'https://friendly-genealogy-store.printify.me';
 
 const subscriptionPlans = document.getElementById('subscriptionPlans');
 const subscriptionStatus = document.getElementById('subscriptionStatus');
@@ -44,47 +45,56 @@ const keepsakeProducts = {
   'family-tree-poster': {
     id: 'family-tree-poster',
     name: 'Personalized Family Tree Poster',
-    detailsUrl: 'family-tree-poster.html',
+    detailsUrl: '/family-tree-poster.html',
+    printifyUrl: PRINTIFY_STOREFRONT_URL,
     requiresTreeData: true,
     defaultVisibility: 'public',
   },
   'ancestor-chart-poster': {
     id: 'ancestor-chart-poster',
     name: 'Ancestor Chart Poster',
+    printifyUrl: PRINTIFY_STOREFRONT_URL,
     requiresTreeData: true,
-    defaultVisibility: 'pending',
+    defaultVisibility: 'public',
   },
   'family-history-journal': {
     id: 'family-history-journal',
-    name: 'Family History Journal',
-    detailsUrl: 'family-history-journal.html',
+    name: 'Family History Diary',
+    detailsUrl: '/family-history-journal.html',
+    printifyUrl: PRINTIFY_STOREFRONT_URL,
     requiresTreeData: true,
-    defaultVisibility: 'pending',
+    defaultVisibility: 'public',
   },
   'surname-research-workbook': {
     id: 'surname-research-workbook',
-    name: 'Surname Research Workbook',
-    requiresTreeData: false,
-    defaultVisibility: 'pending',
+    name: 'Custom Family Tree Cover',
+    detailsUrl: '/custom-family-tree-cover.html',
+    printifyUrl: PRINTIFY_STOREFRONT_URL,
+    requiresTreeData: true,
+    defaultVisibility: 'public',
   },
   'family-reunion-sign': {
     id: 'family-reunion-sign',
     name: 'Family Reunion Welcome Sign',
+    printifyUrl: PRINTIFY_STOREFRONT_URL,
     requiresTreeData: true,
-    defaultVisibility: 'pending',
+    defaultVisibility: 'public',
   },
   'qr-memorial-story-marker': {
     id: 'qr-memorial-story-marker',
     name: 'QR Memorial Story Marker',
-    detailsUrl: 'qr-memorial-story-marker.html',
+    detailsUrl: '/qr-memorial-story-marker.html',
+    printifyUrl: PRINTIFY_STOREFRONT_URL,
     requiresTreeData: false,
     defaultVisibility: 'public',
   },
   'digital-family-history-booklet': {
     id: 'digital-family-history-booklet',
-    name: 'Digital Family History Booklet',
+    name: 'Heritage Journal',
+    detailsUrl: '/heritage-journal.html',
+    printifyUrl: PRINTIFY_STOREFRONT_URL,
     requiresTreeData: true,
-    defaultVisibility: 'pending',
+    defaultVisibility: 'public',
   },
 };
 
@@ -104,7 +114,17 @@ function getProductVisibilityState() {
   try {
     const stored = JSON.parse(localStorage.getItem(PRODUCT_VISIBILITY_STORAGE_KEY) || '{}');
     if (!stored || typeof stored !== 'object') return defaults;
-    return { ...defaults, ...stored };
+    return {
+      ...defaults,
+      ...stored,
+      'family-tree-poster': 'public',
+      'ancestor-chart-poster': 'public',
+      'family-history-journal': 'public',
+      'surname-research-workbook': 'public',
+      'family-reunion-sign': 'public',
+      'qr-memorial-story-marker': 'public',
+      'digital-family-history-booklet': 'public',
+    };
   } catch (error) {
     return defaults;
   }
@@ -253,11 +273,20 @@ function openGedRequiredPanel(product) {
 }
 
 function createProductAction(product) {
-  if (!product.detailsUrl) return '';
+  const printifyAction = product.printifyUrl
+    ? `<a class="btn-secondary" href="${escapeHtml(product.printifyUrl)}" target="_blank" rel="noopener">Design in Printify Store</a>`
+    : '';
+  if (!product.detailsUrl) return printifyAction;
   if (product.requiresTreeData) {
-    return `<button class="btn-add" type="button" data-select-ged-required-product="${escapeHtml(product.id)}">Select Product</button>`;
+    return `
+      <button class="btn-add" type="button" data-select-ged-required-product="${escapeHtml(product.id)}">Select Product</button>
+      ${printifyAction}
+    `;
   }
-  return `<a class="btn-add" href="${escapeHtml(product.detailsUrl)}">Select Product</a>`;
+  return `
+    <a class="btn-add" href="${escapeHtml(product.detailsUrl)}">Select Product</a>
+    ${printifyAction}
+  `;
 }
 
 function renderKeepsakeCatalog() {
@@ -328,7 +357,7 @@ document.querySelector('[data-toggle-coming-soon]')?.addEventListener('click', (
   event.currentTarget.setAttribute('aria-expanded', String(isOpen));
   event.currentTarget.textContent = isOpen
     ? 'Hide Personalized Keepsakes'
-    : 'Coming Soon: Explore Personalized Keepsakes';
+    : 'Explore Personalized Keepsakes';
 });
 
 document.getElementById('comingSoonKeepsakes')?.addEventListener('click', async (event) => {
