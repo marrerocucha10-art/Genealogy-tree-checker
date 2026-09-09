@@ -255,7 +255,7 @@ function openGedRequiredPanel(product) {
     <h3>${escapeHtml(product.name)} needs a family tree first</h3>
     <p>To continue, upload and parse a GED file, or choose a previously saved family tree.</p>
     <div class="tree-summary-actions">
-      <a class="btn-add" href="index.html?start=upload">Upload Family Tree</a>
+      <a class="btn-add" href="/index.html?start=upload" target="_blank" rel="noopener">Upload Family Tree</a>
       <button class="btn-secondary" type="button" data-open-saved-tree-selector>Use Previously Saved Family Tree</button>
     </div>
     <div id="savedTreeSelector" hidden>
@@ -264,7 +264,7 @@ function openGedRequiredPanel(product) {
         <option value="">Select a saved family tree</option>
       </select>
       <div class="tree-summary-actions">
-        <button class="btn-add" type="button" data-use-selected-tree disabled>Continue with Selected Tree</button>
+        <button class="btn-add" type="button" data-use-selected-tree disabled>Open Product Page</button>
       </div>
       <p id="savedTreeNotice" class="muted"></p>
     </div>
@@ -284,7 +284,7 @@ function createProductAction(product) {
     `;
   }
   return `
-    <a class="btn-add" href="${escapeHtml(product.detailsUrl)}">Select Product</a>
+    <a class="btn-add" href="${escapeHtml(product.detailsUrl)}" target="_blank" rel="noopener">Select Product</a>
     ${printifyAction}
   `;
 }
@@ -416,7 +416,7 @@ gedRequiredProductPanel?.addEventListener('click', async (event) => {
     } else if (choice.clientId) {
       window.familyTreeClientStorage?.setActiveClient?.(choice.clientId);
     }
-    window.location.href = productUrl;
+    window.open(productUrl, '_blank', 'noopener');
   }
 });
 
