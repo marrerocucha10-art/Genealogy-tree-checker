@@ -51,7 +51,7 @@ posterLayout = posterVariation === 'ancestor' ? 'ancestor' : posterVariation ===
 let currentTier = localStorage.getItem(SUBSCRIPTION_STORAGE_KEY) || 'free';
 let billingInterval = localStorage.getItem(BILLING_INTERVAL_STORAGE_KEY) || 'monthly';
 let stripeConfig = null;
-let storeUrl = '/store';
+let storeUrl = '/store.html';
 let stripeCustomerId = localStorage.getItem(STRIPE_CUSTOMER_STORAGE_KEY) || '';
 let isImportingGedcom = false;
 let pendingTreeDatabaseSave = Promise.resolve(true);
@@ -633,7 +633,7 @@ async function loadSubscriptionConfig() {
     const response = await fetch('/api/subscription/config');
     const result = await response.json();
     stripeConfig = result.stripe || null;
-    storeUrl = stripeConfig?.storeUrl || '/store';
+    storeUrl = stripeConfig?.storeUrl || '/store.html';
   } catch (error) {
     stripeConfig = null;
   }
@@ -1805,7 +1805,7 @@ function renderTreePresentation(generationData, peopleById) {
       <div class="keepsake-offer">
         <h4>Turn your updated tree into a keepsake</h4>
         <p>Explore personalized posters, family-history diaries, phone covers, journals, booklets, and memory keepsakes made from your new tree.</p>
-        <a class="btn-secondary" href="/store#customKeepsakes">Explore posters and keepsakes</a>
+        <a class="btn-secondary" href="/store.html#customKeepsakes">Explore posters and keepsakes</a>
       </div>
     </section>
   `;

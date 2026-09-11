@@ -237,7 +237,7 @@ function getStripeConfig() {
     ),
     portalConfigured: Boolean(process.env.STRIPE_CUSTOMER_PORTAL_RETURN_URL || process.env.PUBLIC_APP_URL),
     tiers,
-    storeUrl: process.env.PUBLIC_STORE_URL || '/store',
+    storeUrl: process.env.PUBLIC_STORE_URL || '/store.html',
   };
 }
 
@@ -304,7 +304,7 @@ async function createStripeCheckoutSession(req, tierId, interval = 'monthly') {
   const params = new URLSearchParams({
     mode: 'subscription',
     success_url: `${baseUrl}/?subscription=${tierId}&interval=${interval}&checkout=success&session_id={CHECKOUT_SESSION_ID}&start=upload`,
-    cancel_url: `${baseUrl}/store?checkout=cancelled`,
+    cancel_url: `${baseUrl}/store.html?checkout=cancelled`,
     'line_items[0][price_data][currency]': 'usd',
     'line_items[0][price_data][product_data][name]': `${tier.name} ${interval === 'annual' ? 'Annual' : 'Monthly'} Subscription`,
     'line_items[0][price_data][unit_amount]': String(unitAmount),

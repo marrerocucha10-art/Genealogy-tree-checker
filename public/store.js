@@ -538,6 +538,13 @@ async function initializeStore() {
   updateBillingButtons();
   renderPlans();
   renderKeepsakeCatalog();
+  const keepsakesContent = document.getElementById('comingSoonKeepsakes');
+  const toggleButton = document.querySelector('[data-toggle-coming-soon]');
+  if (keepsakesContent) keepsakesContent.hidden = false;
+  if (toggleButton) {
+    toggleButton.setAttribute('aria-expanded', 'true');
+    toggleButton.textContent = 'Hide Personalized Keepsakes';
+  }
 }
 
 initializeStore();

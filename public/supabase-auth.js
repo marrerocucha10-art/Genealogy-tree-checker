@@ -60,7 +60,7 @@ accountForm?.addEventListener('submit', async (event) => {
     body: JSON.stringify({
       email,
       create_user: true,
-      email_redirect_to: `${window.location.origin}/store`,
+      email_redirect_to: `${window.location.origin}/store.html`,
     }),
   });
 
