@@ -6,6 +6,7 @@ const PLAN_SELECTION_STORAGE_KEY = administrationReview ? 'familyTreeAdministrat
 const PRODUCT_VISIBILITY_STORAGE_KEY = 'familyTreeStoreProductVisibility';
 const PRODUCT_READINESS_STORAGE_KEY = 'familyTreeStoreProductReadiness';
 const ACTIVE_FAMILY_TREE_CLIENT_KEY = 'activeFamilyTreeClientId';
+const STORE_THEME_STORAGE_KEY = 'familyTreeStoreTheme';
 const PRINTIFY_STOREFRONT_URL = 'https://friendly-genealogy-store.printify.me';
 
 const subscriptionPlans = document.getElementById('subscriptionPlans');
@@ -14,6 +15,7 @@ const manageBillingButton = document.getElementById('manageBilling');
 const billingButtons = document.querySelectorAll('[data-billing-interval]');
 const keepsakeCards = [...document.querySelectorAll('[data-product-id]')];
 const gedRequiredProductPanel = document.getElementById('gedRequiredProductPanel');
+const storeThemeButtons = [...document.querySelectorAll('[data-store-theme-option]')];
 
 const tiers = {
   free: {
@@ -112,6 +114,14 @@ let currentTier = localStorage.getItem(SUBSCRIPTION_STORAGE_KEY) || 'free';
 let billingInterval = localStorage.getItem(BILLING_INTERVAL_STORAGE_KEY) || 'monthly';
 let stripeCustomerId = localStorage.getItem(STRIPE_CUSTOMER_STORAGE_KEY) || '';
 let stripeConfig = null;
+let storeTheme = localStorage.getItem(STORE_THEME_STORAGE_KEY) || 'classic';
+
+function applyStoreTheme(theme = 'classic') {
+  storeTheme = ['classic', 'modern', 'dynamic'].includes(theme) ? theme : 'classic';
+  document.body.dataset.storeTheme = storeTheme;
+  storeThemeButtons.forEach((button) => button.classList.toggle('active', button.dataset.storeThemeOption === storeTheme));
+  localStorage.setItem(STORE_THEME_STORAGE_KEY, storeTheme);
+}
 
 function escapeHtml(value = '') {
   return String(value).replace(/[&<>"']/g, (character) => ({
@@ -510,6 +520,10 @@ billingButtons.forEach((button) => button.addEventListener('click', () => {
   renderPlans();
 }));
 
+storeThemeButtons.forEach((button) => button.addEventListener('click', () => {
+  applyStoreTheme(button.dataset.storeThemeOption);
+}));
+
 manageBillingButton.addEventListener('click', async () => {
   if (!stripeCustomerId) {
     alert('Manage billing after completing a Stripe checkout.');
@@ -540,6 +554,7 @@ async function initializeStore() {
   updateBillingButtons();
   renderPlans();
   renderKeepsakeCatalog();
+  applyStoreTheme(storeTheme);
   const keepsakesContent = document.getElementById('comingSoonKeepsakes');
   const toggleButton = document.querySelector('[data-toggle-coming-soon]');
   if (keepsakesContent) keepsakesContent.hidden = false;

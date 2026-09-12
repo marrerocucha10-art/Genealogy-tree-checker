@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Genealogy Store | Fix Your Tree</title>
-  <link rel="stylesheet" href="styles.css?v=keepsake-refresh-1">
+  <link rel="stylesheet" href="styles.css?v=modern-store-1">
 </head>
 <body>
   <div class="container">
@@ -17,6 +17,12 @@
       <h1>Genealogy Store</h1>
       <p>Digital products, print keepsakes, research tools, and memory packages for your family tree.</p>
     </header>
+    <div class="store-view-switcher" aria-label="Store appearance options">
+      <span>Store style:</span>
+      <button type="button" class="store-view-chip active" data-store-theme-option="classic">Classic</button>
+      <button type="button" class="store-view-chip" data-store-theme-option="modern">Modern</button>
+      <button type="button" class="store-view-chip" data-store-theme-option="dynamic">Dynamic</button>
+    </div>
 
     <main>
       <section id="subscriptions" class="subscription-section">
@@ -119,7 +125,7 @@
   </div>
   <script src="admin-review-gate.js?v=review-always-on-2"></script>
   <script src="client-storage.js?v=both-parents-1"></script>
-  <script src="store.js?v=keepsake-refresh-2"></script>
+  <script src="store.js?v=modern-store-1"></script>
   <script src="supabase-auth.js"></script>
 </body>
 </html>
