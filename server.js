@@ -31,6 +31,14 @@ app.use((req, res, next) => {
   return next();
 });
 
+app.use((req, res, next) => {
+  const host = String(req.headers.host || '').toLowerCase();
+  if (!host.startsWith('www.fixyourtree.com')) return next();
+
+  const redirectPath = req.originalUrl || '/';
+  return res.redirect(308, `https://fixyourtree.com${redirectPath}`);
+});
+
 const MAX_GEDCOM_BYTES = 150 * 1024 * 1024;
 
 // --- Administration review sessions -----------------------------------------
