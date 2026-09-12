@@ -43,6 +43,18 @@ function escapeHtml(value = '') {
   }[character]));
 }
 
+function downloadFile(filename, content, type) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 function normalizePersonSearch(value = '') {
   return String(value)
     .normalize('NFKD')
@@ -610,6 +622,7 @@ function renderTreeReviewContent(treeData = loadedTreeData || getTreeData()) {
       <p>Fixing these items helps make your family tree more complete and reliable.</p>
       <div class="tree-summary-actions">
         <a class="btn-secondary" href="${errorWorkspaceUrl}" data-continue-to-errors>Return to Error Workspace</a>
+        ${isFreePreview ? '<button class="btn-secondary" type="button" data-save-preview-tree>Save Previewed Tree</button>' : ''}
       </div>
     </section>
     ${renderGenerations(treeData, peopleById, families)}
@@ -684,6 +697,12 @@ review.addEventListener('click', async (event) => {
   if (event.target.closest('[data-load-more-generations]')) {
     visibleGenerationCount += GENERATIONS_PER_PAGE;
     renderTreeReview();
+    return;
+  }
+
+  if (event.target.closest('[data-save-preview-tree]') && loadedTreeData) {
+    const previewTreeData = createFiveGenerationReviewTree(loadedTreeData);
+    downloadFile('family-tree-free-preview.json', JSON.stringify(previewTreeData, null, 2), 'application/json');
     return;
   }
 

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Genealogy Store | Fix Your Tree</title>
-  <link rel="stylesheet" href="styles.css?v=memorial-marker-1">
+  <link rel="stylesheet" href="styles.css?v=modern-store-1">
 </head>
 <body>
   <div class="container">
@@ -17,13 +17,19 @@
       <h1>Genealogy Store</h1>
       <p>Digital products, print keepsakes, research tools, and memory packages for your family tree.</p>
     </header>
+    <div class="store-view-switcher" role="radiogroup" aria-label="Store appearance options">
+      <span>Store style:</span>
+      <button type="button" class="store-view-chip active" data-store-theme-option="classic" role="radio" aria-checked="true">Classic</button>
+      <button type="button" class="store-view-chip" data-store-theme-option="modern" role="radio" aria-checked="false">Modern</button>
+      <button type="button" class="store-view-chip" data-store-theme-option="dynamic" role="radio" aria-checked="false">Dynamic</button>
+    </div>
 
     <main>
       <section id="subscriptions" class="subscription-section">
         <div class="subscription-header">
           <div>
-            <h2>Choose a Subscription</h2>
-            <p>Choose the tools that fit your family-tree project, then continue to the products below.</p>
+            <h2>Choose a Plan (Optional)</h2>
+            <p>The store is open to everyone. You can browse and select available products without a subscription.</p>
           </div>
           <button id="manageBilling" type="button" class="btn-secondary" hidden>Update payment, plan, or invoices</button>
         </div>
@@ -52,56 +58,61 @@
             <h2>Personalized Tree Keepsakes</h2>
             <p>Celebrate completed research with products designed around your updated family tree.</p>
           </div>
-          <span>Coming Soon</span>
+          <span>Available Now</span>
         </div>
-        <button class="coming-soon-button" type="button" data-toggle-coming-soon aria-expanded="false">Coming Soon: Explore Personalized Keepsakes</button>
-        <div id="comingSoonKeepsakes" hidden>
-          <p class="keepsake-catalog-note">These products are being prepared for fulfillment through Printify. Ordering will open after each design is published in your storefront.</p>
+        <button class="coming-soon-button" type="button" data-toggle-coming-soon aria-expanded="true">Hide Personalized Keepsakes</button>
+        <div id="comingSoonKeepsakes">
+          <p class="keepsake-catalog-note">Only products marked available are shown in the public storefront. In administration review, you can publish pending products.</p>
+          <div id="gedRequiredProductPanel" class="tree-review-summary" hidden></div>
           <div class="keepsake-product-grid">
-            <article class="keepsake-product-card featured-keepsake-product">
+            <article class="keepsake-product-card featured-keepsake-product" data-product-id="family-tree-poster">
               <span class="keepsake-type">Print keepsake</span>
               <h3>Personalized Family Tree Poster</h3>
               <p>An 18×24 portrait poster with your family title, selected generations, and a rooted-tree design.</p>
-              <span class="coming-soon-badge">Printify launch in progress</span>
-              <a class="product-detail-link" href="family-tree-poster.html">View poster details</a>
+              <p class="muted"><strong>Best for:</strong> Framing your direct family line as a wall keepsake.</p>
+              <a class="product-detail-link" href="/family-tree-poster.html" target="_blank" rel="noopener">View poster details</a>
             </article>
-            <article class="keepsake-product-card">
+            <article class="keepsake-product-card" data-product-id="family-history-journal">
+              <span class="keepsake-type">Print keepsake</span>
+              <h3>Family History Diary</h3>
+              <p>A guided journal for stories, photographs, interview notes, and discoveries worth passing down.</p>
+              <p class="muted"><strong>Best for:</strong> Capturing stories and memories behind each record.</p>
+              <a class="product-detail-link" href="/family-history-journal.html" target="_blank" rel="noopener">View diary details</a>
+            </article>
+            <article class="keepsake-product-card" data-product-id="surname-research-workbook">
+              <span class="keepsake-type">Digital download</span>
+              <h3>Custom Family Tree Cover</h3>
+              <p>A personalized cover design based on your family tree, ready to place on matching print products.</p>
+              <p class="muted"><strong>Best for:</strong> Matching visual branding across posters and journals.</p>
+              <a class="product-detail-link" href="/custom-family-tree-cover.html" target="_blank" rel="noopener">View cover details</a>
+            </article>
+            <article class="keepsake-product-card" data-product-id="digital-family-history-booklet">
+              <span class="keepsake-type">Digital download</span>
+              <h3>Heritage Journal</h3>
+              <p>A guided keepsake journal with a heritage-style cover connected to your selected family line.</p>
+              <p class="muted"><strong>Best for:</strong> A polished family journal with a heritage presentation.</p>
+              <a class="product-detail-link" href="/heritage-journal.html" target="_blank" rel="noopener">View journal details</a>
+            </article>
+            <article class="keepsake-product-card" data-product-id="ancestor-chart-poster">
               <span class="keepsake-type">Print keepsake</span>
               <h3>Ancestor Chart Poster</h3>
               <p>A person-focused four-generation chart that makes a meaningful gift for a parent or grandparent.</p>
-              <span class="coming-soon-badge">Coming soon</span>
+              <p class="muted"><strong>Best for:</strong> Highlighting one person and close generations.</p>
+              <a class="product-detail-link" href="/ancestor-chart-poster.html" target="_blank" rel="noopener">View chart details</a>
             </article>
-            <article class="keepsake-product-card">
-              <span class="keepsake-type">Print keepsake</span>
-              <h3>Family History Journal</h3>
-              <p>A guided journal for stories, photographs, interview notes, and discoveries worth passing down.</p>
-              <span class="coming-soon-badge">Coming soon</span>
-              <a class="product-detail-link" href="family-history-journal.html">View journal details</a>
-            </article>
-            <article class="keepsake-product-card">
-              <span class="keepsake-type">Digital download</span>
-              <h3>Surname Research Workbook</h3>
-              <p>A printable set of source logs, interview prompts, research plans, and family-group worksheets.</p>
-              <span class="coming-soon-badge">Coming soon</span>
-            </article>
-            <article class="keepsake-product-card">
+            <article class="keepsake-product-card" data-product-id="family-reunion-sign">
               <span class="keepsake-type">Print keepsake</span>
               <h3>Family Reunion Welcome Sign</h3>
               <p>A personalized welcome sign with the family name, reunion date, and heritage-inspired design.</p>
-              <span class="coming-soon-badge">Coming soon</span>
+              <p class="muted"><strong>Best for:</strong> Reunion entrances and event displays.</p>
+              <a class="product-detail-link" href="/family-reunion-sign.html" target="_blank" rel="noopener">View sign details</a>
             </article>
-            <article class="keepsake-product-card featured-memorial-product">
+            <article class="keepsake-product-card featured-memorial-product" data-product-id="qr-memorial-story-marker">
               <span class="keepsake-type">Engraved memorial marker</span>
               <h3>QR Memorial Story Marker</h3>
               <p>A small engraved QR marker that connects visitors to a private remembrance with a loved one’s story, photos, and voice recordings.</p>
-              <span class="coming-soon-badge">Memorial experience in development</span>
-              <a class="product-detail-link" href="qr-memorial-story-marker.html">View memorial marker details</a>
-            </article>
-            <article class="keepsake-product-card">
-              <span class="keepsake-type">Digital download</span>
-              <h3>Digital Family History Booklet</h3>
-              <p>A shareable PDF booklet that brings together your selected family records, dates, and memories.</p>
-              <span class="coming-soon-badge">Coming soon</span>
+              <p class="muted"><strong>Best for:</strong> Memorial pages families can visit and share.</p>
+              <a class="product-detail-link" href="/qr-memorial-story-marker.html" target="_blank" rel="noopener">View memorial marker details</a>
             </article>
           </div>
         </div>
@@ -113,7 +124,8 @@
     </footer>
   </div>
   <script src="admin-review-gate.js?v=review-always-on-2"></script>
-  <script src="store.js?v=memorial-marker-1"></script>
+  <script src="client-storage.js?v=both-parents-1"></script>
+  <script src="store.js?v=modern-store-1"></script>
   <script src="supabase-auth.js"></script>
 </body>
 </html>
