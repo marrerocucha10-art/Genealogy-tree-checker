@@ -35,8 +35,7 @@ app.use((req, res, next) => {
   const host = String(req.headers.host || '').toLowerCase();
   if (!/^www\.fixyourtree\.com(?::\d+)?$/.test(host)) return next();
 
-  const redirectPath = req.originalUrl && req.originalUrl.startsWith('/') ? req.originalUrl : '/';
-  return res.redirect(308, `https://fixyourtree.com${redirectPath}`);
+  return res.redirect(308, 'https://fixyourtree.com');
 });
 
 const MAX_GEDCOM_BYTES = 150 * 1024 * 1024;
