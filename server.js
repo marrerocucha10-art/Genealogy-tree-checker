@@ -33,9 +33,9 @@ app.use((req, res, next) => {
 
 app.use((req, res, next) => {
   const host = String(req.headers.host || '').toLowerCase();
-  if (!host.startsWith('www.fixyourtree.com')) return next();
+  if (!/^www\.fixyourtree\.com(?::\d+)?$/.test(host)) return next();
 
-  const redirectPath = req.originalUrl || '/';
+  const redirectPath = req.originalUrl && req.originalUrl.startsWith('/') ? req.originalUrl : '/';
   return res.redirect(308, `https://fixyourtree.com${redirectPath}`);
 });
 
