@@ -42,10 +42,7 @@ app.use((req, res, next) => {
   )
     ? req.path
     : '/';
-  const queryString = typeof req.query === 'object' && Object.keys(req.query || {}).length
-    ? `?${new URLSearchParams(req.query).toString()}`
-    : '';
-  return res.redirect(308, `https://fixyourtree.com${safePath}${queryString}`);
+  return res.redirect(308, `https://fixyourtree.com${safePath}`);
 });
 
 const MAX_GEDCOM_BYTES = 150 * 1024 * 1024;

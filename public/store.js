@@ -294,7 +294,7 @@ function openGedRequiredPanel(product) {
     <h3>${escapeHtml(product.name)} needs a family tree first</h3>
     <p>To continue, choose one path first: upload your GED file, or use a saved family tree from this browser.</p>
     <div class="tree-summary-actions">
-      <a class="btn-add" href="/index.html?start=upload" target="_blank" rel="noopener">Upload Family Tree</a>
+      <a class="btn-add" href="/index.html?start=upload&free_review=true" target="_blank" rel="noopener">Upload Family Tree</a>
       <button class="btn-secondary" type="button" data-open-saved-tree-selector>Use Previously Saved Family Tree</button>
     </div>
     <p id="treeSelectionStatus" class="muted">Select a path above to continue.</p>
