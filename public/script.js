@@ -2683,8 +2683,8 @@ document.addEventListener('DOMContentLoaded', () => {
   loadSubscriptionStatusFromCustomer();
   renderFamilyTree();
   if (localStorage.getItem(PLAN_SELECTION_STORAGE_KEY)) {
-    welcomeStartAction.href = '/?start=upload';
-    welcomeStartAction.textContent = 'Upload Your Family File';
+    welcomeStartAction.href = '/index.html?start=upload&free_review=true';
+    welcomeStartAction.textContent = 'Begin Your Family Tree Review';
   }
   if (startupParams.get('start') === 'upload') {
     // Somebody who has already chosen a plan is past being sold to. The
