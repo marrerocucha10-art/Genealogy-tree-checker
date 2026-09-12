@@ -180,7 +180,9 @@ function updateBillingButtons() {
 function renderPlans() {
   const current = tiers[currentTier] || tiers.free;
   manageBillingButton.hidden = !stripeCustomerId;
-  subscriptionStatus.textContent = `Current plan: ${current.name} · ${billingInterval === 'annual' ? 'Annual billing' : 'Monthly billing'} · Store access is open to all users`;
+  subscriptionStatus.textContent = currentTier === 'free'
+    ? `Current plan: ${current.name} · Store access is open to all users`
+    : `Current plan: ${current.name} · ${billingInterval === 'annual' ? 'Annual billing' : 'Monthly billing'} · Store access is open to all users`;
   subscriptionPlans.innerHTML = Object.entries(tiers).filter(([id]) => id !== 'free').map(([id, tier]) => {
     const isCurrent = id === currentTier;
     const checkoutReady = stripeConfig?.configured && stripeConfig.tiers?.[id]?.[billingInterval]?.configured;

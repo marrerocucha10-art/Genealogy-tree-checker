@@ -34,15 +34,13 @@ app.use((req, res, next) => {
 app.use((req, res, next) => {
   const host = String(req.headers.host || '').toLowerCase();
   if (!/^www\.fixyourtree\.com(?::\d+)?$/.test(host)) return next();
-  const safePath = (
-    req.path === '/'
-    || req.path === '/index.html'
-    || req.path === '/store'
-    || req.path === '/store.html'
-  )
-    ? req.path
-    : '/';
-  return res.redirect(308, `https://fixyourtree.com${safePath}`);
+  if (req.path === '/store' || req.path === '/store.html') {
+    return res.redirect(308, 'https://fixyourtree.com/store.html');
+  }
+  if (req.path === '/' || req.path === '/index.html') {
+    return res.redirect(308, 'https://fixyourtree.com/');
+  }
+  return res.redirect(308, 'https://fixyourtree.com/');
 });
 
 const MAX_GEDCOM_BYTES = 150 * 1024 * 1024;
