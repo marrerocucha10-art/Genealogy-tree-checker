@@ -119,7 +119,11 @@ let storeTheme = localStorage.getItem(STORE_THEME_STORAGE_KEY) || 'classic';
 function applyStoreTheme(theme = 'classic') {
   storeTheme = ['classic', 'modern', 'dynamic'].includes(theme) ? theme : 'classic';
   document.body.dataset.storeTheme = storeTheme;
-  storeThemeButtons.forEach((button) => button.classList.toggle('active', button.dataset.storeThemeOption === storeTheme));
+  storeThemeButtons.forEach((button) => {
+    const selected = button.dataset.storeThemeOption === storeTheme;
+    button.classList.toggle('active', selected);
+    button.setAttribute('aria-checked', String(selected));
+  });
   localStorage.setItem(STORE_THEME_STORAGE_KEY, storeTheme);
 }
 

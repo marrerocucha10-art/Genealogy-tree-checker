@@ -17,11 +17,11 @@
       <h1>Genealogy Store</h1>
       <p>Digital products, print keepsakes, research tools, and memory packages for your family tree.</p>
     </header>
-    <div class="store-view-switcher" aria-label="Store appearance options">
+    <div class="store-view-switcher" role="radiogroup" aria-label="Store appearance options">
       <span>Store style:</span>
-      <button type="button" class="store-view-chip active" data-store-theme-option="classic">Classic</button>
-      <button type="button" class="store-view-chip" data-store-theme-option="modern">Modern</button>
-      <button type="button" class="store-view-chip" data-store-theme-option="dynamic">Dynamic</button>
+      <button type="button" class="store-view-chip active" data-store-theme-option="classic" role="radio" aria-checked="true">Classic</button>
+      <button type="button" class="store-view-chip" data-store-theme-option="modern" role="radio" aria-checked="false">Modern</button>
+      <button type="button" class="store-view-chip" data-store-theme-option="dynamic" role="radio" aria-checked="false">Dynamic</button>
     </div>
 
     <main>
