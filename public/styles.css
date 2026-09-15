@@ -1827,6 +1827,12 @@ input[type="file"] {
   margin: 6px 0 0;
 }
 
+.ancestor-discovery a.btn-add {
+  display: inline-block;
+  width: auto;
+  margin-top: 16px;
+}
+
 .tree-presentation {
   background: #f5f3ff;
   border: 2px solid #c4b5fd;
