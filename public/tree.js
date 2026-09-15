@@ -479,13 +479,31 @@ function escapeSvg(value = '') {
   }[character]));
 }
 
-function downloadFamilyTreeImage() {
+function showDownloadButtonMessage(button, message, isError = false) {
+  if (!button) return;
+  const originalLabel = button.dataset.originalLabel || button.textContent;
+  if (!button.dataset.originalLabel) button.dataset.originalLabel = originalLabel;
+  button.textContent = message;
+  if (isError) button.setAttribute('aria-invalid', 'true');
+  window.setTimeout(() => {
+    button.textContent = originalLabel;
+    button.removeAttribute('aria-invalid');
+  }, 2400);
+}
+
+function downloadFamilyTreeImage(button) {
   const treeData = loadedTreeData || getTreeData();
-  if (!treeData?.people?.length) return;
+  if (!treeData?.people?.length) {
+    showDownloadButtonMessage(button, 'Tree not ready yet', true);
+    return;
+  }
 
   const peopleById = new Map((treeData.people || []).map((person) => [person.id, person]));
   const primaryPerson = getPrimaryPerson(treeData);
-  if (!primaryPerson) return;
+  if (!primaryPerson) {
+    showDownloadButtonMessage(button, 'Choose a starting person first', true);
+    return;
+  }
   const familyConnections = buildFamilyConnections(treeData.families || [], peopleById);
   const columns = getPedigreeSlots(primaryPerson, peopleById, familyConnections);
 
@@ -545,15 +563,18 @@ function downloadFamilyTreeImage() {
     ${columnMarkup}
   </svg>`;
 
-  const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = 'family-tree-preview.svg';
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  try {
+    const link = document.createElement('a');
+    link.href = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+    link.download = 'family-tree-preview.svg';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    showDownloadButtonMessage(button, 'Downloaded');
+  } catch (error) {
+    console.error('Could not download family tree preview.', error);
+    showDownloadButtonMessage(button, 'Download failed', true);
+  }
 }
 
 function renderGenerations(treeData, peopleById, families) {
@@ -779,8 +800,9 @@ review.addEventListener('click', async (event) => {
     return;
   }
 
-  if (event.target.closest('[data-download-family-tree]')) {
-    downloadFamilyTreeImage();
+  const downloadFamilyTree = event.target.closest('[data-download-family-tree]');
+  if (downloadFamilyTree) {
+    downloadFamilyTreeImage(downloadFamilyTree);
     return;
   }
 
