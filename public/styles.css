@@ -3814,6 +3814,10 @@ input[type="file"] {
   padding-bottom: 0.5rem;
 }
 
+.pedigree-actions {
+  margin-top: 0.75rem;
+}
+
 .pedigree-columns {
   display: flex;
   gap: 0.35rem;

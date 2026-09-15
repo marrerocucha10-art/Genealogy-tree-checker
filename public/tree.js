@@ -460,8 +460,27 @@ function renderPedigreeChart(primaryPerson, peopleById, familyConnections) {
           `).join('')}
         </div>
       </div>
+      ${IS_ADMINISTRATION_REVIEW ? `
+      <div class="pedigree-actions">
+        <button class="btn-secondary" type="button" data-download-family-tree>Download Family Tree</button>
+      </div>
+      ` : ''}
     </section>
   `;
+}
+
+function downloadFamilyTreeData() {
+  const treeData = loadedTreeData || getTreeData();
+  if (!treeData) return;
+  const blob = new Blob([JSON.stringify(treeData, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'family-tree.json';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 function renderGenerations(treeData, peopleById, families) {
@@ -684,6 +703,11 @@ review.addEventListener('click', async (event) => {
   if (event.target.closest('[data-load-more-generations]')) {
     visibleGenerationCount += GENERATIONS_PER_PAGE;
     renderTreeReview();
+    return;
+  }
+
+  if (event.target.closest('[data-download-family-tree]')) {
+    downloadFamilyTreeData();
     return;
   }
 
