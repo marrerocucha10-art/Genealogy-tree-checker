@@ -469,18 +469,64 @@ function renderPedigreeChart(primaryPerson, peopleById, familyConnections) {
   `;
 }
 
-function downloadFamilyTreeData() {
-  const treeData = loadedTreeData || getTreeData();
-  if (!treeData) return;
-  const blob = new Blob([JSON.stringify(treeData, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = 'family-tree.json';
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
+function inlineTreeCaptureStyles(sourceNode, targetNode) {
+  const sourceStyle = window.getComputedStyle(sourceNode);
+  const cssText = Array.from(sourceStyle)
+    .map((property) => `${property}:${sourceStyle.getPropertyValue(property)};`)
+    .join('');
+  targetNode.setAttribute('style', cssText);
+
+  const sourceChildren = Array.from(sourceNode.children || []);
+  const targetChildren = Array.from(targetNode.children || []);
+  sourceChildren.forEach((child, index) => {
+    if (targetChildren[index]) inlineTreeCaptureStyles(child, targetChildren[index]);
+  });
+}
+
+function downloadFamilyTreeImage() {
+  const chart = review.querySelector('.pedigree-chart');
+  if (!chart) return;
+
+  const chartClone = chart.cloneNode(true);
+  const actionButtons = chartClone.querySelector('.pedigree-actions');
+  if (actionButtons) actionButtons.remove();
+  inlineTreeCaptureStyles(chart, chartClone);
+  chartClone.setAttribute('style', `${chartClone.getAttribute('style') || ''}margin:0;`);
+
+  const bounds = chart.getBoundingClientRect();
+  const width = Math.max(1, Math.ceil(bounds.width));
+  const height = Math.max(1, Math.ceil(bounds.height));
+  const serializedChart = new XMLSerializer().serializeToString(chartClone);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+    <foreignObject width="100%" height="100%">
+      <div xmlns="http://www.w3.org/1999/xhtml">${serializedChart}</div>
+    </foreignObject>
+  </svg>`;
+
+  const image = new Image();
+  const svgUrl = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
+  image.onload = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+    URL.revokeObjectURL(svgUrl);
+    if (!context) return;
+    context.drawImage(image, 0, 0, width, height);
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'family-tree-preview.png';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }, 'image/png');
+  };
+  image.onerror = () => URL.revokeObjectURL(svgUrl);
+  image.src = svgUrl;
 }
 
 function renderGenerations(treeData, peopleById, families) {
@@ -707,7 +753,7 @@ review.addEventListener('click', async (event) => {
   }
 
   if (event.target.closest('[data-download-family-tree]')) {
-    downloadFamilyTreeData();
+    downloadFamilyTreeImage();
     return;
   }
 
