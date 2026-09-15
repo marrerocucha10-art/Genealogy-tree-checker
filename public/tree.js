@@ -460,8 +460,165 @@ function renderPedigreeChart(primaryPerson, peopleById, familyConnections) {
           `).join('')}
         </div>
       </div>
+      ${IS_ADMINISTRATION_REVIEW ? `
+      <div class="pedigree-actions">
+        <button class="btn-secondary" type="button" data-download-family-tree>Download Family Tree</button>
+      </div>
+      ` : ''}
     </section>
   `;
+}
+
+function showDownloadButtonMessage(button, message, isError = false) {
+  if (!button) return;
+  const originalLabel = button.dataset.originalLabel || button.textContent;
+  if (!button.dataset.originalLabel) button.dataset.originalLabel = originalLabel;
+  button.textContent = message;
+  if (isError) button.setAttribute('aria-invalid', 'true');
+  window.setTimeout(() => {
+    button.textContent = originalLabel;
+    button.removeAttribute('aria-invalid');
+  }, 2400);
+}
+
+function drawRoundedRect(context, x, y, width, height, radius) {
+  const r = Math.min(radius, width / 2, height / 2);
+  context.beginPath();
+  context.moveTo(x + r, y);
+  context.arcTo(x + width, y, x + width, y + height, r);
+  context.arcTo(x + width, y + height, x, y + height, r);
+  context.arcTo(x, y + height, x, y, r);
+  context.arcTo(x, y, x + width, y, r);
+  context.closePath();
+}
+
+function downloadFamilyTreeImage(button) {
+  const treeData = loadedTreeData || getTreeData();
+  if (!treeData?.people?.length) {
+    showDownloadButtonMessage(button, 'Tree not ready yet', true);
+    return;
+  }
+
+  const peopleById = new Map((treeData.people || []).map((person) => [person.id, person]));
+  const primaryPerson = getPrimaryPerson(treeData);
+  if (!primaryPerson) {
+    showDownloadButtonMessage(button, 'Choose a starting person first', true);
+    return;
+  }
+  const familyConnections = buildFamilyConnections(treeData.families || [], peopleById);
+  const columns = getPedigreeSlots(primaryPerson, peopleById, familyConnections);
+
+  const headings = [
+    'Starting person',
+    'Parents',
+    'Grandparents',
+    'Great-grandparents',
+    '2nd great-grandparents',
+    '3rd great-grandparents',
+  ];
+  const filled = columns.reduce((total, column) => total + column.filter(Boolean).length, 0);
+  const totalSlots = columns.reduce((total, column) => total + column.length, 0);
+  const outerPadding = 24;
+  const columnWidth = 182;
+  const columnGap = 12;
+  const slotHeight = 48;
+  const slotGap = 6;
+  const topOffset = 156;
+  const chartHeight = Math.max(...columns.map((column) => (column.length * slotHeight) + ((column.length - 1) * slotGap)));
+  const width = (outerPadding * 2) + (columns.length * columnWidth) + ((columns.length - 1) * columnGap);
+  const height = topOffset + chartHeight + 36;
+  const shortText = (value, max = 24) => {
+    const text = String(value || '');
+    return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+  };
+
+  try {
+    const scale = Math.max(1, window.devicePixelRatio || 1);
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(width * scale);
+    canvas.height = Math.ceil(height * scale);
+    const context = canvas.getContext('2d');
+    if (!context) {
+      showDownloadButtonMessage(button, 'Download failed', true);
+      return;
+    }
+
+    context.scale(scale, scale);
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, width, height);
+
+    drawRoundedRect(context, 8, 8, width - 16, height - 16, 10);
+    context.fillStyle = '#ffffff';
+    context.strokeStyle = '#d9dee5';
+    context.lineWidth = 1;
+    context.fill();
+    context.stroke();
+
+    context.fillStyle = '#111827';
+    context.font = '700 24px Arial, sans-serif';
+    context.fillText(`Six-generation chart for ${shortText(primaryPerson.name || primaryPerson.id, 40)}`, outerPadding, 42);
+    context.fillStyle = '#4b5563';
+    context.font = '13px Arial, sans-serif';
+    context.fillText(`${filled} of ${totalSlots} places on this chart are filled from your file. Blank places are the ancestors your file has not recorded yet.`, outerPadding, 70);
+
+    columns.forEach((column, columnIndex) => {
+      const x = outerPadding + (columnIndex * (columnWidth + columnGap));
+      context.fillStyle = '#5b6875';
+      context.font = '12px Arial, sans-serif';
+      context.textAlign = 'center';
+      context.fillText((headings[columnIndex] || `Generation ${columnIndex + 1}`).toUpperCase(), x + (columnWidth / 2), topOffset - 16);
+
+      column.forEach((person, rowIndex) => {
+        const y = topOffset + (rowIndex * (slotHeight + slotGap));
+        drawRoundedRect(context, x, y, columnWidth, slotHeight, 5);
+        context.lineWidth = 1.5;
+        if (!person) {
+          context.fillStyle = '#ffffff';
+          context.strokeStyle = '#e6e9ee';
+          context.fill();
+          context.stroke();
+          context.fillStyle = '#c2c9d1';
+          context.font = '16px Arial, sans-serif';
+          context.textAlign = 'center';
+          context.fillText('—', x + (columnWidth / 2), y + 30);
+          return;
+        }
+
+        context.fillStyle = '#fbfcfe';
+        context.strokeStyle = '#d9dee5';
+        context.fill();
+        context.stroke();
+        context.beginPath();
+        context.moveTo(x + 1, y + 1);
+        context.lineTo(x + 1, y + slotHeight - 1);
+        context.strokeStyle = '#2f6f4f';
+        context.lineWidth = 3;
+        context.stroke();
+
+        context.textAlign = 'left';
+        context.fillStyle = '#1f2937';
+        context.font = '700 11.5px Arial, sans-serif';
+        context.fillText(shortText(person.name || person.id), x + 11, y + 19);
+        const years = [person.birth?.date, person.death?.date].filter(Boolean).join(' – ');
+        if (years) {
+          context.fillStyle = '#5b6875';
+          context.font = '10.5px Arial, sans-serif';
+          context.fillText(shortText(years, 30), x + 11, y + 35);
+        }
+      });
+    });
+
+    const link = document.createElement('a');
+    link.href = canvas.toDataURL('image/png');
+    link.download = 'family-tree-preview.png';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    showDownloadButtonMessage(button, 'Downloaded');
+  } catch (error) {
+    console.error('Could not download family tree preview.', error);
+    showDownloadButtonMessage(button, 'Download failed', true);
+  }
 }
 
 function renderGenerations(treeData, peopleById, families) {
@@ -684,6 +841,12 @@ review.addEventListener('click', async (event) => {
   if (event.target.closest('[data-load-more-generations]')) {
     visibleGenerationCount += GENERATIONS_PER_PAGE;
     renderTreeReview();
+    return;
+  }
+
+  const downloadFamilyTree = event.target.closest('[data-download-family-tree]');
+  if (downloadFamilyTree) {
+    downloadFamilyTreeImage(downloadFamilyTree);
     return;
   }
 
