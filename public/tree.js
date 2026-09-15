@@ -469,16 +469,6 @@ function renderPedigreeChart(primaryPerson, peopleById, familyConnections) {
   `;
 }
 
-function escapeSvg(value = '') {
-  return String(value).replace(/[&<>"']/g, (character) => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&apos;',
-  }[character]));
-}
-
 function showDownloadButtonMessage(button, message, isError = false) {
   if (!button) return;
   const originalLabel = button.dataset.originalLabel || button.textContent;
@@ -489,6 +479,17 @@ function showDownloadButtonMessage(button, message, isError = false) {
     button.textContent = originalLabel;
     button.removeAttribute('aria-invalid');
   }, 2400);
+}
+
+function drawRoundedRect(context, x, y, width, height, radius) {
+  const r = Math.min(radius, width / 2, height / 2);
+  context.beginPath();
+  context.moveTo(x + r, y);
+  context.arcTo(x + width, y, x + width, y + height, r);
+  context.arcTo(x + width, y + height, x, y + height, r);
+  context.arcTo(x, y + height, x, y, r);
+  context.arcTo(x, y, x + width, y, r);
+  context.closePath();
 }
 
 function downloadFamilyTreeImage(button) {
@@ -520,7 +521,6 @@ function downloadFamilyTreeImage(button) {
   const outerPadding = 24;
   const columnWidth = 182;
   const columnGap = 12;
-  const headingHeight = 34;
   const slotHeight = 48;
   const slotGap = 6;
   const topOffset = 156;
@@ -532,41 +532,85 @@ function downloadFamilyTreeImage(button) {
     return text.length > max ? `${text.slice(0, max - 1)}…` : text;
   };
 
-  const columnMarkup = columns.map((column, columnIndex) => {
-    const x = outerPadding + (columnIndex * (columnWidth + columnGap));
-    return `
-      <text x="${x + (columnWidth / 2)}" y="${topOffset - 16}" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" letter-spacing="0.6" fill="#5b6875">${escapeSvg(headings[columnIndex] || `Generation ${columnIndex + 1}`).toUpperCase()}</text>
-      ${column.map((person, rowIndex) => {
-        const y = topOffset + (rowIndex * (slotHeight + slotGap));
-        if (!person) {
-          return `
-            <rect x="${x}" y="${y}" width="${columnWidth}" height="${slotHeight}" rx="5" fill="#ffffff" stroke="#e6e9ee" stroke-width="1.5"/>
-            <text x="${x + (columnWidth / 2)}" y="${y + 30}" text-anchor="middle" font-size="16" font-family="Arial, sans-serif" fill="#c2c9d1">—</text>
-          `;
-        }
-        const years = [person.birth?.date, person.death?.date].filter(Boolean).join(' – ');
-        return `
-          <rect x="${x}" y="${y}" width="${columnWidth}" height="${slotHeight}" rx="5" fill="#fbfcfe" stroke="#d9dee5" stroke-width="1.5"/>
-          <line x1="${x + 1}" y1="${y + 1}" x2="${x + 1}" y2="${y + slotHeight - 1}" stroke="#2f6f4f" stroke-width="3"/>
-          <text x="${x + 11}" y="${y + 19}" font-size="11.5" font-family="Arial, sans-serif" font-weight="700" fill="#1f2937">${escapeSvg(shortText(person.name || person.id))}</text>
-          ${years ? `<text x="${x + 11}" y="${y + 35}" font-size="10.5" font-family="Arial, sans-serif" fill="#5b6875">${escapeSvg(shortText(years, 30))}</text>` : ''}
-        `;
-      }).join('')}
-    `;
-  }).join('');
-
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-    <rect width="100%" height="100%" fill="#ffffff"/>
-    <rect x="8" y="8" width="${width - 16}" height="${height - 16}" rx="10" fill="#ffffff" stroke="#d9dee5" stroke-width="1"/>
-    <text x="${outerPadding}" y="42" font-size="24" font-family="Arial, sans-serif" font-weight="700" fill="#111827">Six-generation chart for ${escapeSvg(shortText(primaryPerson.name || primaryPerson.id, 40))}</text>
-    <text x="${outerPadding}" y="70" font-size="13" font-family="Arial, sans-serif" fill="#4b5563">${filled} of ${totalSlots} places on this chart are filled from your file. Blank places are the ancestors your file has not recorded yet.</text>
-    ${columnMarkup}
-  </svg>`;
-
   try {
+    const scale = Math.max(1, window.devicePixelRatio || 1);
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(width * scale);
+    canvas.height = Math.ceil(height * scale);
+    const context = canvas.getContext('2d');
+    if (!context) {
+      showDownloadButtonMessage(button, 'Download failed', true);
+      return;
+    }
+
+    context.scale(scale, scale);
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, width, height);
+
+    drawRoundedRect(context, 8, 8, width - 16, height - 16, 10);
+    context.fillStyle = '#ffffff';
+    context.strokeStyle = '#d9dee5';
+    context.lineWidth = 1;
+    context.fill();
+    context.stroke();
+
+    context.fillStyle = '#111827';
+    context.font = '700 24px Arial, sans-serif';
+    context.fillText(`Six-generation chart for ${shortText(primaryPerson.name || primaryPerson.id, 40)}`, outerPadding, 42);
+    context.fillStyle = '#4b5563';
+    context.font = '13px Arial, sans-serif';
+    context.fillText(`${filled} of ${totalSlots} places on this chart are filled from your file. Blank places are the ancestors your file has not recorded yet.`, outerPadding, 70);
+
+    columns.forEach((column, columnIndex) => {
+      const x = outerPadding + (columnIndex * (columnWidth + columnGap));
+      context.fillStyle = '#5b6875';
+      context.font = '12px Arial, sans-serif';
+      context.textAlign = 'center';
+      context.fillText((headings[columnIndex] || `Generation ${columnIndex + 1}`).toUpperCase(), x + (columnWidth / 2), topOffset - 16);
+
+      column.forEach((person, rowIndex) => {
+        const y = topOffset + (rowIndex * (slotHeight + slotGap));
+        drawRoundedRect(context, x, y, columnWidth, slotHeight, 5);
+        context.lineWidth = 1.5;
+        if (!person) {
+          context.fillStyle = '#ffffff';
+          context.strokeStyle = '#e6e9ee';
+          context.fill();
+          context.stroke();
+          context.fillStyle = '#c2c9d1';
+          context.font = '16px Arial, sans-serif';
+          context.textAlign = 'center';
+          context.fillText('—', x + (columnWidth / 2), y + 30);
+          return;
+        }
+
+        context.fillStyle = '#fbfcfe';
+        context.strokeStyle = '#d9dee5';
+        context.fill();
+        context.stroke();
+        context.beginPath();
+        context.moveTo(x + 1, y + 1);
+        context.lineTo(x + 1, y + slotHeight - 1);
+        context.strokeStyle = '#2f6f4f';
+        context.lineWidth = 3;
+        context.stroke();
+
+        context.textAlign = 'left';
+        context.fillStyle = '#1f2937';
+        context.font = '700 11.5px Arial, sans-serif';
+        context.fillText(shortText(person.name || person.id), x + 11, y + 19);
+        const years = [person.birth?.date, person.death?.date].filter(Boolean).join(' – ');
+        if (years) {
+          context.fillStyle = '#5b6875';
+          context.font = '10.5px Arial, sans-serif';
+          context.fillText(shortText(years, 30), x + 11, y + 35);
+        }
+      });
+    });
+
     const link = document.createElement('a');
-    link.href = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-    link.download = 'family-tree-preview.svg';
+    link.href = canvas.toDataURL('image/png');
+    link.download = 'family-tree-preview.png';
     document.body.appendChild(link);
     link.click();
     link.remove();
